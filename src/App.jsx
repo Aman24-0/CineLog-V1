@@ -218,7 +218,7 @@ const MovieCard = (props) => (
             {(props.movie.release_date||'').split('-')[0] || 'N/A'} • {props.movie.media_type === 'tv' ? 'Series' : 'Movie'} <Show when={props.movie.runtime > 0}>• {formatRuntime(props.movie.runtime)}</Show>
         </p>
 
-        {/* Fixed Rating Pill Grid - Ensures no cut-off on small screens */}
+        {/* Fixed Rating Pill Grid */}
         <div class="grid grid-cols-3 gap-1 mt-1 w-full">
             <span class="text-[8px] py-1 rounded-md bg-black/60 border border-white/5 font-black text-[#f5c518] flex items-center justify-center gap-0.5 shadow-sm truncate"><Icon name="star" class="text-[10px]" fill/> {props.movie.imdbRating || '-'}</span>
             <span class="text-[8px] py-1 rounded-md bg-black/60 border border-white/5 font-black text-red-500 flex items-center justify-center gap-0.5 shadow-sm truncate">🍅 {props.movie.rtRating || '-'}</span>
@@ -588,8 +588,7 @@ function UpcomingView(props) {
 
 function UpcomingDetailsModal(props) {
   const [details, setDetails] = createSignal(props.movie);
-  const [trailerKey, setTrailerKey] = createSignal(null);
-  const [playTrailer, setPlayTrailer] = createSignal(false);
+  const [trailerKey, setTrailerKey] = createSignal(null); const [playTrailer, setPlayTrailer] = createSignal(false);
   const [ottPlatform, setOttPlatform] = createSignal('');
 
   onMount(() => { document.body.style.overflow = 'hidden'; }); onCleanup(() => { document.body.style.overflow = ''; });
@@ -608,7 +607,7 @@ function UpcomingDetailsModal(props) {
   const runtimeVal = () => details().runtime || details().episode_run_time?.[0] || 0;
 
   return (
-      <div class="fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[999999] animate-fade-in" onClick={props.onClose}>
+      <div class="fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[999999]" onClick={props.onClose}>
           <div class="w-full max-w-xl bg-[#0c0e14] rounded-3xl overflow-hidden border border-white/10 relative max-h-[90vh] shadow-2xl animate-pop-in flex flex-col" onClick={e=>e.stopPropagation()}>
               <button onClick={props.onClose} class="absolute top-4 right-4 z-[100] bg-black/50 backdrop-blur-md border border-white/10 p-2.5 rounded-full hover:bg-black/80 active:scale-95 transition-all"><Icon name="close" class="text-sm text-white"/></button>
               <div class="overflow-y-auto hide-scrollbar w-full">
@@ -646,7 +645,7 @@ function UpcomingDetailsModal(props) {
   );
 }
 
-// 9. DETAILS MODAL (Ultimate Restore + Rating Fix)
+// 9. DETAILS MODAL
 function DetailsModal(props) {
   const movie = createMemo(() => props.watchlist.find(m => String(m.id) === String(props.id)));
   const [details, setDetails] = createSignal({});
@@ -667,7 +666,6 @@ function DetailsModal(props) {
               const v = d?.videos?.results; if(v){ let t = v.find(x=>x.site==='YouTube'&&x.type==='Trailer')||v.find(x=>x.site==='YouTube'&&x.type==='Teaser')||v.find(x=>x.site==='YouTube'); if(t) setTrailerKey(t.key); } 
           });
 
-          // Fetch OMDb Rating
           const title = movie().title || movie().name;
           fetch(`https://www.omdbapi.com/?t=${encodeURIComponent(title)}&apikey=${OMDB_KEY}`).then(r=>r.json()).then(d=>{
               if(d.Response === 'True') {
@@ -716,7 +714,6 @@ function DetailsModal(props) {
                     <button onClick={()=>setIsEdit(!isEdit())} class={`p-2.5 rounded-full border transition-colors shrink-0 ${isEdit() ? 'bg-[var(--primary)] text-[#0c0e14] border-[var(--primary)]' : 'glass-surface text-gray-400 hover:text-white'}`}><Icon name={isEdit()?'check':'edit'} class="text-sm"/></button>
                 </div>
                 
-                {/* Fixed Big Ratings Row - Equal widths, vertically stacked */}
                 <div class="grid grid-cols-3 gap-2 my-5 w-full">
                     <div class="bg-black/40 backdrop-blur-md border border-white/10 py-2 rounded-xl flex flex-col items-center justify-center text-center shadow-md">
                         <div class="flex items-center gap-1 mb-0.5"><Icon name="star" fill class="text-[10px] text-[#f5c518]"/><span class="text-xs font-black text-white">{omdbData().imdb}</span></div>
@@ -734,7 +731,6 @@ function DetailsModal(props) {
 
                 <Show when={isEdit()} fallback={
                   <div class="animate-fade-in">
-                    {/* Streaming Servers */}
                     <div class="flex gap-2 mb-6">
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveServer('VidLink'); setShowPlayer(true); }} class="flex-1 bg-[var(--primary)] text-[#0c0e14] font-black py-4 rounded-2xl uppercase text-[10px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-[var(--primary)]/20"><Icon name="play_circle" fill class="text-[16px]"/> VidLink</button>
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveServer('Vidsrc'); setShowPlayer(true); }} class="flex-1 bg-[#10b981] text-[#0c0e14] font-black py-4 rounded-2xl uppercase text-[10px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#10b981]/20"><Icon name="backup" fill class="text-[16px]"/> Vidsrc</button>
@@ -742,7 +738,6 @@ function DetailsModal(props) {
 
                     <p class="text-gray-400 text-sm mb-6 leading-relaxed italic border-l-2 border-[var(--primary)]/30 pl-3">"{details().overview || (typeof movie().overview === 'string' ? movie().overview : 'No overview available.')}"</p>
                     
-                    {/* TV Show Progress Section */}
                     <Show when={movie().media_type === 'tv'}>
                         <div class="glass-surface p-5 rounded-2xl border border-white/5 mb-6">
                             <div class="flex justify-between items-center mb-3">
@@ -756,7 +751,6 @@ function DetailsModal(props) {
                         </div>
                     </Show>
 
-                    {/* Cast & Crew Carousel */}
                     <Show when={details().credits}>
                         <div class="mb-8">
                             <h3 class="text-[10px] font-black uppercase text-gray-500 tracking-widest mb-4">Cast & Crew</h3>
@@ -779,9 +773,9 @@ function DetailsModal(props) {
                         </div>
                     </Show>
 
-                    {/* Metadata Box */}
                     <div class="glass-surface p-5 rounded-2xl space-y-4 border border-white/5">
                         <SafeInfoRow icon="adjust" label="Status" value={<span class="text-[var(--primary)] font-black uppercase text-[10px] tracking-widest">{movie().status||'Planned'}</span>} />
+                        <SafeInfoRow icon="calendar_today" label="Watch Date" value={<span class="text-xs text-gray-300">{movie().watchDate || 'Not set'}</span>} />
                         <SafeInfoRow icon="public" label="Region" value={movie().region || 'International'} />
                         <SafeInfoRow icon="format_list_bulleted" label="Genre" value={<span class="text-xs text-gray-300">{getSafeGenres(movie()).join(', ') || 'N/A'}</span>} />
                         <SafeInfoRow icon="connected_tv" label="Available On" value={<span class="text-xs font-bold text-[var(--secondary)]">{getSafePlatforms(movie()).join(', ') || 'N/A'}</span>} />
@@ -793,7 +787,6 @@ function DetailsModal(props) {
                     <div class="mt-8 flex justify-end"><button onClick={async () => { if(confirm("Permanently delete?")) { await deleteDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id))); props.showToast("Deleted"); props.onClose(); } }} class="text-red-500/50 hover:text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-colors mx-auto active:scale-95"><Icon name="delete" class="text-sm"/> Remove from Universe</button></div>
                   </div>
                 }>
-                  {/* EDIT MODE */}
                   <div class="glass-surface p-6 rounded-2xl space-y-4 animate-fade-in border border-[var(--primary)]/30 mt-4 shadow-lg shadow-[var(--primary)]/10">
                     <div class="grid grid-cols-2 gap-4">
                         <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Status</label><select value={form().status} onChange={e=>setForm({...form(), status: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)]"><option value="Planned">Planned</option><option value="Watching">Watching</option><option value="Completed">Completed</option></select></div>
@@ -801,9 +794,10 @@ function DetailsModal(props) {
                     </div>
                     <Show when={movie().media_type === 'tv'}><div class="grid grid-cols-2 gap-4"><div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Season</label><input type="number" value={form().season} onInput={e=>setForm({...form(), season: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)]"/></div><div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Episode</label><input type="number" value={form().episode} onInput={e=>setForm({...form(), episode: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)]"/></div></div></Show>
                     <div class="grid grid-cols-2 gap-4">
-                        <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Custom Tag</label><input placeholder="e.g. Theatre" value={form().tag} onInput={e=>setForm({...form(), tag: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)] placeholder-gray-700"/></div>
+                        <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Watch Date</label><input type="date" value={form().watchDate} onInput={e=>setForm({...form(), watchDate: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white [color-scheme:dark] outline-none focus:border-[var(--primary)]"/></div>
                         <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Region</label><select value={form().region} onChange={e=>setForm({...form(), region: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)]"><option>International</option><option>Indian</option></select></div>
                     </div>
+                    <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Custom Tag</label><input placeholder="e.g. Theatre" value={form().tag} onInput={e=>setForm({...form(), tag: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)] placeholder-gray-700"/></div>
                     <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Available Platforms</label><div class="flex flex-wrap gap-2 p-3 bg-[#0c0e14] border border-white/5 rounded-xl"><For each={allAvailablePlatforms()}>{p => <button type="button" onClick={()=>togglePlatform(p)} class={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors shadow-sm active:scale-95 ${form().platforms.split(',').map(s=>s.trim()).includes(p) ? 'bg-gradient-to-tr from-[var(--secondary)] to-[var(--primary)] text-[#0c0e14]' : 'bg-white/5 text-gray-400 hover:text-white border border-white/5'}`}>{p}</button>}</For></div></div>
                     <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Genres (Comma separated)</label><input value={form().genres} onInput={e=>setForm({...form(), genres: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)]"/></div>
                     <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">My Notes</label><textarea value={form().notes} onInput={e=>setForm({...form(), notes: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)] placeholder-gray-700" rows="3" placeholder="Write your thoughts..."></textarea></div>
