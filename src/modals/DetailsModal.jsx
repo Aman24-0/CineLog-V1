@@ -3,13 +3,14 @@ import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Icon, formatRuntime, cleanPlatform, getSafeGenres, getSafePlatforms, SafeInfoRow, TMDB_KEY, OMDB_KEY } from '../utils';
 
-// Matrix of Working Streaming Servers (Updated with SuperEmbed & Vidsrc.ru)
+// Matrix of Working Streaming Servers (No-PHP Required)
 const SERVERS = [
   { id: 'vidzee', name: 'VidZee (Fast)', icon: 'smart_display' },
   { id: 'vidlink', name: 'VidLink', icon: 'play_circle' },
   { id: 'vidsrcru', name: 'Vidsrc.ru', icon: 'dns' },
-  { id: 'autoembed', name: 'AutoEmbed', icon: 'bolt' },
-  { id: 'superembed', name: 'SuperEmbed', icon: 'stream' }
+  { id: 'embedsu', name: 'Embed.su', icon: 'stream' },
+  { id: 'vidsrccc', name: 'Vidsrc.cc', icon: 'dynamic_feed' },
+  { id: 'autoembed', name: 'AutoEmbed', icon: 'bolt' }
 ];
 
 export function DetailsModal(props) {
@@ -23,7 +24,6 @@ export function DetailsModal(props) {
   const [omdbData, setOmdbData] = createSignal({ imdb: '-', rt: '-' });
   const [form, setForm] = createSignal({ status: '', rating: '', watchDate: '', notes: '', region: '', season: 1, episode: 1, tag: '', platforms: '', genres: '' });
   
-  // VidZee Event Listener for Player Progress
   const handleVidZeeMessages = (event) => {
     if (event.origin !== 'https://player.vidzee.wtf') return;
     if (event.data?.type === 'MEDIA_DATA') {
@@ -71,7 +71,7 @@ export function DetailsModal(props) {
   const progressPct = createMemo(() => isCompleted() ? 100 : Math.min(((movie()?.episode||0) / (movie()?.totalEps||1)) * 100, 100));
   const movieFranchises = createMemo(() => props.franchises?.filter(f => movie()?.franchises?.[f.id] !== undefined).map(f => f.name).join(', '));
   
-  // Smart Stream URL Generator based on selected server
+  // Smart Stream URL Generator 
   const getStreamUrl = (serverId) => { 
       const id = movie().id; const s = movie().season || 1; const e = movie().episode || 1; 
       const type = movie().media_type === 'tv' ? 'tv' : 'movie';
@@ -80,8 +80,9 @@ export function DetailsModal(props) {
           case 'vidzee': return type === 'tv' ? `https://player.vidzee.wtf/embed/tv/${id}/${s}/${e}` : `https://player.vidzee.wtf/embed/movie/${id}`;
           case 'vidlink': return type === 'tv' ? `https://vidlink.pro/tv/${id}/${s}/${e}?primaryColor=b1a1ff&autoplay=false` : `https://vidlink.pro/movie/${id}?primaryColor=b1a1ff&autoplay=false`;
           case 'vidsrcru': return type === 'tv' ? `https://vidsrc.ru/tv/${id}/${s}/${e}?autoplay=true&colour=b1a1ff&autonextepisode=true&backbutton=https://vidsrc.ru/&logo=https://vidsrc.ru/logo.png` : `https://vidsrc.ru/movie/${id}?autoplay=true&colour=b1a1ff&backbutton=https://vidsrc.ru/&logo=https://vidsrc.ru/logo.png`;
+          case 'embedsu': return type === 'tv' ? `https://embed.su/embed/tv/${id}/${s}/${e}` : `https://embed.su/embed/movie/${id}`;
+          case 'vidsrccc': return type === 'tv' ? `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}` : `https://vidsrc.cc/v2/embed/movie/${id}`;
           case 'autoembed': return type === 'tv' ? `https://autoembed.co/tv/tmdb/${id}-${s}-${e}` : `https://autoembed.co/movie/tmdb/${id}`;
-          case 'superembed': return type === 'tv' ? `https://getsuperembed.link/?video_id=${id}&tmdb=1&season=${s}&episode=${e}&player_color=b1a1ff` : `https://getsuperembed.link/?video_id=${id}&tmdb=1&player_color=b1a1ff`;
           default: return '';
       }
   };
@@ -133,7 +134,6 @@ export function DetailsModal(props) {
                 <Show when={isEdit()} fallback={
                   <div class="animate-fade-in">
                     
-                    {/* FIXED: Server Switcher UI (flex-wrap added for PC) */}
                     <div class="mb-6 bg-black/40 backdrop-blur-md p-4 rounded-[1.5rem] border border-white/5 shadow-inner">
                         <div class="flex justify-between items-center mb-3 px-1">
                             <span class="text-[9px] uppercase font-black text-gray-400 tracking-widest flex items-center gap-1.5"><Icon name="router" class="text-[12px] text-[var(--primary)]"/> Streaming Node</span>
@@ -223,7 +223,7 @@ export function DetailsModal(props) {
         </div>
       </Show>
 
-      {/* Fullscreen Player Modal */}
+      {/* Clean Fullscreen Player Modal Without Fake Node Loader */}
       <Show when={showPlayer()}>
         <div class="fixed inset-0 bg-black z-[10000000] flex flex-col animate-fade-in" onClick={(e)=>e.stopPropagation()}>
           <div class="p-4 flex justify-between items-center bg-[#0c0e14] border-b border-white/5 shadow-xl">
@@ -244,7 +244,6 @@ export function DetailsModal(props) {
             </div>
           </div>
           <div class="flex-1 bg-black w-full h-full relative">
-            <div class="absolute inset-0 flex flex-col gap-3 items-center justify-center pointer-events-none opacity-50"><Icon name="dns" class="text-[var(--primary)] text-4xl animate-pulse"/><p class="text-[10px] uppercase font-black tracking-widest text-[var(--primary)]">Connecting to Node...</p></div>
             <iframe src={getStreamUrl(activeServer())} class="w-full h-full border-none relative z-10" allowfullscreen ></iframe>
           </div>
         </div>
