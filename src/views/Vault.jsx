@@ -26,6 +26,13 @@ export function Vault(props) {
 
   const filtered = createMemo(() => {
     let f = props.watchlist();
+  if(search()) {
+        const s = search().toLowerCase();
+        f = f.filter(m => 
+            (m.title||m.name||'').toLowerCase().includes(s) || 
+            (m.castList && m.castList.some(c => c.toLowerCase().includes(s)))
+        );
+    }
     if(search()) f = f.filter(m => (m.title||m.name||'').toLowerCase().includes(search().toLowerCase()));
     if(filters().type !== 'all') f = f.filter(m => m.media_type === filters().type);
     if(filters().status !== 'all') f = f.filter(m => m.status === filters().status || (filters().status === 'Planned' && m.status === 'Plan to Watch'));
