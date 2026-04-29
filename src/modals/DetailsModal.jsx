@@ -13,6 +13,20 @@ const SERVERS = [
   { id: 'autoembed', name: 'AutoEmbed', icon: 'bolt' }
 ];
 
+// Dictionary for Manual Fallbacks & TMDB Direct Link conversion
+const getPlatformDict = (title) => {
+    const enc = encodeURIComponent(title || '');
+    return {
+        'Netflix': { logo: 'https://image.tmdb.org/t/p/w92/t2yyOv40HZeVlLjVrCsPhIdZfC4.jpg', url: `https://www.netflix.com/search?q=${enc}` },
+        'Amazon Prime Video': { logo: 'https://image.tmdb.org/t/p/w92/5NyLm42TmCqCMOZFvH4fvn2FI11.jpg', url: `https://www.primevideo.com/search/ref=atv_sr_sug_sc?phrase=${enc}` },
+        'JioHotstar': { logo: 'https://image.tmdb.org/t/p/w92/uzKjVDmQIA2rZGSNpGbnWXUWVQIM.jpg', url: `https://www.hotstar.com/in/explore?searchQuery=${enc}` },
+        'Sony LIV': { logo: 'https://image.tmdb.org/t/p/w92/8N0DNa4BO3lH24KWv1EjJh4TxGL.jpg', url: `https://www.sonyliv.com/` },
+        'Zee5': { logo: 'https://image.tmdb.org/t/p/w92/5vVzg0rtZAwQGzQoT2Zk0n43Nym.jpg', url: `https://www.zee5.com/global/search?q=${enc}` },
+        'Apple TV': { logo: 'https://image.tmdb.org/t/p/w92/2E0ficP6ijhlCSJuwHI4isW0QhD.jpg', url: `https://tv.apple.com/` },
+        'Crunchyroll': { logo: 'https://image.tmdb.org/t/p/w92/mXeC4TrcgdU6j81XreWIjA6k7yC.jpg', url: `https://www.crunchyroll.com/search?q=${enc}` }
+    };
+};
+
 export function DetailsModal(props) {
   const movie = createMemo(() => props.watchlist.find(m => String(m.id) === String(props.id)));
   const [details, setDetails] = createSignal({});
@@ -24,7 +38,7 @@ export function DetailsModal(props) {
   const [omdbData, setOmdbData] = createSignal({ imdb: '-', rt: '-' });
   const [form, setForm] = createSignal({ status: '', rating: '', watchDate: '', notes: '', region: '', season: 1, episode: 1, tag: '', platforms: '', genres: '' });
   
-  // NEW: Rich Platforms Data (Logos + URLs)
+  // Rich Platforms Data (Logos + Direct URLs)
   const [richPlatforms, setRichPlatforms] = createSignal([]);
   const WATCHMODE_KEY = "QQQ2oiV5GK9fIM0sjEfgHwMTjGtusEYSy6I8TIfp";
   
@@ -48,17 +62,19 @@ export function DetailsModal(props) {
   
   const allAvailablePlatforms = createMemo(() => [...new Set(props.watchlist.flatMap(m => getSafePlatforms(m)))].filter(Boolean).sort());
 
+  // Main Effect for fetching details & APIs
   createEffect(() => { 
       if(movie()) { 
+          // Sync Manual Edit Form
           setForm({ status: movie().status||'Planned', rating: movie().rating||'', watchDate: typeof movie().watchDate==='string'?movie().watchDate:'', notes: typeof movie().notes==='string'?movie().notes:'', region: movie().region||'International', season: movie().season||1, episode: movie().episode||1, tag: movie().tag||'', platforms: getSafePlatforms(movie()).join(', '), genres: getSafeGenres(movie()).join(', ') }); 
           
-          // TMDB Basic Details & Trailer
+          // Fetch TMDB Basic Details
           fetch(`https://api.themoviedb.org/3/${movie().media_type||'movie'}/${movie().id}?api_key=${TMDB_KEY}&append_to_response=videos,credits`).then(r=>r.json()).then(d=>{ 
               setDetails(d);
               const v = d?.videos?.results; if(v){ let t = v.find(x=>x.site==='YouTube'&&x.type==='Trailer')||v.find(x=>x.site==='YouTube'&&x.type==='Teaser')||v.find(x=>x.site==='YouTube'); if(t) setTrailerKey(t.key); } 
           });
 
-          // OMDb Ratings
+          // Fetch OMDb Ratings
           const title = movie().title || movie().name;
           fetch(`https://www.omdbapi.com/?t=${encodeURIComponent(title)}&apikey=${OMDB_KEY}`).then(r=>r.json()).then(d=>{
               if(d.Response === 'True') {
@@ -68,61 +84,84 @@ export function DetailsModal(props) {
               }
           });
 
-          // SMART FETCH: TMDB -> WatchMode (Fallback) + Auto-update old entries
+          // SMART FETCH: WatchMode (Primary for Direct Links) -> TMDB (Fallback) -> Manual Backup
           const fetchProviders = async () => {
-              let providers = [];
-              try {
-                  const tmdbRes = await fetch(`https://api.themoviedb.org/3/${movie().media_type||'movie'}/${movie().id}/watch/providers?api_key=${TMDB_KEY}`);
-                  const tmdbData = await tmdbRes.json();
-                  const inData = tmdbData.results?.IN || tmdbData.results?.US; 
-                  
-                  // 1. Primary: TMDB
-                  if(inData && (inData.flatrate || inData.free || inData.ads)) {
-                      const raw = [...(inData.flatrate||[]), ...(inData.free||[]), ...(inData.ads||[])];
-                      providers = raw.map(p => ({
-                          name: p.provider_name,
-                          logo: `https://image.tmdb.org/t/p/w92${p.logo_path}`,
-                          url: tmdbData.results?.IN?.link || tmdbData.results?.US?.link || `https://www.justwatch.com/in/search?q=${encodeURIComponent(title)}`
-                      }));
-                  }
+              let apiProviders = [];
+              const dict = getPlatformDict(title);
 
-                  // 2. Fallback: WatchMode
-                  if(providers.length === 0) {
-                      const wmType = movie().media_type === 'tv' ? 'tv' : 'movie';
-                      const wmRes = await fetch(`https://api.watchmode.com/v1/title/${wmType}-${movie().id}/sources/?apiKey=${WATCHMODE_KEY}&regions=IN,US`);
-                      const wmSources = await wmRes.json();
-                      
-                      if(Array.isArray(wmSources) && wmSources.length > 0) {
-                          const seen = new Set();
-                          for(let s of wmSources) {
-                              if(!seen.has(s.name) && (s.type === 'sub' || s.type === 'free')) {
-                                  seen.add(s.name);
-                                  providers.push({ name: s.name, logo: s.logo_100px, url: s.web_url });
-                              }
+              // 1. Try WatchMode FIRST (Because it gives deep direct links)
+              try {
+                  const wmType = movie().media_type === 'tv' ? 'tv' : 'movie';
+                  const wmRes = await fetch(`https://api.watchmode.com/v1/title/${wmType}-${movie().id}/sources/?apiKey=${WATCHMODE_KEY}&regions=IN,US`);
+                  const wmSources = await wmRes.json();
+                  
+                  if(Array.isArray(wmSources) && wmSources.length > 0) {
+                      const seen = new Set();
+                      for(let s of wmSources) {
+                          if(!seen.has(s.name) && (s.type === 'sub' || s.type === 'free')) {
+                              seen.add(s.name);
+                              apiProviders.push({ name: s.name, logo: s.logo_100px, url: s.web_url });
                           }
                       }
                   }
+              } catch(e) { console.log("WatchMode fallback..."); }
 
-                  // Deduplicate & Clean
-                  const finalProviders = [];
-                  const seenNames = new Set();
-                  providers.forEach(p => {
-                      const cName = cleanPlatform(p.name);
-                      if(cName && !seenNames.has(cName)) {
-                          seenNames.add(cName);
-                          finalProviders.push({...p, name: cName});
+              // 2. Try TMDB if WatchMode fails or returns empty
+              if(apiProviders.length === 0) {
+                  try {
+                      const tmdbRes = await fetch(`https://api.themoviedb.org/3/${movie().media_type||'movie'}/${movie().id}/watch/providers?api_key=${TMDB_KEY}`);
+                      const tmdbData = await tmdbRes.json();
+                      const inData = tmdbData.results?.IN || tmdbData.results?.US; 
+                      
+                      if(inData && (inData.flatrate || inData.free || inData.ads)) {
+                          const raw = [...(inData.flatrate||[]), ...(inData.free||[]), ...(inData.ads||[])];
+                          apiProviders = raw.map(p => {
+                              const cleanN = cleanPlatform(p.provider_name);
+                              // Replace JustWatch link with our direct OTT search link if available
+                              const customUrl = dict[cleanN]?.url || tmdbData.results?.IN?.link || `https://www.justwatch.com/in/search?q=${encodeURIComponent(title)}`;
+                              return { name: p.provider_name, logo: `https://image.tmdb.org/t/p/w92${p.logo_path}`, url: customUrl };
+                          });
+                      }
+                  } catch(e) { console.log("TMDB fallback..."); }
+              }
+
+              // Deduplicate & Clean API Data
+              let finalProviders = [];
+              const seenNames = new Set();
+              apiProviders.forEach(p => {
+                  const cName = cleanPlatform(p.name);
+                  if(cName && !seenNames.has(cName)) {
+                      seenNames.add(cName);
+                      finalProviders.push({...p, name: cName});
+                  }
+              });
+
+              // 3. MANUAL BACKUP: If both APIs are totally blank, check what user saved from Edit Menu
+              if(finalProviders.length === 0 && movie().platformsList && movie().platformsList.length > 0) {
+                  movie().platformsList.forEach(p => {
+                      const pData = dict[p];
+                      if(pData) {
+                          // Standard known platform
+                          finalProviders.push({ name: p, logo: pData.logo, url: pData.url });
+                      } else {
+                          // Random custom platform, generic logo and google search link
+                          finalProviders.push({ 
+                              name: p, 
+                              logo: `https://api.dicebear.com/7.x/initials/svg?seed=${p}&backgroundColor=171921`, 
+                              url: `https://www.google.com/search?q=Watch+${encodeURIComponent(title)}+on+${p}` 
+                          });
                       }
                   });
+              }
 
-                  setRichPlatforms(finalProviders);
+              setRichPlatforms(finalProviders);
 
-                  // AUTO-FIX: Update old empty database entries
-                  const currentDbPlatforms = movie().platformsList || [];
-                  if(currentDbPlatforms.length === 0 && finalProviders.length > 0) {
-                      const newNames = finalProviders.map(p => p.name).slice(0,4);
-                      await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), { platformsList: newNames });
-                  }
-              } catch(e) { console.log("Provider fetch error:", e); }
+              // AUTO-FIX DB: If DB is empty but APIs found something, save it invisibly
+              const currentDbPlatforms = movie().platformsList || [];
+              if(currentDbPlatforms.length === 0 && finalProviders.length > 0) {
+                  const newNames = finalProviders.map(p => p.name).slice(0,4);
+                  await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), { platformsList: newNames });
+              }
           };
           fetchProviders();
       } 
@@ -256,9 +295,9 @@ export function DetailsModal(props) {
                         <SafeInfoRow icon="public" label="Region" value={movie().region || 'International'} />
                         <SafeInfoRow icon="format_list_bulleted" label="Genre" value={<span class="text-xs text-gray-300">{getSafeGenres(movie()).join(', ') || 'N/A'}</span>} />
                         
-                        {/* JustWatch Style Clickable Platforms Row */}
+                        {/* JustWatch Style Clickable Platforms Row (API + Manual Backup) */}
                         <SafeInfoRow icon="connected_tv" label="Available On" value={
-                            <Show when={richPlatforms().length > 0} fallback={<span class="text-xs font-bold text-[var(--secondary)]">{getSafePlatforms(movie()).join(', ') || 'N/A'}</span>}>
+                            <Show when={richPlatforms().length > 0} fallback={<span class="text-xs font-bold text-gray-500">-</span>}>
                                 <div class="flex flex-wrap gap-2 mt-1">
                                     <For each={richPlatforms().slice(0, 4)}>{(p) => (
                                         <a href={p.url} target="_blank" rel="noopener noreferrer" class="flex items-center gap-1.5 bg-white/5 hover:bg-[var(--primary)]/20 border border-white/10 hover:border-[var(--primary)]/50 px-2.5 py-1.5 rounded-lg transition-all group shadow-sm">
