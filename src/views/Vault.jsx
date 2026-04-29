@@ -6,17 +6,11 @@ export function Vault(props) {
   const [search, setSearch] = createSignal('');
   const [filters, setFilters] = createSignal({ type: 'all', status: props.activeStatus || 'all', region: 'all', genre: 'all', platform: 'all', sort: 'recent', tag: 'all' });
   const [showFilter, setShowFilter] = createSignal(false);
-  const [displayLimit, setDisplayLimit] = createSignal(30); // Show only 30 initially for instant load
+  const [displayLimit, setDisplayLimit] = createSignal(30);
 
   createEffect(() => setFilters(f => ({...f, status: props.activeStatus || 'all'})));
 
-  // Infinite Scroll Listener
-  const handleScroll = () => {
-    if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
-      setDisplayLimit(prev => prev + 30);
-    }
-  };
-
+  const handleScroll = () => { if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) setDisplayLimit(prev => prev + 30); };
   onMount(() => window.addEventListener('scroll', handleScroll));
   onCleanup(() => window.removeEventListener('scroll', handleScroll));
 
@@ -26,14 +20,16 @@ export function Vault(props) {
 
   const filtered = createMemo(() => {
     let f = props.watchlist();
-  if(search()) {
+    
+    // 🌟 ACTOR SEARCH FIX ADDED HERE
+    if(search()) {
         const s = search().toLowerCase();
         f = f.filter(m => 
             (m.title||m.name||'').toLowerCase().includes(s) || 
             (m.castList && m.castList.some(c => c.toLowerCase().includes(s)))
         );
     }
-    if(search()) f = f.filter(m => (m.title||m.name||'').toLowerCase().includes(search().toLowerCase()));
+
     if(filters().type !== 'all') f = f.filter(m => m.media_type === filters().type);
     if(filters().status !== 'all') f = f.filter(m => m.status === filters().status || (filters().status === 'Planned' && m.status === 'Plan to Watch'));
     if(filters().region !== 'all') f = f.filter(m => (m.region || 'International') === filters().region);
@@ -61,7 +57,7 @@ export function Vault(props) {
         <div class="relative group animate-pop-in">
             <div class="flex items-center gap-3 glass-surface rounded-2xl px-5 py-4 relative border border-white/10 focus-within:border-[var(--primary)]/50 transition-colors shadow-xl">
                 <Icon name="search" class="text-gray-400" />
-                <input value={search()} onInput={e => {setSearch(e.target.value); setDisplayLimit(30);}} placeholder="Search your universe..." class="bg-transparent border-none w-full outline-none text-white text-sm font-medium placeholder-gray-600" />
+                <input value={search()} onInput={e => {setSearch(e.target.value); setDisplayLimit(30);}} placeholder="Search movies, series, or actors..." class="bg-transparent border-none w-full outline-none text-white text-sm font-medium placeholder-gray-600" />
                 <Show when={search().length > 0 || activeFilterCount() > 0}>
                     <button onClick={() => { setFilters({ type: 'all', status: 'all', region: 'all', genre: 'all', platform: 'all', sort: 'recent', tag: 'all' }); setSearch(''); setDisplayLimit(30); props.onFilterChange && props.onFilterChange('all'); }} class="text-[9px] text-white bg-red-500/20 border border-red-500/50 hover:bg-red-500 px-3 py-1.5 rounded-full font-black uppercase tracking-widest active:scale-95 transition-all shrink-0">Clear</button>
                 </Show>
@@ -73,7 +69,6 @@ export function Vault(props) {
          <div class="text-center p-12 text-gray-500 opacity-50"><Icon name="sentiment_dissatisfied" class="text-5xl mb-3"/><p class="font-bold text-sm">No titles match your filters.</p></div>
       </Show>
 
-      {/* Sliced render prevents DOM freeze */}
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <For each={filtered().slice(0, displayLimit())}>{(m) => <MovieCard movie={m} onClick={() => props.openMovie(m.id)} />}</For>
       </div>
