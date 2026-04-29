@@ -149,7 +149,7 @@ export function PersonModal(props) {
                 return (
                   <div
                     class="relative group cursor-pointer animate-fade-in"
-                    onClick={() => props.openPreview(item)}
+                    onClick={() => props.openPreview(item, 'fromPerson')}
                   >
                     <img
                       src={item.poster_path
@@ -157,9 +157,9 @@ export function PersonModal(props) {
                         : 'https://via.placeholder.com/342x513/171921/b1a1ff?text=No+Poster'}
                       class="w-full aspect-[2/3] object-cover rounded-xl shadow-lg border border-white/10 group-hover:border-[var(--primary)] transition-all"
                     />
-                    {/* Hover Overlay */}
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex flex-col justify-end p-2">
-                      <p class="text-[9px] font-black text-white truncate">{item.title || item.name}</p>
+                    {/* Name — always visible */}
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent rounded-xl flex flex-col justify-end p-2 pointer-events-none">
+                      <p class="text-[9px] font-black text-white truncate leading-tight">{item.title || item.name}</p>
                       <p class="text-[8px] text-[var(--primary)] font-bold">{(item.release_date || item.first_air_date || '').substring(0, 4)}</p>
                     </div>
                     {/* Add / Saved Button */}
