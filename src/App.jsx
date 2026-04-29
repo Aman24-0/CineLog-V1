@@ -11,8 +11,6 @@ import { FranchisesView } from './views/FranchisesView';
 import { UpcomingView } from './views/UpcomingView';
 import { DataSync } from './views/DataSync';
 import { DetailsModal } from './modals/DetailsModal';
-
-// 🌟 UPDATED IMPORTS HERE
 import { InsightsModal, SettingsModal } from './modals/Modals';
 import { SearchModal } from './modals/SearchModal';
 
@@ -37,6 +35,7 @@ export default function App() {
 
   const showToast = (msg) => { setToast({ show: true, msg }); setTimeout(() => setToast({ show: false, msg: '' }), 3000); };
   
+  // 🌟 Restore Themes (Fix #4)
   createEffect(() => { document.body.className = `theme-${theme()}`; localStorage.setItem('cinelog_theme', theme()); });
   createEffect(() => { view(); window.scrollTo(0, 0); });
 
@@ -55,20 +54,6 @@ export default function App() {
       } else { setLoading(false); }
     });
   });
-
-  const nukeCollection = async () => {
-    if(confirm("DANGER: Entire Vault will be wiped. Sure?")) {
-      showToast("Nuking Vault...");
-      const snap = await getDocs(collection(db, 'users', user().uid, 'watchlist'));
-      const docs = snap.docs;
-      for (let i = 0; i < docs.length; i += 500) {
-        const batch = writeBatch(db);
-        docs.slice(i, i + 500).forEach(d => batch.delete(d.ref));
-        await batch.commit();
-      }
-      showToast("Vault wiped!"); setUserMenuOpen(false);
-    }
-  };
 
   return (
     <ErrorBoundary fallback={(err) => <div class="h-screen flex flex-col items-center justify-center p-10 text-center"><Icon name="error" class="text-red-500 text-6xl mb-4"/><h2 class="text-xl font-bold text-white mb-2">Something broke!</h2><p class="text-xs text-gray-500 mb-6">{err.toString()}</p><button onClick={()=>window.location.reload()} class="bg-red-500 text-white px-6 py-2 rounded-lg font-bold">Reload App</button></div>}>
@@ -95,8 +80,6 @@ export default function App() {
                     <div class="border-t border-white/5 my-1"></div>
                     <button onClick={() => { setView('sync'); setUserMenuOpen(false); }} class="w-full text-left px-5 py-3 text-sm font-bold text-gray-300 hover:bg-white/5 flex items-center gap-3"><Icon name="import_export" class="text-[18px]"/> Data Sync</button>
                     <button onClick={() => signOut(auth)} class="w-full text-left px-5 py-3 text-sm font-bold text-gray-300 hover:bg-white/5 flex items-center gap-3"><Icon name="logout" class="text-[18px]"/> Logout</button>
-                    <div class="border-t border-white/5 my-1"></div>
-                    <button onClick={nukeCollection} class="w-full text-left px-5 py-3 text-sm font-bold text-red-500 hover:bg-red-500/10 flex items-center gap-3"><Icon name="delete_forever" class="text-[18px]"/> Nuke Vault</button>
                   </div>
                 </Show>
               </div>
@@ -131,7 +114,10 @@ export default function App() {
                  uid={user().uid} 
                  showToast={showToast} 
                  watchlist={watchlist()} 
-                 openPreview={(item) => { setSearchModal(false); setDetailsId(`PREVIEW_${JSON.stringify(item)}`); }} 
+                 openPreview={(item) => { 
+                   // 🌟 Fix #2: Don't set searchModal(false), let DetailsModal overlap for back nav
+                   setDetailsId(`PREVIEW_${JSON.stringify(item)}`); 
+                 }} 
              />
           </Show>
           <Show when={detailsId()}>
