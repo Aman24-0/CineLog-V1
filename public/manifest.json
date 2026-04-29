@@ -1,31 +1,24 @@
 {
-  "name": "Cinelog - Movie & TV Tracker",
   "short_name": "Cinelog",
-  "description": "Ultimate movie and TV show tracking vault with personalized watchlists",
+  "name": "Cinelog - Ultimate Edition",
+  "description": "Your personal cinematic universe tracker and streamer.",
   "start_url": "/",
-  "scope": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "theme_color": "#0c0e14",
   "background_color": "#08090b",
-  "theme_color": "#b1a1ff",
+  "orientation": "portrait",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%23b1a1ff' width='192' height='192'/><text x='50%' y='50%' font-size='100' font-weight='bold' text-anchor='middle' dominant-baseline='central' fill='%23000'>C</text></svg>",
+      "src": "https://api.dicebear.com/7.x/shapes/svg?seed=Cinelog&backgroundColor=0c0e14&shape1Color=b1a1ff",
       "sizes": "192x192",
       "type": "image/svg+xml",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%23b1a1ff' width='512' height='512'/><text x='50%' y='50%' font-size='300' font-weight='bold' text-anchor='middle' dominant-baseline='central' fill='%23000'>C</text></svg>",
+      "src": "https://api.dicebear.com/7.x/shapes/svg?seed=Cinelog&backgroundColor=0c0e14&shape1Color=b1a1ff",
       "sizes": "512x512",
       "type": "image/svg+xml",
-      "purpose": "maskable"
-    },
-    {
-      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIABAMAAAAG7R+GAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAMFBMVEUAs6//s6//s6//s6//s6//s6//s6//s6//s6//s6//s6//s6//s6//s6//s6//s6//s6/N39LpAAAADHRSTlMARE9XYm96fH6AgYKD7pInpQAAAAFiS0dEAIgFHUgAAAAJcEhZcwAAFiUAABYlAUlSJPAAAAAHdElNRQfmBhsOEidTjU8vAAABp0lEQVR42u3BAQ0AAADCoPdPbQ43oAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMBvA96pAAHM6Z9EAAAAAElFTkSuQmCC",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
   ]
 }
