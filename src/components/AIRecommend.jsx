@@ -59,9 +59,9 @@ const SkeletonCard = () => (
 
 export function AIRecommend(props) {
   const [recommendations, setRecommendations] = createSignal([]);
-  const [loading, setLoading]               = createSignal(false);
-  const [error, setError]                   = createSignal('');
-  const [hasRun, setHasRun]                 = createSignal(false);
+  const [loading, setLoading] = createSignal(false);
+  const [error, setError] = createSignal('');
+  const [hasRun, setHasRun] = createSignal(false);
 
   const completedTitles = createMemo(() =>
     (props.watchlist?.() ?? [])
@@ -91,7 +91,7 @@ export function AIRecommend(props) {
         `Return ONLY the titles, one per line, with no extra explanation or numbering.`;
 
       const result = await geminiModel.generateContent(prompt);
-      const text   = result.response.text();
+      const text = result.response.text();
       const parsed = parseRecommendations(text);
 
       if (parsed.length === 0) throw new Error('Unexpected format');
