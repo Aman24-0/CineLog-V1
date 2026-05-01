@@ -1,6 +1,7 @@
 import { createMemo, For } from 'solid-js';
 import { Icon } from '../utils';
 import { MovieCard } from '../components/MovieCard';
+import { AIRecommend } from '../components/AIRecommend';
 
 export function Dashboard(props) {
   const stats = createMemo(() => ({ 
@@ -43,6 +44,12 @@ export function Dashboard(props) {
       
       <div class="flex justify-between items-end mb-5 px-1"><h3 class="text-xl font-bold font-headline">Recently Added</h3><button onClick={()=>{props.setActiveVaultStatus('all'); props.setView('watchlist');}} class="text-[var(--primary)] text-[10px] font-bold uppercase tracking-widest hover:underline flex items-center gap-1">View All <Icon name="chevron_right" class="text-[14px]"/></button></div>
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-4"><For each={props.watchlist().slice(0, 6)}>{(m) => <MovieCard movie={m} onClick={() => props.openMovie(m.id)} />}</For></div>
+
+      {/* ── AI Recommendations ─────────────────────────────────────── */}
+      <div class="mt-8 mb-4">
+        <AIRecommend watchlist={props.watchlist} />
+      </div>
     </div>
   );
 }
+
