@@ -7,6 +7,7 @@ import { Icon } from './utils';
 
 // Components
 import { LoadingScreen } from './components/LoadingScreen';
+import { NeuralUI } from './NeuralUI';
 
 // Views
 import { Dashboard } from './views/Dashboard';
@@ -20,8 +21,6 @@ import { DetailsModal } from './modals/DetailsModal';
 import { SearchModal } from './modals/SearchModal';
 import { InsightsModal, SettingsModal } from './modals/Modals';
 
-const NavBtn = (props) => <button onClick={props.onClick} class={`flex flex-col items-center gap-1 w-14 transition-colors ${props.active ? 'text-[var(--primary)]' : 'text-gray-500'}`}><Icon name={props.icon} fill={props.active} /><span class="text-[8px] font-bold uppercase tracking-wide">{props.label}</span></button>;
-
 export default function App() {
   const [user, setUser] = createSignal(null);
   const [watchlist, setWatchlist] = createSignal([]);
@@ -29,12 +28,12 @@ export default function App() {
   const [view, setView] = createSignal('dashboard');
   const [theme, setTheme] = createSignal(localStorage.getItem('cinelog_theme') || 'sage');
   const [loading, setLoading] = createSignal(true);
-  const [splashWait, setSplashWait] = createSignal(true); // 3-second wait timer
+  const [splashWait, setSplashWait] = createSignal(true); 
   const [activeVaultStatus, setActiveVaultStatus] = createSignal('all');
   
   const [searchModal, setSearchModal] = createSignal(false);
   const [detailsId, setDetailsId] = createSignal(null);
-  const [previewSource, setPreviewSource] = createSignal(null); // 'search' | 'fromPerson' | null
+  const [previewSource, setPreviewSource] = createSignal(null); 
   const [settingsModal, setSettingsModal] = createSignal(false);
   const [statsModal, setStatsModal] = createSignal(false);
   const [userMenuOpen, setUserMenuOpen] = createSignal(false);
@@ -46,7 +45,6 @@ export default function App() {
   createEffect(() => { view(); window.scrollTo(0, 0); });
 
   onMount(() => {
-    // Start mandatory 3-second splash screen
     setTimeout(() => setSplashWait(false), 3000);
 
     onAuthStateChanged(auth, (u) => {
@@ -79,7 +77,6 @@ export default function App() {
 
   return (
     <ErrorBoundary fallback={(err) => <div class="h-screen flex flex-col items-center justify-center p-10 text-center"><Icon name="error" class="text-red-500 text-6xl mb-4"/><h2 class="text-xl font-bold text-white mb-2">Something broke!</h2><p class="text-xs text-gray-500 mb-6">{err.toString()}</p><button onClick={()=>window.location.reload()} class="bg-red-500 text-white px-6 py-2 rounded-lg font-bold">Reload App</button></div>}>
-    <div class="min-h-screen pb-28" onClick={() => setUserMenuOpen(false)}>
       <Show when={!loading() && !splashWait()} fallback={<LoadingScreen />}>
         <Show when={user()} fallback={
           <div class="h-screen flex flex-col items-center justify-center p-6 text-center">
@@ -88,49 +85,34 @@ export default function App() {
             <button onClick={() => signInWithPopup(auth, new GoogleAuthProvider())} class="bg-[var(--primary)] text-black font-bold py-4 px-10 rounded-full shadow-lg hover:scale-105 transition-transform">Sign In with Google</button>
           </div>
         }>
-          
-          <header class="flex justify-between items-center p-6 pb-2 relative">
-            <h2 class="text-2xl font-black font-headline text-[var(--primary)] tracking-tighter">Cinelog</h2>
-            <div class="flex items-center gap-3">
-              <button onClick={() => setSettingsModal(true)} class="text-gray-500 glass-surface p-2 rounded-full active:scale-95 transition-transform"><Icon name="palette" class="text-sm" /></button>
-              <div class="relative">
-                <img src={user().photoURL} onClick={(e) => { e.stopPropagation(); setUserMenuOpen(!userMenuOpen()); }} class="w-9 h-9 rounded-full border-2 border-[var(--primary)] cursor-pointer object-cover relative active:scale-95 transition-transform" />
-                <Show when={userMenuOpen()}>
-                  <div class="fixed inset-0 z-[90]" onClick={() => setUserMenuOpen(false)}></div>
-                  <div class="absolute right-0 mt-3 w-48 glass-surface rounded-2xl shadow-2xl py-2 z-[100] animate-pop-in border border-white/10 overflow-hidden">
-                    <button onClick={() => { setStatsModal(true); setUserMenuOpen(false); }} class="w-full text-left px-5 py-3 text-sm font-bold text-[var(--primary)] hover:bg-white/5 flex items-center gap-3"><Icon name="bar_chart" class="text-[18px]"/> Insights</button>
-                    <div class="border-t border-white/5 my-1"></div>
-                    <button onClick={() => { setView('sync'); setUserMenuOpen(false); }} class="w-full text-left px-5 py-3 text-sm font-bold text-gray-300 hover:bg-white/5 flex items-center gap-3"><Icon name="import_export" class="text-[18px]"/> Data Sync</button>
-                    <button onClick={() => signOut(auth)} class="w-full text-left px-5 py-3 text-sm font-bold text-gray-300 hover:bg-white/5 flex items-center gap-3"><Icon name="logout" class="text-[18px]"/> Logout</button>
-                    <div class="border-t border-white/5 my-1"></div>
-                    <button onClick={nukeCollection} class="w-full text-left px-5 py-3 text-sm font-bold text-red-500 hover:bg-red-500/10 flex items-center gap-3"><Icon name="delete_forever" class="text-[18px]"/> Nuke Vault</button>
-                  </div>
-                </Show>
-              </div>
-            </div>
-          </header>
-
-          <main class="p-6 max-w-7xl mx-auto relative">
-            <Show when={view() === 'dashboard'}><Dashboard watchlist={watchlist} openMovie={setDetailsId} setView={setView} showToast={showToast} setActiveVaultStatus={setActiveVaultStatus} /></Show>
+          <NeuralUI 
+            user={user} 
+            watchlist={watchlist} 
+            view={view} 
+            setView={setView} 
+            openMovie={setDetailsId}
+            onUserClick={(e) => { e.stopPropagation(); setUserMenuOpen(!userMenuOpen()); }}
+            onSettingsClick={() => setSettingsModal(true)}
+            onStatsClick={() => setStatsModal(true)}
+            onSearchClick={() => setSearchModal(true)}
+          >
             <Show when={view() === 'watchlist'}><Vault watchlist={watchlist} openMovie={setDetailsId} activeStatus={activeVaultStatus()} onFilterChange={setActiveVaultStatus} /></Show>
             <Show when={view() === 'franchises'}><FranchisesView watchlist={watchlist} franchises={franchises} uid={user().uid} openMovie={setDetailsId} showToast={showToast} /></Show>
             <Show when={view() === 'upcoming'}><UpcomingView watchlist={watchlist} uid={user().uid} showToast={showToast} /></Show>
             <Show when={view() === 'sync'}><DataSync watchlist={watchlist} uid={user().uid} showToast={showToast} /></Show>
-          </main>
+          </NeuralUI>
 
-          <div class="fixed bottom-6 left-0 w-full px-4 flex justify-center z-50 pointer-events-none">
-            <nav class="glass-surface backdrop-blur-xl w-full max-w-md rounded-full flex justify-around items-center px-2 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-white/10 pointer-events-auto">
-              <NavBtn icon="dashboard" label="Home" active={view()==='dashboard'} onClick={() => setView('dashboard')} />
-              <NavBtn icon="visibility" label="Vault" active={view()==='watchlist'} onClick={() => setView('watchlist')} />
-              <div class="relative -mt-8 mx-1">
-                  <button onClick={() => setSearchModal(true)} class="bg-gradient-to-tr from-[var(--secondary)] to-[var(--primary)] text-[#0c0e14] w-14 h-14 rounded-full flex items-center justify-center shadow-xl shadow-[var(--primary)]/30 active:scale-95 transition-transform border-4 border-[#08090b]">
-                      <Icon name="add" class="text-3xl font-black" />
-                  </button>
-              </div>
-              <NavBtn icon="folder_special" label="Lists" active={view()==='franchises'} onClick={() => setView('franchises')} />
-              <NavBtn icon="calendar_month" label="Upcoming" active={view()==='upcoming'} onClick={() => setView('upcoming')} />
-            </nav>
-          </div>
+          <Show when={userMenuOpen()}>
+            <div class="fixed inset-0 z-[90]" onClick={() => setUserMenuOpen(false)}></div>
+            <div class="fixed top-16 right-6 w-48 glass-surface rounded-2xl shadow-2xl py-2 z-[100] animate-pop-in border border-white/10 overflow-hidden">
+              <button onClick={() => { setStatsModal(true); setUserMenuOpen(false); }} class="w-full text-left px-5 py-3 text-sm font-bold text-[var(--primary)] hover:bg-white/5 flex items-center gap-3"><Icon name="bar_chart" class="text-[18px]"/> Insights</button>
+              <div class="border-t border-white/5 my-1"></div>
+              <button onClick={() => { setView('sync'); setUserMenuOpen(false); }} class="w-full text-left px-5 py-3 text-sm font-bold text-gray-300 hover:bg-white/5 flex items-center gap-3"><Icon name="import_export" class="text-[18px]"/> Data Sync</button>
+              <button onClick={() => signOut(auth)} class="w-full text-left px-5 py-3 text-sm font-bold text-gray-300 hover:bg-white/5 flex items-center gap-3"><Icon name="logout" class="text-[18px]"/> Logout</button>
+              <div class="border-t border-white/5 my-1"></div>
+              <button onClick={nukeCollection} class="w-full text-left px-5 py-3 text-sm font-bold text-red-500 hover:bg-red-500/10 flex items-center gap-3"><Icon name="delete_forever" class="text-[18px]"/> Nuke Vault</button>
+            </div>
+          </Show>
 
           <Show when={searchModal()}>
             <SearchModal
@@ -139,8 +121,6 @@ export default function App() {
               showToast={showToast}
               watchlist={watchlist()}
               openPreview={(item, source) => {
-                // SearchModal band karo sirf agar directly search se khul raha hai
-                // agar fromPerson hai toh SearchModal khula rahega (PersonModal ke through)
                 if (source !== 'fromPerson') setSearchModal(false);
                 setPreviewSource(source || 'search');
                 setDetailsId(`PREVIEW_${JSON.stringify(item)}`);
@@ -156,7 +136,6 @@ export default function App() {
                 const src = previewSource();
                 setDetailsId(null);
                 setPreviewSource(null);
-                // Preview band hone par: agar fromPerson tha toh SearchModal wapas kholo
                 if (src === 'fromPerson') setSearchModal(true);
               }}
               uid={user().uid}
@@ -172,7 +151,6 @@ export default function App() {
           </Show>
         </Show>
       </Show>
-    </div>
     </ErrorBoundary>
   );
 }
