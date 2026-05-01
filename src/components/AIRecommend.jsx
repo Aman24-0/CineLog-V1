@@ -77,10 +77,11 @@ export function AIRecommend(props) {
    * createMemo ensures this only recomputes when watchlist() changes.
    */
   const completedTitles = createMemo(() =>
-    (props.watchlist?.() ?? [])
-      .filter(m => m.status === 'Completed')
-      .map(getTitle)
-  );
+  (props.watchlist?.() ?? [])
+    .filter(m => m.status === 'Completed')
+    .slice(0, 20)
+    .map(getTitle)
+);
 
   const fetchRecommendations = async () => {
     const titles = completedTitles();
