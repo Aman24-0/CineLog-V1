@@ -1,41 +1,35 @@
 /**
  * AIRecommend.jsx
- * ──────────────────────────────────────────────────────────────────────────────
- * Gemini-powered movie recommendation component for Cinelog.
+ * Uses @google/generative-ai directly — no firebase/ai dependency needed.
  *
- * Props:
- *   watchlist  — Solid signal accessor: () => Movie[]  (same signal from App.jsx)
- *
- * Usage in Dashboard.jsx (or any view):
+ * Usage in Dashboard.jsx:
  *   import { AIRecommend } from '../components/AIRecommend';
  *   <AIRecommend watchlist={props.watchlist} />
- * ──────────────────────────────────────────────────────────────────────────────
+ *
+ * Setup:
+ *   1. npm install @google/generative-ai
+ *   2. In Netlify env vars add: VITE_GEMINI_API_KEY=your_key
+ *   3. Get key free from: https://aistudio.google.com/app/apikey
  */
 
 import { createSignal, createMemo, Show, For } from 'solid-js';
-import { geminiModel } from '../firebase';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Icon } from '../utils';
+
+// Initialize Gemini client using Vite env var
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+const geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Extracts the clean title from a movie/TV entry (Cinelog stores both fields). */
 const getTitle = (movie) => movie.title || movie.name || 'Unknown Title';
 
-/** Parses Gemini's plain-text list reply into an array of 3 title strings. */
-const parseRecommendations = (rawText) => {
-  return rawText
+const parseRecommendations = (rawText) =>
+  rawText
     .split('\n')
-    .map(line =>
-      line
-        .trim()
-        // Strip leading list markers: "1.", "2.", "-", "*", "•"
-        .replace(/^[\d]+[.)]\s*/, '')
-        .replace(/^[-*•]\s*/, '')
-        .trim()
-    )
+    .map(line => line.trim().replace(/^[\d]+[.)]\s*/, '').replace(/^[-*•]\s*/, '').trim())
     .filter(Boolean)
     .slice(0, 3);
-};
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -72,22 +66,17 @@ export function AIRecommend(props) {
   const [error, setError]                   = createSignal('');
   const [hasRun, setHasRun]                 = createSignal(false);
 
-  /**
-   * Derive the list of completed movie titles reactively from the parent signal.
-   * createMemo ensures this only recomputes when watchlist() changes.
-   */
   const completedTitles = createMemo(() =>
-  (props.watchlist?.() ?? [])
-    .filter(m => m.status === 'Completed')
-    .slice(0, 20)
-    .map(getTitle)
-);
+    (props.watchlist?.() ?? [])
+      .filter(m => m.status === 'Completed')
+      .map(getTitle)
+  );
 
   const fetchRecommendations = async () => {
     const titles = completedTitles();
 
     if (titles.length === 0) {
-      setError('Mark some movies as Completed first — Gemini needs a taste of your history!');
+      setError('Pehle kuch movies "Completed" mark karo — Gemini ko dekhna hoga kya pasand hai!');
       setHasRun(true);
       return;
     }
@@ -104,40 +93,30 @@ export function AIRecommend(props) {
         `\n\nRecommend 3 new movies or shows I would love. ` +
         `Return ONLY the titles, one per line, with no extra explanation or numbering.`;
 
-      // generateContent() returns a GenerateContentResult — stream not needed here.
-      const result   = await geminiModel.generateContent(prompt);
-      const response = await result.response;
-      const text     = response.text();
-
+      const result = await geminiModel.generateContent(prompt);
+      const text   = result.response.text();
       const parsed = parseRecommendations(text);
 
-      if (parsed.length === 0) throw new Error('Gemini returned an unexpected format.');
+      if (parsed.length === 0) throw new Error('Unexpected format');
       setRecommendations(parsed);
     } catch (err) {
-      console.error('[AIRecommend] Gemini error:', err);
-      // Surface a friendly message; don't leak raw API errors to the UI.
-      if (err?.message?.includes('quota')) {
+      console.error('[AIRecommend]', err);
+      if (err?.message?.includes('API_KEY')) {
+        setError('API key missing. Add VITE_GEMINI_API_KEY in Netlify environment variables.');
+      } else if (err?.message?.includes('quota') || err?.status === 429) {
         setError('API quota reached. Try again in a minute.');
-      } else if (err?.message?.includes('network') || err?.name === 'TypeError') {
-        setError('Network error. Check your connection and try again.');
       } else {
-        setError('Gemini couldn\'t respond right now. Please try again.');
+        setError('Gemini se response nahi aaya. Dobara try karo.');
       }
     } finally {
       setLoading(false);
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
   return (
     <div class="glass-surface rounded-[2rem] p-6 border border-white/5 relative overflow-hidden">
-
-      {/* Subtle ambient glow in the background */}
-      <div
-        class="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-10 blur-3xl pointer-events-none"
-        style="background: radial-gradient(circle, var(--primary), transparent)"
-      />
+      <div class="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-10 blur-3xl pointer-events-none"
+        style="background: radial-gradient(circle, var(--primary), transparent)" />
 
       {/* Header */}
       <div class="flex items-center justify-between mb-5">
@@ -145,42 +124,29 @@ export function AIRecommend(props) {
           <SparkleIcon />
           <div>
             <h3 class="text-base font-black font-headline text-white leading-none">AI Picks</h3>
-            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">
-              Powered by Gemini
-            </p>
+            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">Powered by Gemini</p>
           </div>
         </div>
-
-        {/* Context badge: how many completed titles Gemini will use */}
         <Show when={completedTitles().length > 0}>
-          <span class="tag-chip text-[var(--primary)]">
-            {completedTitles().length} watched
-          </span>
+          <span class="tag-chip text-[var(--primary)]">{completedTitles().length} watched</span>
         </Show>
       </div>
 
-      {/* Recommendations list */}
+      {/* Results */}
       <Show when={hasRun()}>
         <div class="flex flex-col gap-3 mb-5">
-          {/* Loading skeletons */}
           <Show when={loading()}>
             <For each={[1, 2, 3]}>{() => <SkeletonCard />}</For>
             <p class="text-center text-[10px] text-gray-600 font-bold uppercase tracking-widest pt-1 animate-pulse">
-              Gemini is thinking…
+              Gemini soch raha hai…
             </p>
           </Show>
-
-          {/* Error state */}
           <Show when={!loading() && error()}>
             <div class="flex items-start gap-3 bg-red-500/10 border border-red-500/20 rounded-2xl px-5 py-4">
-              <span class="material-symbols-outlined text-red-400 text-[20px] shrink-0 mt-0.5">
-                error_outline
-              </span>
+              <span class="material-symbols-outlined text-red-400 text-[20px] shrink-0 mt-0.5">error_outline</span>
               <p class="text-sm text-red-300 font-medium leading-snug">{error()}</p>
             </div>
           </Show>
-
-          {/* Success: recommendation cards */}
           <Show when={!loading() && recommendations().length > 0}>
             <For each={recommendations()}>
               {(title, i) => <RecommendationCard title={title} index={i() + 1} />}
@@ -189,7 +155,7 @@ export function AIRecommend(props) {
         </div>
       </Show>
 
-      {/* CTA / Regenerate button */}
+      {/* Button */}
       <button
         onClick={fetchRecommendations}
         disabled={loading()}
@@ -199,23 +165,16 @@ export function AIRecommend(props) {
             : 'bg-gradient-to-r from-[var(--secondary)]/80 to-[var(--primary)]/80 text-[#0c0e14] hover:brightness-110 shadow-lg shadow-[var(--primary)]/20'
           }`}
       >
-        <Show
-          when={!loading()}
-          fallback={
-            <>
-              <span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-              Asking Gemini…
-            </>
-          }
-        >
+        <Show when={!loading()} fallback={
+          <><span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> Gemini se pooch raha hai…</>
+        }>
           <SparkleIcon />
-          {hasRun() && recommendations().length > 0 ? 'Refresh Picks' : 'Get AI Recommendations'}
+          {hasRun() && recommendations().length > 0 ? 'Naye Picks Lao' : 'AI Recommendations Lo'}
         </Show>
       </button>
 
-      {/* Tiny disclaimer */}
       <p class="text-center text-[9px] text-gray-700 mt-3 font-bold uppercase tracking-widest">
-        Based on your {completedTitles().length} completed title{completedTitles().length !== 1 ? 's' : ''}
+        {completedTitles().length} completed title{completedTitles().length !== 1 ? 's' : ''} ke basis pe
       </p>
     </div>
   );
