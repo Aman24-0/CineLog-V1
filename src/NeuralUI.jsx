@@ -1,5 +1,6 @@
 import { createSignal, createEffect, onMount, For, Show, createMemo } from 'solid-js';
 import { Icon } from './utils';
+import { AIRecommend } from './components/AIRecommend';
 
 export const NeuralUI = (props) => {
   const [mx, setMx] = createSignal(0);
@@ -80,10 +81,19 @@ export const NeuralUI = (props) => {
     return watching.length > 0 ? watching[0] : props.watchlist()[0];
   });
 
+  const handleRandomPick = () => {
+    const p = props.watchlist().filter(m => m.status === 'Planned' || m.status === 'Plan to Watch');
+    if(p.length) {
+      props.showToast("🎲 Picking random title...");
+      setTimeout(() => props.openMovie(p[Math.floor(Math.random()*p.length)].id), 500);
+    } else {
+      alert("Planned list is empty!");
+    }
+  };
+
   return (
     <div class="neural-root" onMouseMove={(e) => {
-        // Simple global listener for cursor effects
-        if (e.target.closest('button, .mcard, .tab, .side-item, .ai-pick, .receipt-teaser')) {
+        if (e.target.closest('button, .mcard, .tab, .side-item, .ai-pick, .receipt-teaser, .hero, .stat-mini, .mood-chip')) {
             handleMouseEnter();
         } else {
             handleMouseLeave();
@@ -162,6 +172,14 @@ export const NeuralUI = (props) => {
 
         <main class="content">
           <Show when={props.view() === 'dashboard'}>
+            <div class="mood-bar">
+              <div class="mood-label">ACTION //</div>
+              <div class="mood-chip sel" onClick={handleRandomPick}>🎲 Random Pick</div>
+              <div class="mood-chip" onClick={props.onSearchClick}>✚ Add New</div>
+              <div class="mood-chip" onClick={() => { props.setActiveVaultStatus('Watching'); props.setView('watchlist'); }}>👀 Watching</div>
+              <div class="mood-chip" onClick={() => { props.setActiveVaultStatus('Planned'); props.setView('watchlist'); }}>📌 Planned</div>
+            </div>
+
             <Show when={heroMovie()}>
               <div class="hero" onClick={() => props.openMovie(heroMovie().id)}>
                 <div class="hero-img" style={{ background: `linear-gradient(to right, rgba(4,6,10,0.97) 35%, rgba(4,6,10,0.5) 70%, rgba(4,6,10,0.2) 100%), url('https://image.tmdb.org/t/p/original${heroMovie().backdrop_path}') center/cover` }}></div>
@@ -189,10 +207,10 @@ export const NeuralUI = (props) => {
             <div class="section">
               <div class="section-head">
                 <div class="section-name">Recently Added</div>
-                <div class="section-action" onClick={() => props.setView('watchlist')}>VIEW ALL →</div>
+                <div class="section-action" onClick={() => { props.setActiveVaultStatus('all'); props.setView('watchlist'); }}>VIEW ALL →</div>
               </div>
               <div class="movie-row">
-                <For each={props.watchlist().slice(0, 6)}>
+                <For each={props.watchlist().slice(0, 8)}>
                   {(m) => (
                     <div class="mcard" onClick={() => props.openMovie(m.id)}>
                       <div class="mcard-img">
@@ -213,9 +231,13 @@ export const NeuralUI = (props) => {
             </div>
 
             <div class="section">
+                <AIRecommend watchlist={props.watchlist} />
+            </div>
+
+            <div class="section">
               <div class="section-head">
                 <div class="section-name">Your Top Rated</div>
-                <div class="section-action" onClick={() => props.setView('watchlist')}>SEE MORE →</div>
+                <div class="section-action" onClick={() => { props.setActiveVaultStatus('all'); props.setView('watchlist'); }}>SEE MORE →</div>
               </div>
               <div class="movie-row">
                 <For each={topRated()}>
@@ -250,40 +272,26 @@ export const NeuralUI = (props) => {
         </main>
 
         <aside class="right-panel">
-          <div class="ai-block">
-            <div class="ai-header">
-              <div class="ai-icon">✦</div>
-              <div class="ai-title">AI Picks</div>
-              <div class="ai-sub">NEURAL // LIVE</div>
-            </div>
-            <div class="ai-pick">
-              <div class="ai-pick-n">01</div>
-              <div class="ai-pick-title">Neural Suggestion</div>
-              <div class="ai-pick-genre">AI CORE</div>
-            </div>
-            <button class="ai-btn" onClick={() => props.onStatsClick()}>✦ &nbsp; Refresh Picks</button>
-          </div>
-
           <div class="stats-grid">
-            <div class="stat-mini">
+            <div class="stat-mini" onClick={() => { props.setActiveVaultStatus('Completed'); props.setView('watchlist'); }}>
               <div class="stat-mini-val" style="color:var(--pulse)">{stats().completed}</div>
               <div class="stat-mini-lbl">WATCHED</div>
             </div>
-            <div class="stat-mini">
+            <div class="stat-mini" onClick={props.onStatsClick}>
               <div class="stat-mini-val">{stats().hours}</div>
               <div class="stat-mini-lbl">HOURS</div>
             </div>
-            <div class="stat-mini">
+            <div class="stat-mini" onClick={() => { props.setActiveVaultStatus('Planned'); props.setView('watchlist'); }}>
               <div class="stat-mini-val" style="color:var(--ember)">{stats().planned}</div>
               <div class="stat-mini-lbl">WATCHLIST</div>
             </div>
-            <div class="stat-mini">
+            <div class="stat-mini" onClick={() => { props.setActiveVaultStatus('all'); props.setView('watchlist'); }}>
               <div class="stat-mini-val" style="color:var(--frost)">{stats().total}</div>
               <div class="stat-mini-lbl">TOTAL</div>
             </div>
           </div>
 
-          <div class="receipt-teaser" onClick={() => props.onStatsClick()}>
+          <div class="receipt-teaser" onClick={props.onStatsClick}>
             <div class="rt-title">Watchlist Receipt</div>
             <div class="rt-sub">Generate your shareable cinema year in review</div>
             <div class="rt-tag">NEW FEATURE</div>

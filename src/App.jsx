@@ -91,6 +91,8 @@ export default function App() {
             view={view} 
             setView={setView} 
             openMovie={setDetailsId}
+            setActiveVaultStatus={setActiveVaultStatus}
+            showToast={showToast}
             onUserClick={(e) => { e.stopPropagation(); setUserMenuOpen(!userMenuOpen()); }}
             onSettingsClick={() => setSettingsModal(true)}
             onStatsClick={() => setStatsModal(true)}
