@@ -2,41 +2,53 @@ import { Icon } from '../utils';
 
 export function LoadingScreen() {
   return (
-    <div class="h-screen w-full flex items-center justify-center bg-[#08090b] overflow-hidden relative">
-      
-      {/* 1. Cinematic Mesh Gradients (Glowing Moving Orbs) */}
-      <div class="absolute top-[-10%] left-[-20%] w-[80vw] h-[80vw] bg-[var(--primary)]/10 rounded-full blur-[120px] animate-pulse pointer-events-none" style="animation-duration: 4s;"></div>
-      <div class="absolute bottom-[-10%] right-[-20%] w-[70vw] h-[70vw] bg-[var(--secondary)]/10 rounded-full blur-[100px] animate-pulse pointer-events-none" style="animation-duration: 5s; animation-delay: 1s;"></div>
-      
-      {/* 2. Premium Micro-Dot Overlay (Sci-Fi Texture) */}
-      <div class="absolute inset-0 pointer-events-none opacity-20" style="background-image: radial-gradient(rgba(255, 255, 255, 0.3) 1px, transparent 1px); background-size: 24px 24px;"></div>
-      <div class="absolute inset-0 bg-gradient-to-b from-[#08090b]/40 via-transparent to-[#08090b]/80 pointer-events-none"></div>
-      
-      {/* 3. Central Glassmorphic Console */}
-      <div class="relative z-20 flex flex-col items-center animate-pop-in">
-        
-        {/* Glowing Logo */}
-        <div class="relative mb-10">
-            <h1 class="text-6xl md:text-8xl font-black font-headline text-transparent bg-clip-text bg-gradient-to-br from-white via-[var(--primary)] to-[var(--secondary)] tracking-tighter drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-                CINELOG
-            </h1>
-        </div>
-        
-        {/* Sleek Progress Bar */}
-        <div class="flex flex-col items-center gap-4 w-64">
-            <div class="w-full h-1 bg-white/5 rounded-full overflow-hidden shadow-inner relative border border-white/5">
-                {/* Note: skeleton-bg animation already exists in your index.css */}
-                <div class="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-transparent via-[var(--primary)] to-transparent skeleton-bg opacity-80"></div>
-            </div>
-            
-            <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">
-                <Icon name="radar" class="text-[12px] animate-spin text-[var(--primary)] drop-shadow-[0_0_8px_var(--primary)]" />
-                <span>Syncing Universe</span>
-            </div>
+    <div class="h-screen w-full flex items-center justify-center overflow-hidden relative"
+      style="background: var(--void)">
+
+      {/* Ambient orbs */}
+      <div class="orb-primary" />
+      <div class="orb-secondary" />
+
+      {/* Scanline */}
+      <div style="position:fixed;inset:0;background-image:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.05) 2px,rgba(0,0,0,0.05) 4px);pointer-events:none;z-index:1;opacity:0.3" />
+
+      {/* Grid overlay */}
+      <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.012) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.012) 1px,transparent 1px);background-size:60px 60px;pointer-events:none" />
+
+      {/* Center content */}
+      <div class="relative z-10 flex flex-col items-center animate-pop-in" style="text-align:center">
+
+        {/* Logo mark */}
+        <div class="mb-8 relative">
+          <div class="w-20 h-20 rounded-3xl flex items-center justify-center mb-6 mx-auto relative"
+            style="background: var(--raised); border: 1px solid var(--border-active); box-shadow: 0 0 40px var(--p-glow, rgba(168,255,120,0.15))">
+            <Icon name="movie_filter" fill class="text-4xl" style="color: var(--p)" />
+            <div style="position:absolute;inset:-1px;border-radius:24px;border:1px solid var(--p);opacity:0.4" />
+          </div>
+
+          <h1 class="font-headline text-7xl text-white leading-none tracking-wide">
+            CINE<span style="color: var(--p)">LOG</span>
+          </h1>
+          <div class="label-mono mt-2" style="letter-spacing: 0.3em">ULTIMATE EDITION</div>
         </div>
 
+        {/* Progress */}
+        <div class="w-64 space-y-3">
+          <div class="progress-bar">
+            <div class="progress-bar-fill skeleton-bg" style="width: 100%" />
+          </div>
+          <div class="flex items-center justify-center gap-2 label-mono" style="color: var(--p)">
+            <Icon name="radar" class="text-xs animate-spin" style="color: var(--p)" />
+            Syncing Universe
+          </div>
+        </div>
+
+        {/* Corner decorators */}
+        <div style="position:absolute;top:-60px;left:-80px;width:40px;height:40px;border-left:2px solid var(--p);border-top:2px solid var(--p);opacity:0.3;border-radius:4px 0 0 0" />
+        <div style="position:absolute;top:-60px;right:-80px;width:40px;height:40px;border-right:2px solid var(--p);border-top:2px solid var(--p);opacity:0.3;border-radius:0 4px 0 0" />
+        <div style="position:absolute;bottom:-60px;left:-80px;width:40px;height:40px;border-left:2px solid var(--p);border-bottom:2px solid var(--p);opacity:0.3;border-radius:0 0 0 4px" />
+        <div style="position:absolute;bottom:-60px;right:-80px;width:40px;height:40px;border-right:2px solid var(--p);border-bottom:2px solid var(--p);opacity:0.3;border-radius:0 0 4px 0" />
       </div>
-      
     </div>
   );
 }
