@@ -325,12 +325,18 @@ export function DetailsModal(props) {
                         </div>
                         <div class="flex flex-wrap gap-2 pb-2 px-1">
                             <For each={SERVERS}>{(srv) => (
-                                <button type="button" onClick={(e) => { e.stopPropagation(); setActiveServer(srv.id); }} class={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border shadow-sm ${activeServer() === srv.id ? 'border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] scale-105' : 'border-white/5 bg-white/5 text-gray-500 hover:text-white'}`}>
+                                <button type="button" onClick={(e) => { e.stopPropagation(); setActiveServer(srv.id); }}
+                                  class="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all"
+                                  style={activeServer() === srv.id
+                                    ? 'border: 1px solid var(--p); background: var(--p-dim); color: var(--p); transform: scale(1.05); box-shadow: 0 0 12px var(--p-glow)'
+                                    : 'border: 1px solid var(--border); background: var(--raised); color: var(--muted)'}>
                                     <Icon name={srv.icon} class="text-[14px]" /> {srv.name}
                                 </button>
                             )}</For>
                         </div>
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowPlayer(true); }} class="w-full mt-3 bg-gradient-to-r from-[var(--secondary)] to-[var(--primary)] text-[#0c0e14] font-black py-4 rounded-xl uppercase text-[11px] tracking-widest active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-lg shadow-[var(--primary)]/20">
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowPlayer(true); }}
+                          class="w-full mt-3 font-black py-4 rounded-xl uppercase text-[11px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
+                          style="background: var(--p); color: #05060a; box-shadow: 0 0 24px var(--p-glow)">
                             <Icon name="play_circle" fill class="text-[18px]"/> Watch Now
                         </button>
                     </div>

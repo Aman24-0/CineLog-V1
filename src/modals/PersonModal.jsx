@@ -116,15 +116,17 @@ export function PersonModal(props) {
           </div>
 
           {/* Tab & Sort Controls */}
-          <div class="flex flex-wrap justify-between items-center p-4 bg-[#0c0e14] border-b border-white/5 gap-3 shrink-0">
-            <div class="flex bg-black/50 p-1 rounded-xl border border-white/5">
+          <div class="flex flex-wrap justify-between items-center p-4 border-b gap-3 shrink-0" style="background: var(--deep); border-color: var(--border)">
+            <div class="flex p-1 rounded-xl" style="background: var(--raised); border: 1px solid var(--border-active)">
               <button
                 onClick={() => setActiveTab('movie')}
-                class={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab() === 'movie' ? 'bg-[var(--primary)] text-[#0c0e14]' : 'text-gray-500 hover:text-white'}`}
+                class="px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
+                style={activeTab() === 'movie' ? 'background: var(--p); color: #05060a; box-shadow: 0 0 12px var(--p-glow)' : 'color: var(--muted)'}
               >Movies</button>
               <button
                 onClick={() => setActiveTab('tv')}
-                class={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab() === 'tv' ? 'bg-[var(--primary)] text-[#0c0e14]' : 'text-gray-500 hover:text-white'}`}
+                class="px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
+                style={activeTab() === 'tv' ? 'background: var(--p); color: #05060a; box-shadow: 0 0 12px var(--p-glow)' : 'color: var(--muted)'}
               >TV Shows</button>
             </div>
             <div class="flex items-center gap-2 bg-black/50 border border-white/5 rounded-xl px-3 py-1.5">
