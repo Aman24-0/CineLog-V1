@@ -1,0 +1,261 @@
+import { createSignal, createEffect, onMount, ErrorBoundary, Show } from 'solid-js';
+import { collection, onSnapshot, query, orderBy, writeBatch, getDocs } from 'firebase/firestore';
+import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+
+import { db, auth } from './firebase';
+import { Icon } from './utils';
+
+import { LoadingScreen } from './components/LoadingScreen';
+import { Dashboard } from './views/Dashboard';
+import { Vault } from './views/Vault';
+import { FranchisesView } from './views/FranchisesView';
+import { UpcomingView } from './views/UpcomingView';
+import { DataSync } from './views/DataSync';
+import { DetailsModal } from './modals/DetailsModal';
+import { SearchModal } from './modals/SearchModal';
+import { InsightsModal, SettingsModal } from './modals/Modals';
+
+const NavBtn = (props) => (
+  <button
+    onClick={props.onClick}
+    class="flex flex-col items-center gap-1 w-14 transition-all"
+    style={props.active ? 'color: var(--p)' : 'color: var(--dim)'}
+  >
+    <Icon name={props.icon} fill={props.active} />
+    <span class="label-mono" style="font-size: 8px; letter-spacing: 0.12em">{props.label}</span>
+  </button>
+);
+
+export default function App() {
+  const [user, setUser] = createSignal(null);
+  const [watchlist, setWatchlist] = createSignal([]);
+  const [franchises, setFranchises] = createSignal([]);
+  const [view, setView] = createSignal('dashboard');
+  const [theme, setTheme] = createSignal(localStorage.getItem('cinelog_theme') || 'sage');
+  const [loading, setLoading] = createSignal(true);
+  const [splashWait, setSplashWait] = createSignal(true);
+  const [activeVaultStatus, setActiveVaultStatus] = createSignal('all');
+
+  const [searchModal, setSearchModal] = createSignal(false);
+  const [detailsId, setDetailsId] = createSignal(null);
+  const [previewSource, setPreviewSource] = createSignal(null);
+  const [settingsModal, setSettingsModal] = createSignal(false);
+  const [statsModal, setStatsModal] = createSignal(false);
+  const [userMenuOpen, setUserMenuOpen] = createSignal(false);
+  const [toast, setToast] = createSignal({ show: false, msg: '' });
+
+  const showToast = (msg) => {
+    setToast({ show: true, msg });
+    setTimeout(() => setToast({ show: false, msg: '' }), 3000);
+  };
+
+  createEffect(() => { document.body.className = `theme-${theme()}`; localStorage.setItem('cinelog_theme', theme()); });
+  createEffect(() => { view(); window.scrollTo(0, 0); });
+
+  onMount(() => {
+    setTimeout(() => setSplashWait(false), 3000);
+    onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      if (u) {
+        let wReady = false; let fReady = false;
+        onSnapshot(query(collection(db, 'users', u.uid, 'watchlist'), orderBy('addedAt', 'desc')), (snap) => {
+          setWatchlist(snap.docs.map(d => ({ id: d.id, ...d.data() }))); wReady = true; if (fReady) setLoading(false);
+        });
+        onSnapshot(collection(db, 'users', u.uid, 'franchises'), (snap) => {
+          setFranchises(snap.docs.map(d => ({ id: d.id, ...d.data() }))); fReady = true; if (wReady) setLoading(false);
+        });
+      } else { setLoading(false); }
+    });
+  });
+
+  const nukeCollection = async () => {
+    if (confirm("DANGER: Entire Vault will be wiped. Sure?")) {
+      showToast("Nuking Vault...");
+      const snap = await getDocs(collection(db, 'users', user().uid, 'watchlist'));
+      const docs = snap.docs;
+      for (let i = 0; i < docs.length; i += 500) {
+        const batch = writeBatch(db);
+        docs.slice(i, i + 500).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
+      showToast("Vault wiped!"); setUserMenuOpen(false);
+    }
+  };
+
+  return (
+    <ErrorBoundary fallback={(err) => (
+      <div class="h-screen flex flex-col items-center justify-center p-10 text-center">
+        <Icon name="error" class="text-6xl mb-4" style="color: var(--p)" />
+        <h2 class="text-xl font-bold text-white mb-2">Something broke!</h2>
+        <p class="text-xs mb-6" style="color: var(--muted)">{err.toString()}</p>
+        <button onClick={() => window.location.reload()} class="px-6 py-3 rounded-full font-bold text-black text-sm" style="background: var(--p)">Reload App</button>
+      </div>
+    )}>
+    <div class="cinelog-root min-h-screen pb-32" onClick={() => setUserMenuOpen(false)}>
+      <div class="orb-primary" />
+      <div class="orb-secondary" />
+
+      <Show when={!loading() && !splashWait()} fallback={<LoadingScreen />}>
+        <Show when={user()} fallback={
+          <div class="h-screen flex flex-col items-center justify-center p-6 text-center relative z-10">
+            <div class="w-20 h-20 rounded-3xl flex items-center justify-center mb-6 mx-auto"
+              style="background: var(--raised); border: 1px solid var(--border-active); box-shadow: 0 0 40px var(--p-glow, rgba(168,255,120,0.15))">
+              <Icon name="movie_filter" fill class="text-4xl" style="color: var(--p)" />
+            </div>
+            <h1 class="font-headline text-7xl text-white mb-1 leading-none">
+              CINE<span style="color: var(--p)">LOG</span>
+            </h1>
+            <p class="label-mono mb-10" style="letter-spacing:0.25em">ULTIMATE EDITION</p>
+            <button
+              onClick={() => signInWithPopup(auth, new GoogleAuthProvider())}
+              class="font-bold py-4 px-10 rounded-full shadow-lg text-sm text-black"
+              style="background: var(--p); box-shadow: 0 0 30px var(--p-glow)"
+            >
+              Sign In with Google
+            </button>
+          </div>
+        }>
+
+          {/* ── HEADER ── */}
+          <header class="sticky top-0 z-50 flex justify-between items-center px-6 py-4 border-b"
+            style="background: rgba(5,6,10,0.8); backdrop-filter: blur(24px); border-color: var(--border)">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-xl flex items-center justify-center"
+                style="background: var(--p-dim); border: 1px solid var(--border-active)">
+                <Icon name="movie_filter" fill class="text-sm" style="color: var(--p)" />
+              </div>
+              <h2 class="font-headline text-2xl text-white leading-none">
+                CINE<span style="color: var(--p)">LOG</span>
+              </h2>
+            </div>
+            <div class="flex items-center gap-3">
+              <button
+                onClick={() => setSettingsModal(true)}
+                class="glass-surface p-2.5 rounded-full"
+                style="border-color: var(--border-active)"
+              >
+                <Icon name="palette" class="text-sm" style="color: var(--muted)" />
+              </button>
+              <div class="relative">
+                <img
+                  src={user().photoURL}
+                  onClick={(e) => { e.stopPropagation(); setUserMenuOpen(!userMenuOpen()); }}
+                  class="w-9 h-9 rounded-full cursor-pointer object-cover"
+                  style="border: 2px solid var(--p); box-shadow: 0 0 12px var(--p-glow)"
+                />
+                <Show when={userMenuOpen()}>
+                  <div class="fixed inset-0 z-[90]" onClick={() => setUserMenuOpen(false)} />
+                  <div class="absolute right-0 mt-3 w-52 glass-surface rounded-2xl shadow-2xl py-2 z-[100] animate-pop-in overflow-hidden"
+                    style="border-color: var(--border-active)">
+                    <button onClick={() => { setStatsModal(true); setUserMenuOpen(false); }}
+                      class="w-full text-left px-5 py-3 text-sm font-semibold flex items-center gap-3 hover:bg-white/5 transition-colors"
+                      style="color: var(--p)">
+                      <Icon name="bar_chart" class="text-[18px]" /> Insights
+                    </button>
+                    <div class="my-1" style="border-top: 1px solid var(--border)" />
+                    <button onClick={() => { setView('sync'); setUserMenuOpen(false); }}
+                      class="w-full text-left px-5 py-3 text-sm font-semibold flex items-center gap-3 hover:bg-white/5 transition-colors text-gray-300">
+                      <Icon name="import_export" class="text-[18px]" /> Data Sync
+                    </button>
+                    <button onClick={() => signOut(auth)}
+                      class="w-full text-left px-5 py-3 text-sm font-semibold flex items-center gap-3 hover:bg-white/5 transition-colors text-gray-300">
+                      <Icon name="logout" class="text-[18px]" /> Logout
+                    </button>
+                    <div class="my-1" style="border-top: 1px solid var(--border)" />
+                    <button onClick={nukeCollection}
+                      class="w-full text-left px-5 py-3 text-sm font-semibold text-red-500 hover:bg-red-500/10 flex items-center gap-3 transition-colors">
+                      <Icon name="delete_forever" class="text-[18px]" /> Nuke Vault
+                    </button>
+                  </div>
+                </Show>
+              </div>
+            </div>
+          </header>
+
+          {/* ── MAIN ── */}
+          <main class="p-5 max-w-2xl mx-auto relative z-10">
+            <Show when={view() === 'dashboard'}>
+              <Dashboard watchlist={watchlist} openMovie={setDetailsId} setView={setView} showToast={showToast} setActiveVaultStatus={setActiveVaultStatus} />
+            </Show>
+            <Show when={view() === 'watchlist'}>
+              <Vault watchlist={watchlist} openMovie={setDetailsId} activeStatus={activeVaultStatus()} onFilterChange={setActiveVaultStatus} />
+            </Show>
+            <Show when={view() === 'franchises'}>
+              <FranchisesView watchlist={watchlist} franchises={franchises} uid={user().uid} openMovie={setDetailsId} showToast={showToast} />
+            </Show>
+            <Show when={view() === 'upcoming'}>
+              <UpcomingView watchlist={watchlist} uid={user().uid} showToast={showToast} />
+            </Show>
+            <Show when={view() === 'sync'}>
+              <DataSync watchlist={watchlist} uid={user().uid} showToast={showToast} />
+            </Show>
+          </main>
+
+          {/* ── BOTTOM NAV ── */}
+          <div class="fixed bottom-6 left-0 w-full px-4 flex justify-center z-50 pointer-events-none">
+            <nav class="nav-pill w-full max-w-md flex justify-around items-center px-2 py-3 pointer-events-auto">
+              <NavBtn icon="dashboard" label="Home" active={view() === 'dashboard'} onClick={() => setView('dashboard')} />
+              <NavBtn icon="visibility" label="Vault" active={view() === 'watchlist'} onClick={() => setView('watchlist')} />
+
+              {/* Center Add button */}
+              <div class="relative -mt-8 mx-1">
+                <button
+                  onClick={() => setSearchModal(true)}
+                  class="w-14 h-14 rounded-full flex items-center justify-center text-black font-black border-4 active:scale-95"
+                  style="background: var(--p); border-color: var(--void); box-shadow: 0 0 24px var(--p-glow), 0 8px 20px rgba(0,0,0,0.5)"
+                >
+                  <Icon name="add" class="text-3xl" />
+                </button>
+              </div>
+
+              <NavBtn icon="folder_special" label="Lists" active={view() === 'franchises'} onClick={() => setView('franchises')} />
+              <NavBtn icon="calendar_month" label="Upcoming" active={view() === 'upcoming'} onClick={() => setView('upcoming')} />
+            </nav>
+          </div>
+
+          {/* ── MODALS ── */}
+          <Show when={searchModal()}>
+            <SearchModal
+              onClose={() => setSearchModal(false)}
+              uid={user().uid}
+              showToast={showToast}
+              watchlist={watchlist()}
+              openPreview={(item, source) => {
+                if (source !== 'fromPerson') setSearchModal(false);
+                setPreviewSource(source || 'search');
+                setDetailsId(`PREVIEW_${JSON.stringify(item)}`);
+              }}
+            />
+          </Show>
+          <Show when={detailsId()}>
+            <DetailsModal
+              id={detailsId()}
+              watchlist={watchlist()}
+              franchises={franchises()}
+              onClose={() => {
+                const src = previewSource();
+                setDetailsId(null); setPreviewSource(null);
+                if (src === 'fromPerson') setSearchModal(true);
+              }}
+              uid={user().uid}
+              showToast={showToast}
+              theme={theme}
+            />
+          </Show>
+          <Show when={statsModal()}><InsightsModal watchlist={watchlist} onClose={() => setStatsModal(false)} /></Show>
+          <Show when={settingsModal()}><SettingsModal currentTheme={theme()} setTheme={setTheme} onClose={() => setSettingsModal(false)} /></Show>
+
+          {/* ── TOAST ── */}
+          <Show when={toast().show}>
+            <div class="fixed bottom-28 left-1/2 -translate-x-1/2 glass-surface px-6 py-3 rounded-full shadow-2xl z-[999999] flex gap-2 items-center text-sm font-bold whitespace-nowrap animate-pop-in"
+              style="border-color: var(--p); color: var(--text)">
+              <Icon name="check_circle" fill style="color: var(--p)" /> {toast().msg}
+            </div>
+          </Show>
+
+        </Show>
+      </Show>
+    </div>
+    </ErrorBoundary>
+  );
+}
