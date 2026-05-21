@@ -140,7 +140,15 @@ export function ServerSettingsModal(props) {
           enabled: s.enabled !== false
         };
       });
-      await setDoc(doc(db, 'users', props.uid), { customServers }, { merge: true });
+      
+      // We use updateDoc to completely overwrite the customServers map, effectively deleting removed items.
+      // If the document doesn't exist at all yet, it will fail and we fallback to setDoc.
+      try {
+        await updateDoc(doc(db, 'users', props.uid), { customServers });
+      } catch (e) {
+        await setDoc(doc(db, 'users', props.uid), { customServers });
+      }
+      
       props.showToast('Server settings saved!');
       setTimeout(() => props.onClose(), 500);
     } catch (err) {
