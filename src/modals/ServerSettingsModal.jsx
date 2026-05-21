@@ -1,5 +1,5 @@
 import { createSignal, For, Show, onMount, onCleanup } from 'solid-js';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Icon } from '../utils';
 
@@ -69,8 +69,8 @@ const DEFAULT_SERVERS = [
     name: 'VidNest (Official)',
     domain: 'vidnest.fun',
     type: 'embed-api',
-    movieUrl: 'https://vidnest.fun/movie/{id}?server=gama',
-    tvUrl: 'https://vidnest.fun/tv/{id}/{season}/{episode}?server=gama',
+    movieUrl: 'https://vidnest.fun/movie/{id}',
+    tvUrl: 'https://vidnest.fun/tv/{id}/{season}/{episode}',
     icon: 'streaming_icon',
     provider: 'VidNest Official'
   }
@@ -104,9 +104,6 @@ export function ServerSettingsModal(props) {
   onMount(() => document.body.style.overflow = 'hidden');
   onCleanup(() => document.body.style.overflow = '');
 
-  // 1. Make sure setDoc is imported at the top from 'firebase/firestore'
-  // It should look like: import { doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
-  
   const saveServerSettings = async () => {
     try {
       const customServers = {};
@@ -118,7 +115,6 @@ export function ServerSettingsModal(props) {
           enabled: s.enabled !== false
         };
       });
-      // Changing from updateDoc to setDoc with merge protects against missing user documents
       await setDoc(doc(db, 'users', props.uid), { customServers }, { merge: true });
       props.showToast('Server settings saved!');
       setTimeout(() => props.onClose(), 500);
@@ -166,9 +162,11 @@ export function ServerSettingsModal(props) {
     const server = servers().find(s => s.id === serverId);
     if (!server) return;
 
-    const testUrl = type === 'movie' ? 
-      server.movieUrl.replace('{id}', '666243') :
-      server.tvUrl.replace('{id}', '94997').replace('{season}', '1').replace('{episode}', '1');
+    // Handle both {id} and [TMDB_ID] formats for testing
+    let testUrl = type === 'movie' ? server.movieUrl : server.tvUrl;
+    testUrl = testUrl.replace(/\{id\}|\[TMDB_ID\]/gi, '666243')
+                     .replace(/\{season\}|\[SEASON\]/gi, '1')
+                     .replace(/\{episode\}|\[EPISODE\]/gi, '1');
 
     try {
       const response = await fetch(testUrl, { method: 'HEAD', mode: 'no-cors' });
@@ -276,7 +274,7 @@ export function ServerSettingsModal(props) {
                         />
                       </div>
                       <p class="label-mono text-[7px]" style="color: var(--dim)">
-                        Available variables: {'{id}'}, {'{season}'}, {'{episode}'}
+                        Available variables: {'{id}'}, {'{season}'}, {'{episode}'} OR [TMDB_ID], [SEASON], [EPISODE]
                       </p>
                     </div>
                   </Show>
