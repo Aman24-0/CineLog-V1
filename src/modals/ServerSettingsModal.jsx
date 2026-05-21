@@ -35,14 +35,14 @@ const DEFAULT_SERVERS = [
     provider: 'Vidsrc Mirror'
   },
   { 
-    id: 'embedsu', 
-    name: 'Embed.su', 
-    domain: 'embed.su',
+    id: 'peachify', 
+    name: 'Peachify', 
+    domain: 'peachify.top',
     type: 'embed-api',
-    movieUrl: 'https://embed.su/embed/movie/{id}',
-    tvUrl: 'https://embed.su/embed/tv/{id}/{season}/{episode}',
+    movieUrl: 'https://peachify.top/embed/movie/{id}?accent=b1a1ff',
+    tvUrl: 'https://peachify.top/embed/tv/{id}/{season}/{episode}?accent=b1a1ff',
     icon: 'stream',
-    provider: 'Generic Embed'
+    provider: 'Peachify Official'
   },
   { 
     id: 'vidsrccc', 
@@ -115,6 +115,7 @@ export function ServerSettingsModal(props) {
           enabled: s.enabled !== false
         };
       });
+      // Changing from updateDoc to setDoc with merge protects against missing user documents
       await setDoc(doc(db, 'users', props.uid), { customServers }, { merge: true });
       props.showToast('Server settings saved!');
       setTimeout(() => props.onClose(), 500);
