@@ -104,18 +104,22 @@ export function ServerSettingsModal(props) {
   onMount(() => document.body.style.overflow = 'hidden');
   onCleanup(() => document.body.style.overflow = '');
 
+  // 1. Make sure setDoc is imported at the top from 'firebase/firestore'
+  // It should look like: import { doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
+  
   const saveServerSettings = async () => {
     try {
       const customServers = {};
       servers().forEach(s => {
         customServers[s.id] = {
-          domain: s.domain,
+          domain: s.domain || '',
           movieUrl: s.movieUrl,
           tvUrl: s.tvUrl,
           enabled: s.enabled !== false
         };
       });
-      await updateDoc(doc(db, 'users', props.uid), { customServers });
+      // Changing from updateDoc to setDoc with merge protects against missing user documents
+      await setDoc(doc(db, 'users', props.uid), { customServers }, { merge: true });
       props.showToast('Server settings saved!');
       setTimeout(() => props.onClose(), 500);
     } catch (err) {
