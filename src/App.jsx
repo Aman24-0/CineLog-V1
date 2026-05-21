@@ -13,6 +13,7 @@ import { UpcomingView } from './views/UpcomingView';
 import { DataSync } from './views/DataSync';
 import { DetailsModal } from './modals/DetailsModal';
 import { SearchModal } from './modals/SearchModal';
+import { ServerSettingsModal } from './modals/ServerSettingsModal';
 import { InsightsModal, SettingsModal } from './modals/Modals';
 
 const NavBtn = (props) => (
@@ -40,6 +41,7 @@ export default function App() {
   const [detailsId, setDetailsId] = createSignal(null);
   const [previewSource, setPreviewSource] = createSignal(null);
   const [settingsModal, setSettingsModal] = createSignal(false);
+  const [serverSettingsModal, setServerSettingsModal] = createSignal(false);
   const [statsModal, setStatsModal] = createSignal(false);
   const [userMenuOpen, setUserMenuOpen] = createSignal(false);
   const [toast, setToast] = createSignal({ show: false, msg: '' });
@@ -153,6 +155,10 @@ export default function App() {
                       <Icon name="bar_chart" class="text-[18px]" /> Insights
                     </button>
                     <div class="my-1" style="border-top: 1px solid var(--border)" />
+                    <button onClick={() => { setServerSettingsModal(true); setUserMenuOpen(false); }}
+                      class="w-full text-left px-5 py-3 text-sm font-semibold flex items-center gap-3 hover:bg-white/5 transition-colors text-gray-300">
+                      <Icon name="dns" class="text-[18px]" /> Streaming Servers
+                    </button>
                     <button onClick={() => { setView('sync'); setUserMenuOpen(false); }}
                       class="w-full text-left px-5 py-3 text-sm font-semibold flex items-center gap-3 hover:bg-white/5 transition-colors text-gray-300">
                       <Icon name="import_export" class="text-[18px]" /> Data Sync
@@ -245,6 +251,13 @@ export default function App() {
           </Show>
           <Show when={statsModal()}><InsightsModal watchlist={watchlist} onClose={() => setStatsModal(false)} /></Show>
           <Show when={settingsModal()}><SettingsModal currentTheme={theme()} setTheme={setTheme} onClose={() => setSettingsModal(false)} /></Show>
+          <Show when={serverSettingsModal()}>
+            <ServerSettingsModal 
+              uid={user().uid} 
+              showToast={showToast} 
+              onClose={() => setServerSettingsModal(false)} 
+            />
+          </Show>
 
           {/* ── TOAST ── */}
           <Show when={toast().show}>
