@@ -27,6 +27,24 @@ const NavBtn = (props) => (
   </button>
 );
 
+const GuestPrompt = (props) => (
+  <div class="h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-pop-in">
+    <div class="w-24 h-24 rounded-3xl flex items-center justify-center mb-6 mx-auto"
+      style="background: var(--raised); border: 1px solid var(--border-active); box-shadow: 0 0 40px var(--p-glow)">
+      <Icon name="lock" fill class="text-5xl" style="color: var(--p)" />
+    </div>
+    <h2 class="font-headline text-5xl text-white mb-2">Sign in Required</h2>
+    <p class="text-sm text-gray-400 mb-8 max-w-sm mx-auto">Create an account or sign in to build custom lists, track progress, and back up your vault.</p>
+    <button
+      onClick={props.onLogin}
+      class="font-bold py-4 px-10 rounded-full shadow-lg text-sm text-black uppercase tracking-widest active:scale-95 transition-all"
+      style="background: var(--p); box-shadow: 0 0 30px var(--p-glow)"
+    >
+      Sign In with Google
+    </button>
+  </div>
+);
+
 export default function App() {
   const [user, setUser] = createSignal(null);
   const [watchlist, setWatchlist] = createSignal([]);
@@ -51,6 +69,8 @@ export default function App() {
     setTimeout(() => setToast({ show: false, msg: '' }), 3000);
   };
 
+  const handleLogin = () => signInWithPopup(auth, new GoogleAuthProvider());
+
   createEffect(() => { document.body.className = `theme-${theme()}`; localStorage.setItem('cinelog_theme', theme()); });
   createEffect(() => { view(); window.scrollTo(0, 0); });
 
@@ -66,11 +86,16 @@ export default function App() {
         onSnapshot(collection(db, 'users', u.uid, 'franchises'), (snap) => {
           setFranchises(snap.docs.map(d => ({ id: d.id, ...d.data() }))); fReady = true; if (wReady) setLoading(false);
         });
-      } else { setLoading(false); }
+      } else { 
+        setWatchlist([]);
+        setFranchises([]);
+        setLoading(false); 
+      }
     });
   });
 
   const nukeCollection = async () => {
+    if (!user()) return;
     if (confirm("DANGER: Entire Vault will be wiped. Sure?")) {
       showToast("Nuking Vault...");
       const snap = await getDocs(collection(db, 'users', user().uid, 'watchlist'));
@@ -98,46 +123,38 @@ export default function App() {
       <div class="orb-secondary" />
 
       <Show when={!loading() && !splashWait()} fallback={<LoadingScreen />}>
-        <Show when={user()} fallback={
-          <div class="h-screen flex flex-col items-center justify-center p-6 text-center relative z-10">
-            <div class="w-20 h-20 rounded-3xl flex items-center justify-center mb-6 mx-auto"
-              style="background: var(--raised); border: 1px solid var(--border-active); box-shadow: 0 0 40px var(--p-glow, rgba(168,255,120,0.15))">
-              <Icon name="movie_filter" fill class="text-4xl" style="color: var(--p)" />
-            </div>
-            <h1 class="font-headline text-7xl text-white mb-1 leading-none">
-              CINE<span style="color: var(--p)">LOG</span>
-            </h1>
-            <p class="label-mono mb-10" style="letter-spacing:0.25em">ULTIMATE EDITION</p>
-            <button
-              onClick={() => signInWithPopup(auth, new GoogleAuthProvider())}
-              class="font-bold py-4 px-10 rounded-full shadow-lg text-sm text-black"
-              style="background: var(--p); box-shadow: 0 0 30px var(--p-glow)"
-            >
-              Sign In with Google
-            </button>
-          </div>
-        }>
 
-          {/* ── HEADER ── */}
-          <header class="sticky top-0 z-50 flex justify-between items-center px-6 py-4 border-b"
-            style="background: rgba(5,6,10,0.8); backdrop-filter: blur(24px); border-color: var(--border)">
-            <div class="flex items-center gap-2">
-              <div class="w-8 h-8 rounded-xl flex items-center justify-center"
-                style="background: var(--p-dim); border: 1px solid var(--border-active)">
-                <Icon name="movie_filter" fill class="text-sm" style="color: var(--p)" />
-              </div>
-              <h2 class="font-headline text-2xl text-white leading-none">
-                CINE<span style="color: var(--p)">LOG</span>
-              </h2>
+        {/* ── HEADER ── */}
+        <header class="sticky top-0 z-50 flex justify-between items-center px-6 py-4 border-b"
+          style="background: rgba(5,6,10,0.8); backdrop-filter: blur(24px); border-color: var(--border)">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl flex items-center justify-center"
+              style="background: var(--p-dim); border: 1px solid var(--border-active)">
+              <Icon name="movie_filter" fill class="text-sm" style="color: var(--p)" />
             </div>
-            <div class="flex items-center gap-3">
+            <h2 class="font-headline text-2xl text-white leading-none">
+              CINE<span style="color: var(--p)">LOG</span>
+            </h2>
+          </div>
+          <div class="flex items-center gap-3">
+            <button
+              onClick={() => setSettingsModal(true)}
+              class="glass-surface p-2.5 rounded-full"
+              style="border-color: var(--border-active)"
+            >
+              <Icon name="palette" class="text-sm" style="color: var(--muted)" />
+            </button>
+            
+            {/* Login / Profile Toggle */}
+            <Show when={user()} fallback={
               <button
-                onClick={() => setSettingsModal(true)}
-                class="glass-surface p-2.5 rounded-full"
-                style="border-color: var(--border-active)"
+                onClick={handleLogin}
+                class="px-5 py-2 rounded-full font-bold text-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                style="background: var(--p); box-shadow: 0 0 16px var(--p-glow)"
               >
-                <Icon name="palette" class="text-sm" style="color: var(--muted)" />
+                Sign In
               </button>
+            }>
               <div class="relative">
                 <img
                   src={user().photoURL}
@@ -175,99 +192,111 @@ export default function App() {
                   </div>
                 </Show>
               </div>
-            </div>
-          </header>
+            </Show>
+          </div>
+        </header>
 
-          {/* ── MAIN ── */}
-          <main class="p-5 max-w-2xl lg:max-w-none lg:px-12 mx-auto relative z-10">
-            <Show when={view() === 'dashboard'}>
-              <Dashboard watchlist={watchlist} openMovie={setDetailsId} setView={setView} showToast={showToast} setActiveVaultStatus={setActiveVaultStatus} />
-            </Show>
-            <Show when={view() === 'watchlist'}>
-              <Vault watchlist={watchlist} openMovie={setDetailsId} activeStatus={activeVaultStatus()} onFilterChange={setActiveVaultStatus} />
-            </Show>
-            <Show when={view() === 'franchises'}>
+        {/* ── MAIN ── */}
+        <main class="p-5 max-w-2xl lg:max-w-none lg:px-12 mx-auto relative z-10">
+          <Show when={view() === 'dashboard'}>
+            <Dashboard watchlist={watchlist} openMovie={setDetailsId} setView={setView} showToast={showToast} setActiveVaultStatus={setActiveVaultStatus} isGuest={!user()} onLogin={handleLogin} />
+          </Show>
+          <Show when={view() === 'watchlist'}>
+            <Vault watchlist={watchlist} openMovie={setDetailsId} activeStatus={activeVaultStatus()} onFilterChange={setActiveVaultStatus} isGuest={!user()} onLogin={handleLogin} />
+          </Show>
+          <Show when={view() === 'franchises'}>
+            <Show when={user()} fallback={<GuestPrompt onLogin={handleLogin} />}>
               <FranchisesView watchlist={watchlist} franchises={franchises} uid={user().uid} openMovie={setDetailsId} showToast={showToast} />
             </Show>
-            <Show when={view() === 'upcoming'}>
-              <UpcomingView watchlist={watchlist} uid={user().uid} showToast={showToast} />
-            </Show>
-            <Show when={view() === 'sync'}>
+          </Show>
+          <Show when={view() === 'upcoming'}>
+            <UpcomingView watchlist={watchlist} uid={user()?.uid} showToast={showToast} isGuest={!user()} onLogin={handleLogin} />
+          </Show>
+          <Show when={view() === 'sync'}>
+            <Show when={user()} fallback={<GuestPrompt onLogin={handleLogin} />}>
               <DataSync watchlist={watchlist} uid={user().uid} showToast={showToast} />
             </Show>
-          </main>
-
-          {/* ── BOTTOM NAV ── */}
-          <div class="fixed bottom-6 lg:bottom-0 lg:left-0 w-full lg:w-64 px-4 lg:px-0 flex justify-center lg:h-screen z-50 pointer-events-none">
-            <nav class="nav-pill w-full max-w-md lg:max-w-none lg:h-full lg:rounded-none lg:flex-col lg:justify-start lg:gap-8 lg:pt-32 flex justify-around items-center px-2 py-3 lg:px-6 pointer-events-auto lg:border-r" style="border-color: var(--border)">
-              <NavBtn icon="dashboard" label="Home" active={view() === 'dashboard'} onClick={() => setView('dashboard')} />
-              <NavBtn icon="visibility" label="Vault" active={view() === 'watchlist'} onClick={() => setView('watchlist')} />
-
-              {/* Center Add button */}
-              <div class="relative -mt-8 lg:mt-0 mx-1">
-                <button
-                  onClick={() => setSearchModal(true)}
-                  class="w-14 h-14 rounded-full flex items-center justify-center text-black font-black border-4 active:scale-95 lg:w-full lg:h-auto lg:py-4 lg:rounded-2xl lg:border-none lg:flex-row lg:gap-3 lg:px-6"
-                  style="background: var(--p); border-color: var(--void); box-shadow: 0 0 24px var(--p-glow), 0 8px 20px rgba(0,0,0,0.5)"
-                >
-                  <Icon name="add" class="text-3xl lg:text-xl" />
-                  <span class="hidden lg:block font-bold uppercase tracking-widest text-[10px]">Add Title</span>
-                </button>
-              </div>
-
-              <NavBtn icon="folder_special" label="Lists" active={view() === 'franchises'} onClick={() => setView('franchises')} />
-              <NavBtn icon="calendar_month" label="Upcoming" active={view() === 'upcoming'} onClick={() => setView('upcoming')} />
-            </nav>
-          </div>
-
-          {/* ── MODALS ── */}
-          <Show when={searchModal()}>
-            <SearchModal
-              onClose={() => setSearchModal(false)}
-              uid={user().uid}
-              showToast={showToast}
-              watchlist={watchlist()}
-              openPreview={(item, source) => {
-                if (source !== 'fromPerson') setSearchModal(false);
-                setPreviewSource(source || 'search');
-                setDetailsId(`PREVIEW_${JSON.stringify(item)}`);
-              }}
-            />
           </Show>
-          <Show when={detailsId()}>
-            <DetailsModal
-              id={detailsId()}
-              watchlist={watchlist()}
-              franchises={franchises()}
-              onClose={() => {
-                const src = previewSource();
-                setDetailsId(null); setPreviewSource(null);
-                if (src === 'fromPerson') setSearchModal(true);
-              }}
-              uid={user().uid}
-              showToast={showToast}
-              theme={theme}
-            />
-          </Show>
-          <Show when={statsModal()}><InsightsModal watchlist={watchlist} onClose={() => setStatsModal(false)} /></Show>
-          <Show when={settingsModal()}><SettingsModal currentTheme={theme()} setTheme={setTheme} onClose={() => setSettingsModal(false)} /></Show>
-          <Show when={serverSettingsModal()}>
-            <ServerSettingsModal 
-              uid={user().uid} 
-              showToast={showToast} 
-              onClose={() => setServerSettingsModal(false)} 
-            />
-          </Show>
+        </main>
 
-          {/* ── TOAST ── */}
-          <Show when={toast().show}>
-            <div class="fixed bottom-28 left-1/2 -translate-x-1/2 glass-surface px-6 py-3 rounded-full shadow-2xl z-[999999] flex gap-2 items-center text-sm font-bold whitespace-nowrap animate-pop-in"
-              style="border-color: var(--p); color: var(--text)">
-              <Icon name="check_circle" fill style="color: var(--p)" /> {toast().msg}
+        {/* ── BOTTOM NAV ── */}
+        <div class="fixed bottom-6 lg:bottom-0 lg:left-0 w-full lg:w-64 px-4 lg:px-0 flex justify-center lg:h-screen z-50 pointer-events-none">
+          <nav class="nav-pill w-full max-w-md lg:max-w-none lg:h-full lg:rounded-none lg:flex-col lg:justify-start lg:gap-8 lg:pt-32 flex justify-around items-center px-2 py-3 lg:px-6 pointer-events-auto lg:border-r" style="border-color: var(--border)">
+            <NavBtn icon="dashboard" label="Home" active={view() === 'dashboard'} onClick={() => setView('dashboard')} />
+            <NavBtn icon="visibility" label="Vault" active={view() === 'watchlist'} onClick={() => setView('watchlist')} />
+
+            {/* Center Add button */}
+            <div class="relative -mt-8 lg:mt-0 mx-1">
+              <button
+                onClick={() => setSearchModal(true)}
+                class="w-14 h-14 rounded-full flex items-center justify-center text-black font-black border-4 active:scale-95 lg:w-full lg:h-auto lg:py-4 lg:rounded-2xl lg:border-none lg:flex-row lg:gap-3 lg:px-6"
+                style="background: var(--p); border-color: var(--void); box-shadow: 0 0 24px var(--p-glow), 0 8px 20px rgba(0,0,0,0.5)"
+              >
+                <Icon name="search" class="text-3xl lg:text-xl" />
+                <span class="hidden lg:block font-bold uppercase tracking-widest text-[10px]">Discover</span>
+              </button>
             </div>
-          </Show>
 
+            <NavBtn icon="folder_special" label="Lists" active={view() === 'franchises'} onClick={() => setView('franchises')} />
+            <NavBtn icon="calendar_month" label="Upcoming" active={view() === 'upcoming'} onClick={() => setView('upcoming')} />
+          </nav>
+        </div>
+
+        {/* ── MODALS ── */}
+        <Show when={searchModal()}>
+          <SearchModal
+            onClose={() => setSearchModal(false)}
+            uid={user()?.uid}
+            showToast={showToast}
+            watchlist={watchlist()}
+            isGuest={!user()}
+            onLogin={() => { setSearchModal(false); handleLogin(); }}
+            openPreview={(item, source) => {
+              if (source !== 'fromPerson') setSearchModal(false);
+              setPreviewSource(source || 'search');
+              setDetailsId(`PREVIEW_${JSON.stringify(item)}`);
+            }}
+          />
         </Show>
+        <Show when={detailsId()}>
+          <DetailsModal
+            id={detailsId()}
+            watchlist={watchlist()}
+            franchises={franchises()}
+            onClose={() => {
+              const src = previewSource();
+              setDetailsId(null); setPreviewSource(null);
+              if (src === 'fromPerson') setSearchModal(true);
+            }}
+            uid={user()?.uid}
+            showToast={showToast}
+            theme={theme}
+            isGuest={!user()}
+            onLogin={() => { setDetailsId(null); handleLogin(); }}
+          />
+        </Show>
+        <Show when={statsModal()}>
+          <InsightsModal watchlist={watchlist} onClose={() => setStatsModal(false)} />
+        </Show>
+        <Show when={settingsModal()}>
+          <SettingsModal currentTheme={theme()} setTheme={setTheme} onClose={() => setSettingsModal(false)} />
+        </Show>
+        <Show when={serverSettingsModal()}>
+          <ServerSettingsModal 
+            uid={user()?.uid} 
+            showToast={showToast} 
+            onClose={() => setServerSettingsModal(false)} 
+          />
+        </Show>
+
+        {/* ── TOAST ── */}
+        <Show when={toast().show}>
+          <div class="fixed bottom-28 left-1/2 -translate-x-1/2 glass-surface px-6 py-3 rounded-full shadow-2xl z-[999999] flex gap-2 items-center text-sm font-bold whitespace-nowrap animate-pop-in"
+            style="border-color: var(--p); color: var(--text)">
+            <Icon name="check_circle" fill style="color: var(--p)" /> {toast().msg}
+          </div>
+        </Show>
+
       </Show>
     </div>
     </ErrorBoundary>
