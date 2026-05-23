@@ -102,7 +102,6 @@ export function DetailsModal(props) {
     return merged;
   });
 
-  // Ensure activeServer defaults properly if old selection is missing
   createEffect(() => {
     const serversList = availableServers();
     if (serversList.length > 0 && !serversList.find(s => s.id === activeServer())) {
@@ -120,12 +119,14 @@ export function DetailsModal(props) {
   };
 
   onMount(async () => {
-    try {
-      const userDoc = await getDoc(doc(db, 'users', props.uid || 'unknown'));
-      const customSettings = userDoc.data()?.customServers || {};
-      setCustomServers(customSettings);
-    } catch (e) {
-      console.error('Failed to load custom servers:', e);
+    if (!props.isGuest) {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', props.uid || 'unknown'));
+        const customSettings = userDoc.data()?.customServers || {};
+        setCustomServers(customSettings);
+      } catch (e) {
+        console.error('Failed to load custom servers:', e);
+      }
     }
   });
 
@@ -136,14 +137,14 @@ export function DetailsModal(props) {
 
   createEffect(() => { 
       if(movie()) { 
-          if (!isPreview()) {
+          if (!isPreview() && !props.isGuest) {
               setForm({ status: movie().status||'Planned', rating: movie().rating||'', watchDate: typeof movie().watchDate==='string'?movie().watchDate:'', notes: typeof movie().notes==='string'?movie().notes:'', region: movie().region||'International', season: movie().season||1, episode: movie().episode||1, tag: movie().tag||'', platforms: getSafePlatforms(movie()).join(', '), genres: getSafeGenres(movie()).join(', ') });
           }
           
           fetch(`https://api.themoviedb.org/3/${movie().media_type||'movie'}/${movie().id}?api_key=${TMDB_KEY}&append_to_response=videos,credits`).then(r=>r.json()).then(d=>{ 
               setDetails(d);
               const v = d?.videos?.results; if(v){ let t = v.find(x=>x.site==='YouTube'&&x.type==='Trailer')||v.find(x=>x.site==='YouTube'&&x.type==='Teaser')||v.find(x=>x.site==='YouTube'); if(t) setTrailerKey(t.key); }
-              if (!isPreview() && d.genres && d.genres.length > 0) {
+              if (!isPreview() && !props.isGuest && d.genres && d.genres.length > 0) {
                   const apiGenres = d.genres.map(g => g.name).join(', ');
                   const dbGenres = getSafeGenres(movie()).join(', ');
                   if (!dbGenres) setForm(f => ({ ...f, genres: apiGenres }));
@@ -155,7 +156,7 @@ export function DetailsModal(props) {
               if(d.Response === 'True') {
                   const rt = d.Ratings?.find(r=>r.Source === 'Rotten Tomatoes')?.Value || '-';
                   setOmdbData({ imdb: d.imdbRating || '-', rt: rt });
-                  if (!isPreview()) updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), { imdbRating: d.imdbRating || '-', rtRating: rt.replace('%','') });
+                  if (!isPreview() && !props.isGuest) updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), { imdbRating: d.imdbRating || '-', rtRating: rt.replace('%','') });
               }
           });
 
@@ -219,7 +220,7 @@ export function DetailsModal(props) {
               });
 
               setRichPlatforms(finalProviders);
-              if (!isPreview()) {
+              if (!isPreview() && !props.isGuest) {
                   const missingInDb = fetchedNames.filter(n => !currentDbPlatforms.includes(n));
                   if(missingInDb.length > 0) {
                       const mergedPlatforms = [...new Set([...currentDbPlatforms, ...fetchedNames])];
@@ -232,13 +233,26 @@ export function DetailsModal(props) {
   });
 
   const togglePlatform = (p) => { let curr = form().platforms.split(',').map(s=>s.trim()).filter(Boolean); if(curr.includes(p)) curr = curr.filter(x=>x!==p); else curr.push(p); setForm({...form(), platforms: curr.join(', ')}); };
-  const saveChanges = async () => { await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), { status: form().status, rating: parseFloat(form().rating)||0, watchDate: form().watchDate, notes: form().notes, region: form().region, season: parseInt(form().season)||1, episode: parseInt(form().episode)||1, tag: form().tag, genresList: form().genres.split(',').map(s=>s.trim()).filter(Boolean), platformsList: form().platforms.split(',').map(s=>cleanPlatform(s.trim())).filter(Boolean) }); props.showToast("Saved"); setIsEdit(false); };
+  
+  const saveChanges = async () => { 
+    if (props.isGuest) {
+      props.showToast("Sign in to save changes! 🔒");
+      if (props.onLogin) props.onLogin();
+      return;
+    }
+    await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), { status: form().status, rating: parseFloat(form().rating)||0, watchDate: form().watchDate, notes: form().notes, region: form().region, season: parseInt(form().season)||1, episode: parseInt(form().episode)||1, tag: form().tag, genresList: form().genres.split(',').map(s=>s.trim()).filter(Boolean), platformsList: form().platforms.split(',').map(s=>cleanPlatform(s.trim())).filter(Boolean) }); props.showToast("Saved"); setIsEdit(false); 
+  };
   
   const isCompleted = createMemo(() => !isPreview() && movie()?.status === 'Completed');
   const progressPct = createMemo(() => isCompleted() ? 100 : Math.min(((movie()?.episode||0) / (movie()?.totalEps||1)) * 100, 100));
   const movieFranchises = createMemo(() => props.franchises?.filter(f => movie()?.franchises?.[f.id] !== undefined).map(f => f.name).join(', '));
 
   const addToVaultFromPreview = async () => {
+    if (props.isGuest) {
+      props.showToast("Sign in to add to Vault! 🔒");
+      if (props.onLogin) props.onLogin();
+      return;
+    }
     const item = movie();
     if (props.watchlist.some(w => String(w.id) === String(item.id))) return props.showToast("Already in Vault! 🍿");
     props.showToast("Adding to Vault...");
@@ -302,7 +316,14 @@ export function DetailsModal(props) {
                         </p>
                     </div>
                     <Show when={!isPreview()}>
-                        <button onClick={()=>setIsEdit(!isEdit())} class={`p-2.5 rounded-full border transition-colors shrink-0 ${isEdit() ? 'bg-[var(--primary)] text-[#0c0e14] border-[var(--primary)]' : 'glass-surface text-gray-400 hover:text-white'}`}><Icon name={isEdit()?'check':'edit'} class="text-sm"/></button>
+                        <button onClick={()=>{
+                            if (props.isGuest) {
+                              props.showToast("Sign in to edit! 🔒");
+                              if (props.onLogin) props.onLogin();
+                              return;
+                            }
+                            setIsEdit(!isEdit())
+                        }} class={`p-2.5 rounded-full border transition-colors shrink-0 ${isEdit() ? 'bg-[var(--primary)] text-[#0c0e14] border-[var(--primary)]' : 'glass-surface text-gray-400 hover:text-white'}`}><Icon name={isEdit()?'check':'edit'} class="text-sm"/></button>
                     </Show>
                 </div>
                 
@@ -359,7 +380,13 @@ export function DetailsModal(props) {
                             </div>
                             <div class="w-full h-2 bg-black rounded-full overflow-hidden mb-4"><div class="h-full bg-[var(--primary)] transition-all shadow-[0_0_10px_var(--primary)]" style={{width:`${progressPct()}%`}}></div></div>
                             <Show when={!isCompleted()}>
-                                <button onClick={async () => { let n = (parseInt(movie().episode)||1)+1; let s = movie().status==='Planned'?'Watching':movie().status; if(movie().totalEps>0 && n>=movie().totalEps) { s='Completed'; props.showToast("Completed! 🎉"); } await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), {episode: n, status: s}); }} class="w-full bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/30 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-[var(--primary)] hover:text-[#0c0e14] active:scale-95 transition-all">+1 Episode</button>
+                                <button onClick={async () => { 
+                                    if (props.isGuest) {
+                                      props.showToast("Sign in to track progress! 🔒");
+                                      if (props.onLogin) props.onLogin();
+                                      return;
+                                    }
+                                    let n = (parseInt(movie().episode)||1)+1; let s = movie().status==='Planned'?'Watching':movie().status; if(movie().totalEps>0 && n>=movie().totalEps) { s='Completed'; props.showToast("Completed! 🎉"); } await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), {episode: n, status: s}); }} class="w-full bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/30 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-[var(--primary)] hover:text-[#0c0e14] active:scale-95 transition-all">+1 Episode</button>
                             </Show>
                         </div>
                     </Show>
@@ -422,7 +449,14 @@ export function DetailsModal(props) {
                         </button>
                     </Show>
                     <Show when={!isPreview()}>
-                        <div class="mt-8 flex justify-end"><button onClick={async () => { if(confirm("Permanently delete?")) { await deleteDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id))); props.showToast("Deleted"); props.onClose(); } }} class="text-red-500/50 hover:text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-colors mx-auto active:scale-95"><Icon name="delete" class="text-sm"/> Remove from Universe</button></div>
+                        <div class="mt-8 flex justify-end"><button onClick={async () => { 
+                            if (props.isGuest) {
+                              props.showToast("Sign in to edit vault! 🔒");
+                              if (props.onLogin) props.onLogin();
+                              return;
+                            }
+                            if(confirm("Permanently delete?")) { await deleteDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id))); props.showToast("Deleted"); props.onClose(); } 
+                          }} class="text-red-500/50 hover:text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-colors mx-auto active:scale-95"><Icon name="delete" class="text-sm"/> Remove from Universe</button></div>
                     </Show>
                   </div>
                 }>
