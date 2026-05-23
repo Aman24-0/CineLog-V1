@@ -50,6 +50,18 @@ const getBrandColor = (name) => {
     return `hsl(${Math.abs(hash) % 360}, 70%, 45%)`;
 };
 
+// HELPER: Calculate Days between Start and End Date
+const calculateDays = (start, end) => {
+    if (!start || !end) return null;
+    const d1 = new Date(start);
+    const d2 = new Date(end);
+    if (isNaN(d1) || isNaN(d2)) return null;
+    if (d2 < d1) return 0;
+    const diffTime = Math.abs(d2 - d1);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Inclusive day counting
+    return diffDays;
+};
+
 export function DetailsModal(props) {
   const isPreview = createMemo(() => typeof props.id === 'string' && props.id.startsWith('PREVIEW_'));
   const previewData = createMemo(() => { if (!isPreview()) return null; try { return JSON.parse(props.id.replace('PREVIEW_', '')); } catch(e) { return null; } });
@@ -62,7 +74,7 @@ export function DetailsModal(props) {
   const [showPlayer, setShowPlayer] = createSignal(false); 
   const [activeServer, setActiveServer] = createSignal(null); 
   const [omdbData, setOmdbData] = createSignal({ imdb: '-', rt: '-' });
-  const [form, setForm] = createSignal({ status: '', rating: '', watchDate: '', notes: '', region: '', season: 1, episode: 1, tag: '', platforms: '', genres: '' });
+  const [form, setForm] = createSignal({ status: '', rating: '', watchDate: '', notes: '', region: '', season: 1, episode: 1, tag: '', platforms: '', genres: '', seasonDates: {} });
   
   const [richPlatforms, setRichPlatforms] = createSignal([]);
   const [customServers, setCustomServers] = createSignal({});
@@ -138,7 +150,19 @@ export function DetailsModal(props) {
   createEffect(() => { 
       if(movie()) { 
           if (!isPreview() && !props.isGuest) {
-              setForm({ status: movie().status||'Planned', rating: movie().rating||'', watchDate: typeof movie().watchDate==='string'?movie().watchDate:'', notes: typeof movie().notes==='string'?movie().notes:'', region: movie().region||'International', season: movie().season||1, episode: movie().episode||1, tag: movie().tag||'', platforms: getSafePlatforms(movie()).join(', '), genres: getSafeGenres(movie()).join(', ') });
+              setForm({ 
+                status: movie().status||'Planned', 
+                rating: movie().rating||'', 
+                watchDate: typeof movie().watchDate==='string'?movie().watchDate:'', 
+                notes: typeof movie().notes==='string'?movie().notes:'', 
+                region: movie().region||'International', 
+                season: movie().season||1, 
+                episode: movie().episode||1, 
+                tag: movie().tag||'', 
+                platforms: getSafePlatforms(movie()).join(', '), 
+                genres: getSafeGenres(movie()).join(', '),
+                seasonDates: movie().seasonDates || {} 
+              });
           }
           
           fetch(`https://api.themoviedb.org/3/${movie().media_type||'movie'}/${movie().id}?api_key=${TMDB_KEY}&append_to_response=videos,credits`).then(r=>r.json()).then(d=>{ 
@@ -240,7 +264,21 @@ export function DetailsModal(props) {
       if (props.onLogin) props.onLogin();
       return;
     }
-    await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), { status: form().status, rating: parseFloat(form().rating)||0, watchDate: form().watchDate, notes: form().notes, region: form().region, season: parseInt(form().season)||1, episode: parseInt(form().episode)||1, tag: form().tag, genresList: form().genres.split(',').map(s=>s.trim()).filter(Boolean), platformsList: form().platforms.split(',').map(s=>cleanPlatform(s.trim())).filter(Boolean) }); props.showToast("Saved"); setIsEdit(false); 
+    await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), { 
+      status: form().status, 
+      rating: parseFloat(form().rating)||0, 
+      watchDate: form().watchDate, 
+      seasonDates: form().seasonDates,
+      notes: form().notes, 
+      region: form().region, 
+      season: parseInt(form().season)||1, 
+      episode: parseInt(form().episode)||1, 
+      tag: form().tag, 
+      genresList: form().genres.split(',').map(s=>s.trim()).filter(Boolean), 
+      platformsList: form().platforms.split(',').map(s=>cleanPlatform(s.trim())).filter(Boolean) 
+    }); 
+    props.showToast("Saved"); 
+    setIsEdit(false); 
   };
   
   const isCompleted = createMemo(() => !isPreview() && movie()?.status === 'Completed');
@@ -351,7 +389,6 @@ export function DetailsModal(props) {
                             <span class="text-[9px] uppercase font-black text-gray-400 tracking-widest flex items-center gap-1.5"><Icon name="router" class="text-[12px] text-[var(--primary)]"/> Streaming Node</span>
                         </div>
                         <div class="flex flex-wrap gap-2 pb-2 px-1">
-                            {/* Uses dynamic availableServers list here */}
                             <For each={availableServers()}>{(srv) => (
                                 <button type="button" onClick={(e) => { e.stopPropagation(); setActiveServer(srv.id); }}
                                   class="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all"
@@ -415,7 +452,12 @@ export function DetailsModal(props) {
 
                     <div class="glass-surface p-5 rounded-2xl space-y-4 border border-white/5">
                         <Show when={!isPreview()}><SafeInfoRow icon="adjust" label="Status" value={<span class="text-[var(--primary)] font-black uppercase text-[10px] tracking-widest">{movie().status||'Planned'}</span>} /></Show>
-                        <Show when={!isPreview()}><SafeInfoRow icon="calendar_today" label="Watch Date" value={<span class="text-xs text-gray-300">{movie().watchDate || 'Not set'}</span>} /></Show>
+                        
+                        {/* Global Watch Date (Hidden for TV Shows that have Season Timelines setup) */}
+                        <Show when={!isPreview() && (movie().media_type !== 'tv' || !movie().seasonDates || Object.keys(movie().seasonDates).length === 0)}>
+                            <SafeInfoRow icon="calendar_today" label="Watch Date" value={<span class="text-xs text-gray-300">{movie().watchDate || 'Not set'}</span>} />
+                        </Show>
+
                         <Show when={!isPreview()}><SafeInfoRow icon="public" label="Region" value={movie().region || 'International'} /></Show>
                         <SafeInfoRow icon="format_list_bulleted" label="Genre" value={<span class="text-xs text-gray-300">{details().genres ? details().genres.map(g => g.name).join(', ') : (getSafeGenres(movie()).join(', ') || 'N/A')}</span>} />
                         
@@ -441,6 +483,34 @@ export function DetailsModal(props) {
                         <Show when={!isPreview() && movie().tag}><SafeInfoRow icon="label" label="Tag" value={<span class="text-[9px] font-black uppercase tracking-widest bg-white/10 text-white px-2 py-0.5 rounded border border-white/20">{movie().tag}</span>} /></Show>
                         <Show when={!isPreview() && movieFranchises()}><SafeInfoRow icon="folder_special" label="Lists" value={<span class="text-xs font-bold text-white">{movieFranchises()}</span>} /></Show>
                         <Show when={!isPreview() && movie().notes && typeof movie().notes === 'string'}><div class="border-t border-white/5 pt-3 mt-3"><p class="text-[10px] uppercase font-black text-gray-500 tracking-widest mb-1 flex items-center gap-1"><Icon name="edit_note" class="text-[14px]"/> Notes</p><p class="text-sm text-gray-300 italic">"{movie().notes}"</p></div></Show>
+
+                        {/* Season Timeline Display */}
+                        <Show when={!isPreview() && movie().media_type === 'tv' && movie().seasonDates && Object.keys(movie().seasonDates).some(k => movie().seasonDates[k].start || movie().seasonDates[k].end)}>
+                            <div class="border-t border-white/5 pt-4 mt-2">
+                                <p class="text-[10px] uppercase font-black text-[var(--primary)] tracking-widest mb-2 flex items-center gap-1.5"><Icon name="history" class="text-[14px]"/> Season Timeline</p>
+                                <div class="space-y-1.5">
+                                    <For each={Object.entries(movie().seasonDates).filter(e => e[1].start || e[1].end).sort((a,b)=>Number(a[0])-Number(b[0]))}>
+                                        {([s, d]) => {
+                                            const days = calculateDays(d.start, d.end);
+                                            const formatD = (ds) => ds ? new Date(ds).toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'2-digit'}) : 'Present';
+                                            return (
+                                                <div class="flex justify-between items-center bg-black/40 px-3 py-2 rounded-xl border border-white/5 shadow-inner">
+                                                    <span class="text-[10px] font-black text-white tracking-widest uppercase">Season {s}</span>
+                                                    <div class="flex items-center gap-2.5">
+                                                        <span class="text-[9px] text-gray-300 font-bold tracking-wider flex items-center gap-1.5">
+                                                            {formatD(d.start)} <Icon name="arrow_forward" class="text-[10px] text-gray-500"/> {d.end ? formatD(d.end) : <span class="text-gray-500">Present</span>}
+                                                        </span>
+                                                        <Show when={days !== null}>
+                                                            <span class="text-[8px] bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20 px-1.5 py-0.5 rounded font-black uppercase tracking-widest shadow-sm">{days} Day{days !== 1 ? 's' : ''}</span>
+                                                        </Show>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }}
+                                    </For>
+                                </div>
+                            </div>
+                        </Show>
                     </div>
 
                     <Show when={isPreview()}>
@@ -465,11 +535,49 @@ export function DetailsModal(props) {
                         <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Status</label><select value={form().status} onChange={e=>setForm({...form(), status: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)]"><option value="Planned">Planned</option><option value="Watching">Watching</option><option value="Completed">Completed</option></select></div>
                         <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Personal Rating</label><input type="number" step="0.1" min="0" max="10" value={form().rating} onChange={e=>setForm({...form(), rating: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)]"/></div>
                     </div>
-                    <Show when={movie().media_type === 'tv'}><div class="grid grid-cols-2 gap-4"><div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Season</label><input type="number" value={form().season} onInput={e=>setForm({...form(), season: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)]"/></div><div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Episode</label><input type="number" value={form().episode} onInput={e=>setForm({...form(), episode: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)]"/></div></div></Show>
+                    
+                    <Show when={movie().media_type === 'tv'}>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Season</label><input type="number" value={form().season} onInput={e=>setForm({...form(), season: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)]"/></div>
+                            <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Episode</label><input type="number" value={form().episode} onInput={e=>setForm({...form(), episode: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)]"/></div>
+                        </div>
+                    </Show>
+                    
                     <div class="grid grid-cols-2 gap-4">
-                        <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Watch Date</label><input type="date" value={form().watchDate} onInput={e=>setForm({...form(), watchDate: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white [color-scheme:dark] outline-none focus:border-[var(--primary)]"/></div>
-                        <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Region</label><select value={form().region} onChange={e=>setForm({...form(), region: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)]"><option>International</option><option>Indian</option></select></div>
+                        <Show when={movie().media_type === 'movie'}>
+                            <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Watch Date</label><input type="date" value={form().watchDate} onInput={e=>setForm({...form(), watchDate: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white [color-scheme:dark] outline-none focus:border-[var(--primary)]"/></div>
+                        </Show>
+                        <div class={movie().media_type === 'tv' ? 'col-span-2' : ''}><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Region</label><select value={form().region} onChange={e=>setForm({...form(), region: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)]"><option>International</option><option>Indian</option></select></div>
                     </div>
+
+                    <Show when={movie().media_type === 'tv'}>
+                        <div class="mt-4">
+                            <label class="text-[9px] uppercase font-black text-gray-500 mb-2 block tracking-widest flex items-center gap-1"><Icon name="history" class="text-[14px]"/> Season Timelines</label>
+                            <div class="space-y-2 bg-black/40 p-3 rounded-2xl border border-white/5 shadow-inner max-h-48 overflow-y-auto hide-scrollbar">
+                                <For each={Array.from({length: Math.max(1, parseInt(form().season) || 1)})}>
+                                    {(_, i) => {
+                                        const s = i() + 1;
+                                        const d = form().seasonDates[s] || { start: '', end: '' };
+                                        return (
+                                            <div class="flex flex-col sm:flex-row sm:items-center gap-2 bg-[#0c0e14] p-2 rounded-xl border border-white/5">
+                                                <span class="text-[10px] font-black text-[var(--primary)] w-8 text-center bg-[var(--primary)]/10 py-1 rounded-md">S{s}</span>
+                                                <div class="flex flex-1 items-center gap-2">
+                                                    <div class="flex-1">
+                                                        <input type="date" value={d.start} onInput={e => setForm(prev => ({...prev, seasonDates: {...prev.seasonDates, [s]: {...(prev.seasonDates[s]||{}), start: e.target.value}}}))} class="w-full bg-transparent border-b border-white/10 p-1 text-xs text-white [color-scheme:dark] outline-none focus:border-[var(--primary)] transition-colors" title={`Season ${s} Start Date`}/>
+                                                    </div>
+                                                    <Icon name="arrow_forward" class="text-gray-600 text-[12px]"/>
+                                                    <div class="flex-1">
+                                                        <input type="date" value={d.end} onInput={e => setForm(prev => ({...prev, seasonDates: {...prev.seasonDates, [s]: {...(prev.seasonDates[s]||{}), end: e.target.value}}}))} class="w-full bg-transparent border-b border-white/10 p-1 text-xs text-white [color-scheme:dark] outline-none focus:border-[var(--primary)] transition-colors" title={`Season ${s} End Date`}/>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )
+                                    }}
+                                </For>
+                            </div>
+                        </div>
+                    </Show>
+
                     <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Custom Tag</label><input placeholder="e.g. Theatre" value={form().tag} onInput={e=>setForm({...form(), tag: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)] placeholder-gray-700"/></div>
                     <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Available Platforms</label><div class="flex flex-wrap gap-2 p-3 bg-[#0c0e14] border border-white/5 rounded-xl"><For each={allAvailablePlatforms()}>{p => <button type="button" onClick={()=>togglePlatform(p)} class={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors shadow-sm active:scale-95 ${form().platforms.split(',').map(s=>s.trim()).includes(p) ? 'bg-gradient-to-tr from-[var(--secondary)] to-[var(--primary)] text-[#0c0e14]' : 'bg-white/5 text-gray-400 hover:text-white border border-white/5'}`}>{p}</button>}</For></div></div>
                     <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Genres (Comma separated)</label><input value={form().genres || (details().genres ? details().genres.map(g=>g.name).join(', ') : '')} onInput={e=>setForm({...form(), genres: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)]"/></div>
