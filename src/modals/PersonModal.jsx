@@ -47,7 +47,12 @@ export function PersonModal(props) {
 
   const quickAddToVault = async (item, e) => {
     e.stopPropagation();
-    // Duplicate check
+    if (props.isGuest) {
+      props.showToast("Sign in to add to Vault! 🔒");
+      if (props.onLogin) props.onLogin();
+      return;
+    }
+
     if (props.watchlist.some(w => String(w.id) === String(item.id))) {
       return props.showToast("Already in Vault! 🍿");
     }
@@ -84,7 +89,8 @@ export function PersonModal(props) {
     >
       <div class="absolute inset-0 bg-black/80 backdrop-blur-sm pointer-events-none"></div>
       <div
-     class="w-full max-w-3xl lg:max-w-[800px] bg-[#08090b] sm:rounded-[2.5rem] rounded-t-[2.5rem] border border-white/10 relative h-[90vh] shadow-2xl flex flex-col overflow-hidden animate-pop-in"        onClick={e => e.stopPropagation()}
+        class="w-full max-w-3xl lg:max-w-[800px] bg-[#08090b] sm:rounded-[2.5rem] rounded-t-[2.5rem] border border-white/10 relative h-[90vh] shadow-2xl flex flex-col overflow-hidden animate-pop-in"        
+        onClick={e => e.stopPropagation()}
       >
         <button
           onClick={props.onClose}
