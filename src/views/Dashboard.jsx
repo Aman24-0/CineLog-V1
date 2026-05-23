@@ -1,4 +1,4 @@
-import { createMemo, For } from 'solid-js';
+import { createMemo, For, Show } from 'solid-js';
 import { Icon } from '../utils';
 import { MovieCard } from '../components/MovieCard';
 import { AIRecommend } from '../components/AIRecommend';
@@ -12,6 +12,10 @@ export function Dashboard(props) {
   }));
 
   const pickRandom = () => {
+    if (props.isGuest) {
+      props.showToast("Sign in to shuffle your vault! 🔒");
+      return props.onLogin();
+    }
     const p = props.watchlist().filter(m => m.status === 'Planned' || m.status === 'Plan to Watch');
     if (p.length) {
       props.showToast("🎲 Picking random title...");
@@ -23,6 +27,18 @@ export function Dashboard(props) {
 
   return (
     <div class="animate-fade-in pb-6 space-y-8">
+
+      {/* ── GUEST HERO BANNER ── */}
+      <Show when={props.isGuest}>
+        <div class="glass-surface p-6 rounded-[2rem] border mb-8 relative overflow-hidden" style="border-color: var(--p)">
+          <div class="absolute -right-10 -top-10 w-40 h-40 rounded-full blur-3xl opacity-20 pointer-events-none" style="background: var(--p)"></div>
+          <h3 class="font-headline text-3xl text-white mb-2">Welcome to Cinelog</h3>
+          <p class="text-xs text-gray-400 mb-5 max-w-sm relative z-10">You are exploring in Preview Mode. Sign in to start building your personal cinematic universe, track your watch progress, and get AI recommendations.</p>
+          <button onClick={props.onLogin} class="px-6 py-3 rounded-full font-bold text-black text-[10px] uppercase tracking-widest active:scale-95 transition-all relative z-10" style="background: var(--p); box-shadow: 0 0 16px var(--p-glow)">
+            Start Building Vault
+          </button>
+        </div>
+      </Show>
 
       {/* ── HERO RANDOM PICKER ── */}
       <div onClick={pickRandom} class="hero-picker">
@@ -136,9 +152,11 @@ export function Dashboard(props) {
       </div>
 
       {/* ── AI RECOMMENDATIONS ── */}
-      <div class="mt-2">
-        <AIRecommend watchlist={props.watchlist} />
-      </div>
+      <Show when={!props.isGuest}>
+        <div class="mt-2">
+          <AIRecommend watchlist={props.watchlist} />
+        </div>
+      </Show>
 
     </div>
   );
