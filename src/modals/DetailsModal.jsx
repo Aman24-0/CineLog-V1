@@ -90,6 +90,8 @@ export function DetailsModal(props) {
   
   const [watchProgress, setWatchProgress] = createSignal(null);
   const [contentDuration, setContentDuration] = createSignal(0);
+  const [playerSessionStart, setPlayerSessionStart] = createSignal(null);
+  const [playerStartProgress, setPlayerStartProgress] = createSignal(0);
   let autoPlayTriggered = false;
 
   const WATCHMODE_KEY = "QQQ2oiV5GK9fIM0sjEfgHwMTjGtusEYSy6I8TIfp";
@@ -185,6 +187,18 @@ export function DetailsModal(props) {
       }
   };
 
+  const hydrateSessionProgressFromElapsed = () => {
+    const startedAt = playerSessionStart();
+    if (!startedAt) return;
+    const elapsed = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+    const base = Math.max(0, Number(playerStartProgress()) || 0);
+    const dur = contentDuration() || inferDurationSeconds() || watchProgress()?.duration || 0;
+    const next = dur > 0 ? Math.min(base + elapsed, dur) : base + elapsed;
+    if (next > base) {
+      setWatchProgress({ currentTime: next, duration: dur });
+    }
+  };
+
   createEffect(() => {
       if (isResume() && movie() && !autoPlayTriggered) {
           const serversList = availableServers();
@@ -204,6 +218,8 @@ export function DetailsModal(props) {
                       if (inferred > 0) setContentDuration(inferred);
                       setWatchProgress({ currentTime: 0, duration: inferred });
                   }
+                  setPlayerStartProgress(movie().watchProgress?.currentTime || 0);
+                  setPlayerSessionStart(Date.now());
                   setShowPlayer(true);
               }, 200);
           }
@@ -223,6 +239,7 @@ export function DetailsModal(props) {
   onMount(() => { document.body.style.overflow = 'hidden'; window.addEventListener('message', handlePlayerMessages); }); 
   
   onCleanup(() => { 
+      hydrateSessionProgressFromElapsed();
       saveProgressToDb(); 
       document.body.style.overflow = ''; 
       window.removeEventListener('message', handlePlayerMessages); 
@@ -506,6 +523,8 @@ export function DetailsModal(props) {
                                 setWatchProgress(movie().watchProgress);
                             }
                             
+                            setPlayerStartProgress(movie().watchProgress?.currentTime || 0);
+                            setPlayerSessionStart(Date.now());
                             setShowPlayer(true); 
                         }}
                           class="w-full mt-3 font-black py-4 rounded-xl uppercase text-[11px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
@@ -704,7 +723,10 @@ export function DetailsModal(props) {
             <div class="flex items-center gap-3 overflow-hidden pr-2 flex-1">
                 <button type="button" onClick={(e) => { 
                     e.stopPropagation(); 
+                    hydrateSessionProgressFromElapsed();
                     saveProgressToDb();
+                    setPlayerSessionStart(null);
+                    setPlayerStartProgress(0);
                     setShowPlayer(false); 
                 }} class="p-2 bg-white/5 hover:bg-white/10 rounded-full active:scale-95 transition-all shrink-0"><Icon name="arrow_back" class="text-sm" /></button>
                 <h3 class="font-bold text-sm text-white truncate max-w-[150px]">{movie().title || movie().name}</h3>
