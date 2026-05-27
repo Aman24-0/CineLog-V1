@@ -11,7 +11,6 @@ export function Dashboard(props) {
     planned:   props.watchlist().filter(m => m.status === 'Planned' || m.status === 'Plan to Watch').length,
   }));
 
-  // NEW: Filtering logic for Continue Watching feature
   const continueWatchingList = createMemo(() => {
     return props.watchlist()
       .filter(m => m.watchProgress && m.watchProgress.currentTime > 0 && m.status !== 'Completed')
@@ -47,52 +46,6 @@ export function Dashboard(props) {
         </div>
       </Show>
 
-      {/* ── CONTINUE WATCHING ── */}
-      <Show when={continueWatchingList().length > 0}>
-        <div class="animate-fade-up">
-          <div class="flex items-center gap-2 mb-4 px-1">
-             <Icon name="play_circle" class="text-[18px]" style="color: var(--p2)" />
-             <div class="label-mono font-bold uppercase tracking-widest text-[10px]" style="color: var(--p2)">Continue Watching</div>
-          </div>
-          <div class="flex gap-4 overflow-x-auto hide-scrollbar pb-4 snap-x">
-            <For each={continueWatchingList()}>
-              {(m) => {
-                 const pct = m.watchProgress.duration > 0 ? Math.min(100, Math.max(0, (m.watchProgress.currentTime / m.watchProgress.duration) * 100)) : 0;
-                 const bgImg = m.backdrop_path ? `https://image.tmdb.org/t/p/w500${m.backdrop_path}` : (m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : '');
-
-                 return (
-                   <div onClick={() => props.openMovie('RESUME_' + m.id)}
-                        class="relative w-64 h-36 shrink-0 rounded-2xl overflow-hidden cursor-pointer group snap-start shadow-lg"
-                        style="border: 1px solid var(--border); background: var(--surface)">
-                      <Show when={bgImg} fallback={<div class="w-full h-full bg-[#171921] flex items-center justify-center"><Icon name="movie" class="text-4xl text-gray-700"/></div>}>
-                          <img src={bgImg} class="w-full h-full object-cover opacity-60 group-hover:scale-105 group-hover:opacity-90 transition-all duration-700" />
-                      </Show>
-                      <div class="absolute inset-0 bg-gradient-to-t from-[#05060a] via-[#05060a]/40 to-transparent pointer-events-none" />
-
-                      <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
-                          <div class="w-12 h-12 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center border text-white shadow-[0_0_15px_rgba(0,0,0,0.5)]" style="border-color: var(--p2)">
-                              <Icon name="play_arrow" fill class="text-2xl" style="color: var(--p2)" />
-                          </div>
-                      </div>
-
-                      <div class="p-4 absolute bottom-0 left-0 w-full z-10">
-                         <h4 class="font-bold text-sm text-white truncate drop-shadow-md mb-2">{m.title || m.name}</h4>
-                         <div class="w-full bg-black/50 h-1.5 rounded-full overflow-hidden backdrop-blur-md shadow-inner border border-white/5">
-                            <div class="h-full rounded-full transition-all duration-500" style={`background: var(--p2); width: ${pct}%`} />
-                         </div>
-                         <div class="flex justify-between items-center mt-2">
-                            <span class="text-[8px] font-black text-gray-300 uppercase tracking-widest">{m.media_type === 'tv' ? `S${m.season||1} E${m.episode||1}` : 'Movie'}</span>
-                            <span class="text-[8px] font-black uppercase tracking-widest" style="color: var(--p2)">{Math.round(pct)}%</span>
-                         </div>
-                      </div>
-                   </div>
-                 )
-              }}
-            </For>
-          </div>
-        </div>
-      </Show>
-
       {/* ── HERO RANDOM PICKER ── */}
       <div onClick={pickRandom} class="hero-picker">
         <div class="hero-top-line" />
@@ -117,7 +70,7 @@ export function Dashboard(props) {
         </div>
       </div>
 
-      {/* ── STATS GRID ── */}
+      {/* ── STATS GRID (VAULT OVERVIEW) ── */}
       <div>
         <div class="label-mono mb-4">◈ Vault Overview</div>
         <div class="grid grid-cols-2 gap-3 stagger">
@@ -182,6 +135,52 @@ export function Dashboard(props) {
 
         </div>
       </div>
+
+      {/* ── CONTINUE WATCHING (MOVED HERE) ── */}
+      <Show when={continueWatchingList().length > 0}>
+        <div class="animate-fade-up mt-2">
+          <div class="flex items-center gap-2 mb-4 px-1">
+             <Icon name="play_circle" class="text-[18px]" style="color: var(--p2)" />
+             <div class="label-mono font-bold uppercase tracking-widest text-[10px]" style="color: var(--p2)">Continue Watching</div>
+          </div>
+          <div class="flex gap-4 overflow-x-auto hide-scrollbar pb-4 snap-x">
+            <For each={continueWatchingList()}>
+              {(m) => {
+                 const pct = m.watchProgress.duration > 0 ? Math.min(100, Math.max(0, (m.watchProgress.currentTime / m.watchProgress.duration) * 100)) : 0;
+                 const bgImg = m.backdrop_path ? `https://image.tmdb.org/t/p/w500${m.backdrop_path}` : (m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : '');
+
+                 return (
+                   <div onClick={() => props.openMovie('RESUME_' + m.id)}
+                        class="relative w-64 h-36 shrink-0 rounded-2xl overflow-hidden cursor-pointer group snap-start shadow-lg"
+                        style="border: 1px solid var(--border); background: var(--surface)">
+                      <Show when={bgImg} fallback={<div class="w-full h-full bg-[#171921] flex items-center justify-center"><Icon name="movie" class="text-4xl text-gray-700"/></div>}>
+                          <img src={bgImg} class="w-full h-full object-cover opacity-60 group-hover:scale-105 group-hover:opacity-90 transition-all duration-700" />
+                      </Show>
+                      <div class="absolute inset-0 bg-gradient-to-t from-[#05060a] via-[#05060a]/40 to-transparent pointer-events-none" />
+
+                      <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+                          <div class="w-12 h-12 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center border text-white shadow-[0_0_15px_rgba(0,0,0,0.5)]" style="border-color: var(--p2)">
+                              <Icon name="play_arrow" fill class="text-2xl" style="color: var(--p2)" />
+                          </div>
+                      </div>
+
+                      <div class="p-4 absolute bottom-0 left-0 w-full z-10">
+                         <h4 class="font-bold text-sm text-white truncate drop-shadow-md mb-2">{m.title || m.name}</h4>
+                         <div class="w-full bg-black/50 h-1.5 rounded-full overflow-hidden backdrop-blur-md shadow-inner border border-white/5">
+                            <div class="h-full rounded-full transition-all duration-500" style={`background: var(--p2); width: ${pct}%`} />
+                         </div>
+                         <div class="flex justify-between items-center mt-2">
+                            <span class="text-[8px] font-black text-gray-300 uppercase tracking-widest">{m.media_type === 'tv' ? `S${m.season||1} E${m.episode||1}` : 'Movie'}</span>
+                            <span class="text-[8px] font-black uppercase tracking-widest" style="color: var(--p2)">{Math.round(pct)}%</span>
+                         </div>
+                      </div>
+                   </div>
+                 )
+              }}
+            </For>
+          </div>
+        </div>
+      </Show>
 
       {/* ── RECENTLY ADDED ── */}
       <div>
