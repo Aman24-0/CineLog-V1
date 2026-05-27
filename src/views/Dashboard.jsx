@@ -13,7 +13,15 @@ export function Dashboard(props) {
 
   const continueWatchingList = createMemo(() => {
     return props.watchlist()
-      .filter(m => m.watchProgress && m.watchProgress.currentTime > 0 && m.status !== 'Completed')
+      .filter(m => {
+        if (!m.watchProgress || m.watchProgress.currentTime <= 0 || m.status === 'Completed') return false;
+        if (m.media_type !== 'tv') return true;
+        const wpSeason = parseInt(m.watchProgress.season || 1);
+        const wpEpisode = parseInt(m.watchProgress.episode || 1);
+        const currentSeason = parseInt(m.season || 1);
+        const currentEpisode = parseInt(m.episode || 1);
+        return wpSeason === currentSeason && wpEpisode === currentEpisode;
+      })
       .sort((a, b) => new Date(b.watchProgress.updatedAt).getTime() - new Date(a.watchProgress.updatedAt).getTime());
   });
 

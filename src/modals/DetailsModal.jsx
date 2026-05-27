@@ -169,7 +169,9 @@ export function DetailsModal(props) {
                       currentTime: prog.currentTime,
                       duration: prog.duration || contentDuration() || inferDurationSeconds() || 0,
                       server: activeServer(),
-                      updatedAt: new Date().toISOString()
+                      updatedAt: new Date().toISOString(),
+                      season: movie().season || 1,
+                      episode: movie().episode || 1
                   }
               };
               
@@ -366,19 +368,41 @@ export function DetailsModal(props) {
       if (props.onLogin) props.onLogin();
       return;
     }
-    await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), { 
+    const nextSeason = parseInt(form().season) || 1;
+    const nextEpisode = parseInt(form().episode) || 1;
+    const prevSeason = parseInt(movie().season) || 1;
+    const prevEpisode = parseInt(movie().episode) || 1;
+    const episodeChanged = movie().media_type === 'tv' && (nextSeason !== prevSeason || nextEpisode !== prevEpisode);
+
+    const updates = { 
       status: form().status, 
       rating: parseFloat(form().rating)||0, 
       watchDate: form().watchDate, 
       seasonDates: form().seasonDates,
       notes: form().notes, 
       region: form().region, 
-      season: parseInt(form().season)||1, 
-      episode: parseInt(form().episode)||1, 
+      season: nextSeason, 
+      episode: nextEpisode, 
       tag: form().tag, 
       genresList: form().genres.split(',').map(s=>s.trim()).filter(Boolean), 
       platformsList: form().platforms.split(',').map(s=>cleanPlatform(s.trim())).filter(Boolean) 
-    }); 
+    };
+
+    if (episodeChanged) {
+      const inferred = inferDurationSeconds();
+      updates.watchProgress = {
+        currentTime: 0,
+        duration: inferred || 0,
+        server: activeServer() || null,
+        updatedAt: new Date().toISOString(),
+        season: nextSeason,
+        episode: nextEpisode
+      };
+      setWatchProgress({ currentTime: 0, duration: inferred || 0 });
+      setPlayerStartProgress(0);
+    }
+
+    await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), updates); 
     props.showToast("Saved"); 
     setIsEdit(false); 
   };
