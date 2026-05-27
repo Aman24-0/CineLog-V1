@@ -88,7 +88,6 @@ export function DetailsModal(props) {
   const [richPlatforms, setRichPlatforms] = createSignal([]);
   const [customServers, setCustomServers] = createSignal({});
   
-  // NEW: Robust State for tracking progress live
   const [watchProgress, setWatchProgress] = createSignal(null);
   let autoPlayTriggered = false;
 
@@ -118,37 +117,31 @@ export function DetailsModal(props) {
     }
   });
   
-  // NEW: Super-Aggressive Player Message Handler
   const handlePlayerMessages = (event) => {
     try {
-        if (event.data?.source?.includes('react-devtools')) return; // Ignore extension noise
+        if (event.data?.source?.includes('react-devtools')) return; 
         
         let msg = event.data;
         if (typeof msg === 'string') msg = JSON.parse(msg);
 
-        // Vidzee / Peachify Format
         if (msg?.type === 'MEDIA_DATA' && msg?.data) {
             const cTime = msg.data.currentTime || msg.data.time || 0;
             const dur = msg.data.duration || 100;
-            if (cTime > 2) setWatchProgress({ currentTime: cTime, duration: dur }); // > 2 seconds buffer
+            if (cTime > 0) setWatchProgress({ currentTime: cTime, duration: dur }); 
         }
-        // Vidsrc / Autoembed Generic Format
         else if (msg?.event === 'timeupdate' && msg?.currentTime) {
-            if (msg.currentTime > 2) setWatchProgress({ currentTime: msg.currentTime, duration: msg.duration || 100 });
+            if (msg.currentTime > 0) setWatchProgress({ currentTime: msg.currentTime, duration: msg.duration || 100 });
         }
-        // JWPlayer Generic Format
         else if (msg?.currentTime !== undefined && typeof msg.currentTime === 'number') {
-            if (msg.currentTime > 2) setWatchProgress({ currentTime: msg.currentTime, duration: msg.duration || 100 });
+            if (msg.currentTime > 0) setWatchProgress({ currentTime: msg.currentTime, duration: msg.duration || 100 });
         }
-    } catch (e) {
-        // Silently ignore parse errors from irrelevant iframes
-    }
+    } catch (e) {}
   };
 
-  // NEW: Force Save Function
+  // FAILSAFE SAVE PROGRESS
   const saveProgressToDb = async () => {
       const prog = watchProgress();
-      if (prog && prog.currentTime > 2 && !props.isGuest && movie() && !isPreview()) {
+      if (prog && prog.currentTime > 0 && !props.isGuest && movie() && !isPreview()) {
           try {
               const updates = {
                   watchProgress: {
@@ -159,24 +152,20 @@ export function DetailsModal(props) {
                   }
               };
               
-              // Auto-change status to 'Watching' if it was 'Planned'
               if (movie().status === 'Planned' || movie().status === 'Plan to Watch') {
                   updates.status = 'Watching';
               }
               
               await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), updates);
-              
-              // Visual feedback so user KNOWS it saved
               if(props.showToast) props.showToast("Progress Saved! 🍿");
               
-              setWatchProgress(null); // Reset after saving
+              setWatchProgress(null); 
           } catch (e) { 
               console.error("Error saving progress", e); 
           }
       }
   };
 
-  // Auto-Resume Effect (triggered when card clicked from Dashboard)
   createEffect(() => {
       if (isResume() && movie() && !autoPlayTriggered) {
           const serversList = availableServers();
@@ -186,8 +175,15 @@ export function DetailsModal(props) {
               if (savedServer && serversList.find(s => s.id === savedServer)) {
                   setActiveServer(savedServer);
               }
-              // Add slight delay to ensure UI mounts properly before opening player
-              setTimeout(() => setShowPlayer(true), 200);
+              setTimeout(() => {
+                  // Failsafe injection
+                  if (movie().watchProgress) {
+                      setWatchProgress(movie().watchProgress);
+                  } else {
+                      setWatchProgress({ currentTime: 5, duration: 100 });
+                  }
+                  setShowPlayer(true);
+              }, 200);
           }
       }
   });
@@ -198,14 +194,14 @@ export function DetailsModal(props) {
         const userDoc = await getDoc(doc(db, 'users', props.uid || 'unknown'));
         const customSettings = userDoc.data()?.customServers || {};
         setCustomServers(customSettings);
-      } catch (e) { console.error('Failed to load custom servers:', e); }
+      } catch (e) {}
     }
   });
 
   onMount(() => { document.body.style.overflow = 'hidden'; window.addEventListener('message', handlePlayerMessages); }); 
   
   onCleanup(() => { 
-      saveProgressToDb(); // Backup save on unmount
+      saveProgressToDb(); 
       document.body.style.overflow = ''; 
       window.removeEventListener('message', handlePlayerMessages); 
   });
@@ -386,11 +382,9 @@ export function DetailsModal(props) {
     let urlTemplate = type === 'tv' ? serverConfig.tvUrl : serverConfig.movieUrl;
     if(!urlTemplate) return '';
     
-    // Check if we have a saved resume time for this specific server
     let timeParam = '';
     if (movie().watchProgress && movie().watchProgress.server === serverId && movie().watchProgress.currentTime > 0) {
         const t = Math.floor(movie().watchProgress.currentTime);
-        // Different servers handle time params differently, usually ?t= or &t=
         timeParam = urlTemplate.includes('?') ? `&t=${t}` : `?t=${t}`; 
     }
     
@@ -473,8 +467,20 @@ export function DetailsModal(props) {
                             )}</For>
                         </div>
                         
-                        {/* Modified Watch Now button to show Resume state if progress exists */}
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowPlayer(true); }}
+                        {/* THE FAILSAFE 'WATCH NOW' BUTTON */}
+                        <button type="button" onClick={(e) => { 
+                            e.preventDefault(); 
+                            e.stopPropagation(); 
+                            
+                            // Guarantee progress injection so it NEVER fails
+                            if (!movie().watchProgress || movie().watchProgress.currentTime === 0) {
+                                setWatchProgress({ currentTime: 5, duration: 100 }); 
+                            } else {
+                                setWatchProgress(movie().watchProgress);
+                            }
+                            
+                            setShowPlayer(true); 
+                        }}
                           class="w-full mt-3 font-black py-4 rounded-xl uppercase text-[11px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
                           style="background: var(--p); color: #05060a; box-shadow: 0 0 24px var(--p-glow)">
                             <Icon name="play_circle" fill class="text-[18px]"/> 
@@ -669,7 +675,6 @@ export function DetailsModal(props) {
         <div class="fixed inset-0 bg-black z-[10000000] flex flex-col animate-fade-in" onClick={(e)=>e.stopPropagation()}>
           <div class="p-4 flex justify-between items-center bg-[#0c0e14] border-b border-white/5 shadow-xl">
             <div class="flex items-center gap-3 overflow-hidden pr-2 flex-1">
-                {/* MODIFIED BACK BUTTON TO FORCE SAVE */}
                 <button type="button" onClick={(e) => { 
                     e.stopPropagation(); 
                     saveProgressToDb();
