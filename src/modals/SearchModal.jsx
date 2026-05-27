@@ -29,6 +29,22 @@ export function SearchModal(props) {
     return () => clearTimeout(t);
   });
 
+  const detectUniverse = (media, detailData) => {
+    const title = (media?.title || media?.name || '').toLowerCase();
+    const overview = (detailData?.overview || '').toLowerCase();
+    const collectionName = (detailData?.belongs_to_collection?.name || '').toLowerCase();
+    const studios = (detailData?.production_companies || []).map(c => (c.name || '').toLowerCase()).join(' ');
+    const blob = `${title} ${overview} ${collectionName} ${studios}`;
+
+    if (blob.includes('marvel') || blob.includes('avengers') || blob.includes('iron man') || blob.includes('captain america') || blob.includes('thor') || blob.includes('guardians of the galaxy') || blob.includes('black panther') || blob.includes('doctor strange') || blob.includes('ant-man') || blob.includes('captain marvel') || blob.includes('wanda') || blob.includes('spider-man')) {
+      return { key: 'mcu', name: 'Marvel Cinematic Universe' };
+    }
+    if (blob.includes('dc') || blob.includes('batman') || blob.includes('superman') || blob.includes('wonder woman') || blob.includes('aquaman') || blob.includes('flash') || blob.includes('justice league')) {
+      return { key: 'dceu', name: 'DC Universe' };
+    }
+    return null;
+  };
+
   const addMedia = async (m, e) => {
     if (e) e.stopPropagation();
     if (props.isGuest) {
@@ -68,17 +84,31 @@ export function SearchModal(props) {
       });
 
       if (m.media_type === 'movie' && data?.belongs_to_collection?.id) {
+        const universe = detectUniverse(m, data);
         const franchisesRef = collection(db, 'users', props.uid, 'franchises');
         const frSnap = await getDocs(franchisesRef);
-        let folder = frSnap.docs.find(d => (d.data().tmdbCollectionId || null) === data.belongs_to_collection.id);
+        let folder = null;
+        if (universe?.key) {
+          folder = frSnap.docs.find(d => (d.data().universeKey || null) === universe.key)
+            || frSnap.docs.find(d => (d.data().name || '').toLowerCase() === universe.name.toLowerCase());
+        }
+        if (!folder) folder = frSnap.docs.find(d => (d.data().tmdbCollectionId || null) === data.belongs_to_collection.id);
         if (!folder) {
           const byName = frSnap.docs.find(d => (d.data().name || '').toLowerCase() === (data.belongs_to_collection.name || '').toLowerCase());
           folder = byName;
         }
         let folderId = folder?.id;
         if (!folderId) {
-          const created = await addDoc(franchisesRef, { name: data.belongs_to_collection.name, parentId: null, tmdbCollectionId: data.belongs_to_collection.id, createdAt: serverTimestamp() });
+          const created = await addDoc(franchisesRef, {
+            name: universe?.name || data.belongs_to_collection.name,
+            parentId: null,
+            tmdbCollectionId: data.belongs_to_collection.id,
+            universeKey: universe?.key || null,
+            createdAt: serverTimestamp()
+          });
           folderId = created.id;
+        } else if (universe?.key) {
+          await setDoc(doc(db, 'users', props.uid, 'franchises', folderId), { universeKey: universe.key, name: universe.name }, { merge: true });
         }
 
         const collRes = await fetch(`https://api.themoviedb.org/3/collection/${data.belongs_to_collection.id}?api_key=${TMDB_KEY}`);
