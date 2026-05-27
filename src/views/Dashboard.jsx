@@ -154,7 +154,14 @@ export function Dashboard(props) {
           <div class="flex gap-4 overflow-x-auto hide-scrollbar pb-4 snap-x">
             <For each={continueWatchingList()}>
               {(m) => {
-                 const pct = m.watchProgress.duration > 0 ? Math.min(100, Math.max(0, (m.watchProgress.currentTime / m.watchProgress.duration) * 100)) : 0;
+                 const runtimeBasedDuration = (Number(m.runtime) > 0 ? Number(m.runtime) * 60 : 0);
+                 const fallbackDuration = m.media_type === 'tv' ? 45 * 60 : 120 * 60;
+                 const effectiveDuration = Number(m.watchProgress.duration) > 0
+                  ? Math.max(Number(m.watchProgress.duration), runtimeBasedDuration || 0)
+                  : (runtimeBasedDuration || fallbackDuration);
+                 const pct = effectiveDuration > 0
+                  ? Math.min(100, Math.max(0, (Number(m.watchProgress.currentTime || 0) / effectiveDuration) * 100))
+                  : 0;
                  const bgImg = m.backdrop_path ? `https://image.tmdb.org/t/p/w500${m.backdrop_path}` : (m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : '');
 
                  return (

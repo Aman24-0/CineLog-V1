@@ -100,7 +100,8 @@ export function DetailsModal(props) {
     const d = details();
     const mins = d?.runtime || d?.episode_run_time?.[0] || movie()?.runtime || 0;
     const sec = Number(mins) * 60;
-    return Number.isFinite(sec) && sec > 0 ? sec : 0;
+    if (Number.isFinite(sec) && sec > 0) return sec;
+    return movie()?.media_type === 'tv' ? 45 * 60 : 120 * 60;
   };
 
   const availableServers = createMemo(() => {
@@ -194,7 +195,7 @@ export function DetailsModal(props) {
     if (!startedAt) return;
     const elapsed = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
     const base = Math.max(0, Number(playerStartProgress()) || 0);
-    const dur = contentDuration() || inferDurationSeconds() || watchProgress()?.duration || 0;
+    const dur = contentDuration() || watchProgress()?.duration || inferDurationSeconds() || 0;
     const next = dur > 0 ? Math.min(base + elapsed, dur) : base + elapsed;
     if (next > base) {
       setWatchProgress({ currentTime: next, duration: dur });
@@ -448,9 +449,21 @@ export function DetailsModal(props) {
     if(!urlTemplate) return '';
     
     let timeParam = '';
-    if (movie().watchProgress && movie().watchProgress.server === serverId && movie().watchProgress.currentTime > 0) {
+    const canResumeFromProgress = movie().watchProgress
+      && movie().watchProgress.server === serverId
+      && movie().watchProgress.currentTime > 0
+      && (
+        movie().media_type !== 'tv' ||
+        (
+          parseInt(movie().watchProgress.season || 1) === parseInt(movie().season || 1) &&
+          parseInt(movie().watchProgress.episode || 1) === parseInt(movie().episode || 1)
+        )
+      );
+    if (canResumeFromProgress) {
         const t = Math.floor(movie().watchProgress.currentTime);
-        timeParam = urlTemplate.includes('?') ? `&t=${t}` : `?t=${t}`; 
+        timeParam = urlTemplate.includes('?')
+          ? `&t=${t}&start=${t}&time=${t}`
+          : `?t=${t}&start=${t}&time=${t}`; 
     }
     
     return urlTemplate
