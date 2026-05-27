@@ -252,7 +252,6 @@ export default function App() {
             isGuest={!user()}
             onLogin={() => { setSearchModal(false); handleLogin(); }}
             openPreview={(item, source) => {
-              if (source !== 'fromPerson') setSearchModal(false);
               setPreviewSource(source || 'search');
               setDetailsId(`PREVIEW_${JSON.stringify(item)}`);
             }}
@@ -264,9 +263,8 @@ export default function App() {
             watchlist={watchlist()}
             franchises={franchises()}
             onClose={() => {
-              const src = previewSource();
-              setDetailsId(null); setPreviewSource(null);
-              if (src === 'fromPerson') setSearchModal(true);
+              setDetailsId(null);
+              setPreviewSource(null);
             }}
             uid={user()?.uid}
             showToast={showToast}
