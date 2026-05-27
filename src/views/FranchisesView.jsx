@@ -106,6 +106,38 @@ export function FranchisesView(props) {
     return groups;
   });
 
+  const detectSubCollectionName = (m) => {
+    const t = (m.title || m.name || '').toLowerCase();
+    if (t.includes('iron man')) return 'Iron Man Collection';
+    if (t.includes('thor')) return 'Thor Collection';
+    if (t.includes('captain america')) return 'Captain America Collection';
+    if (t.includes('avengers')) return 'Avengers Collection';
+    if (t.includes('guardians of the galaxy') || t.includes('guardians')) return 'Guardians of the Galaxy Collection';
+    if (t.includes('ant-man')) return 'Ant-Man Collection';
+    if (t.includes('doctor strange')) return 'Doctor Strange Collection';
+    if (t.includes('black panther')) return 'Black Panther Collection';
+    if (t.includes('captain marvel') || t.includes('the marvels')) return 'Captain Marvel Collection';
+    if (t.includes('spider-man') || t.includes('spiderman')) return 'Spider-Man Collection';
+    if (t.includes('deadpool')) return 'Deadpool Collection';
+    if (t.includes('x-men') || t.includes('wolverine') || t.includes('logan')) return 'X-Men Collection';
+    return 'Other / Crossover';
+  };
+
+  const groupedByCollection = createMemo(() => {
+    const map = new Map();
+    flattenedMovies().forEach((m) => {
+      const key = detectSubCollectionName(m);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(m);
+    });
+    return [...map.entries()]
+      .map(([name, items]) => ({
+        name,
+        items: items.sort((a, b) => (parseInt(String(a.release_date || a.first_air_date || '').slice(0, 4)) || 0) - (parseInt(String(b.release_date || b.first_air_date || '').slice(0, 4)) || 0))
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  });
+
   const createFolder = async () => {
     const n = prompt('Folder Name:');
     if (n && n.trim()) {
@@ -183,7 +215,7 @@ export function FranchisesView(props) {
 
       <Show when={currentFolder()}>
         <div class="flex justify-between items-center mb-4 px-1 gap-2">
-          <h3 class="font-headline text-2xl text-white">Titles <span style="color: var(--p)">({sortMode()==='grouped' ? groupedByFolder().reduce((a,g)=>a+g.items.length,0) : flattenedMovies().length})</span></h3>
+          <h3 class="font-headline text-2xl text-white">Titles <span style="color: var(--p)">({sortMode()==='grouped' ? groupedByCollection().reduce((a,g)=>a+g.items.length,0) : flattenedMovies().length})</span></h3>
           <div class="flex items-center gap-2">
             <Show when={currentFolderData()?.tmdbCollectionId}><button onClick={addMissingFromCollection} disabled={bulkAdding()} class="text-[10px] font-bold uppercase rounded-full px-3 py-1.5 disabled:opacity-50" style="background: var(--p-dim); border: 1px solid var(--p); color: var(--p)">{bulkAdding() ? 'Adding...' : 'Add Missing'}</button></Show>
             <div class="flex rounded-full border" style="border-color:var(--border-active)">
@@ -210,7 +242,7 @@ export function FranchisesView(props) {
 
         <Show when={sortMode() === 'grouped'}>
           <div class="space-y-6">
-            <For each={groupedByFolder()}>{(group)=><div><h4 class="font-bold text-white mb-2">{group.folder.name}</h4><div class="space-y-2"><For each={group.items}>{(m)=><div class="rounded-xl p-3 flex items-center gap-3" style="background:var(--surface)"><img src={`https://image.tmdb.org/t/p/w92${m.poster_path}`} class="w-10 h-14 rounded-lg object-cover"/><button class="text-left text-white font-bold truncate" onClick={()=>props.openMovie(m.id)}>{m.title || m.name}</button></div>}</For></div></div>}</For>
+            <For each={groupedByCollection()}>{(group)=><div><h4 class="font-bold text-white mb-2">{group.name}</h4><div class="space-y-2"><For each={group.items}>{(m)=><div class="rounded-xl p-3 flex items-center gap-3" style="background:var(--surface)"><img src={`https://image.tmdb.org/t/p/w92${m.poster_path}`} class="w-10 h-14 rounded-lg object-cover"/><button class="text-left text-white font-bold truncate" onClick={()=>props.openMovie(m.id)}>{m.title || m.name}</button></div>}</For></div></div>}</For>
           </div>
         </Show>
       </Show>
