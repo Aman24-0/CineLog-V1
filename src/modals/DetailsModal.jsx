@@ -677,7 +677,7 @@ export function DetailsModal(props) {
                     </div>
 
                     <Show when={isPreview()}>
-                        <button onClick={addToVaultFromPreview} class="w-full mt-6 bg-gradient-to-r from-[var(--secondary)] to-[var(--primary)] text-[#0c0e14] font-black py-4 rounded-xl text-xs uppercase tracking-widest active:scale-95 transition-transform shadow-lg shadow-[var(--primary)]/20 flex items-center justify-center gap-2">
+                        <button onClick={addToVaultFromPreview} class="w-full mt-6 font-black py-4 px-5 rounded-xl text-xs uppercase tracking-widest active:scale-95 transition-transform flex items-center justify-center gap-2 border" style="background: var(--p); color: #05060a; border-color: var(--p); box-shadow: 0 0 24px var(--p-glow); min-height: 52px; opacity: 1; visibility: visible">
                             <Icon name="add_circle" class="text-lg"/> Add to My Universe
                         </button>
                     </Show>
