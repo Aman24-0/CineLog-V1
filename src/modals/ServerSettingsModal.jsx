@@ -89,7 +89,7 @@ export function ServerSettingsModal(props) {
 
   onMount(async () => {
     try {
-      const userDoc = await getDoc(doc(db, 'users', props.uid));
+      const userDoc = await getDoc(doc(db, 'users', props.userEmail));
       const userData = userDoc.data();
       
       let loadedServers = DEFAULT_SERVERS.map(s => ({...s}));
@@ -144,9 +144,9 @@ export function ServerSettingsModal(props) {
       // We use updateDoc to completely overwrite the customServers map, effectively deleting removed items.
       // If the document doesn't exist at all yet, it will fail and we fallback to setDoc.
       try {
-        await updateDoc(doc(db, 'users', props.uid), { customServers });
+        await updateDoc(doc(db, 'users', props.userEmail), { customServers });
       } catch (e) {
-        await setDoc(doc(db, 'users', props.uid), { customServers });
+        await setDoc(doc(db, 'users', props.userEmail), { customServers });
       }
       
       props.showToast('Server settings saved!');
@@ -161,7 +161,7 @@ export function ServerSettingsModal(props) {
     if (!confirm('Reset all servers to default and delete custom ones?')) return;
     setServers(DEFAULT_SERVERS.map(s => ({...s})));
     try {
-      await updateDoc(doc(db, 'users', props.uid), { customServers: {} });
+      await updateDoc(doc(db, 'users', props.userEmail), { customServers: {} });
       props.showToast('Reset to defaults');
     } catch (err) {
       console.error('Error resetting:', err);

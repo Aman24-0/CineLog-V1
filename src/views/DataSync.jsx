@@ -63,7 +63,7 @@ export function DataSync(props) {
           const mergedPlatforms = Array.from(finalNames);
 
           if (mergedPlatforms.length > currentDbPlatforms.length || newGenres.length > (item.genresList?.length || 0) || newTotalEps !== item.totalEps) {
-              await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(item.id)), {
+              await updateDoc(doc(db, 'users', props.userEmail, 'watchlist', String(item.id)), {
                   platformsList: mergedPlatforms, genresList: newGenres, totalEps: newTotalEps
               });
               updatedCount++;
@@ -118,7 +118,7 @@ export function DataSync(props) {
                 throw new Error("Already exists in Vault");
             }
 
-            await setDoc(doc(db, 'users', props.uid, 'watchlist', String(item.id)), item);
+            await setDoc(doc(db, 'users', props.userEmail, 'watchlist', String(item.id)), item);
             
             // Add to Set to prevent duplicates within the imported file itself
             existingIds.add(String(item.id));

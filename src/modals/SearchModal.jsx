@@ -49,7 +49,7 @@ export function SearchModal(props) {
       const director = data.credits?.crew?.find(c => c.job === 'Director')?.name || '';
       const castList = [...castNames, director].filter(Boolean);
 
-      await setDoc(doc(db, 'users', props.uid, 'watchlist', String(m.id)), {
+      await setDoc(doc(db, 'users', props.userEmail, 'watchlist', String(m.id)), {
         id: m.id,
         title: m.title || m.name || '',
         poster_path: m.poster_path,
@@ -190,7 +190,7 @@ export function SearchModal(props) {
       <Show when={personId()}>
         <PersonModal
           personId={personId()}
-          uid={props.uid}
+          userEmail={props.userEmail}
           watchlist={props.watchlist}
           showToast={props.showToast}
           onClose={() => setPersonId(null)}

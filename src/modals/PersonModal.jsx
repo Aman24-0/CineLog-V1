@@ -65,7 +65,7 @@ export function PersonModal(props) {
       const director = tmdbData.credits?.crew?.find(c => c.job === 'Director')?.name || '';
       const castList = [...castNames, director].filter(Boolean);
 
-      await setDoc(doc(db, 'users', props.uid, 'watchlist', String(item.id)), {
+      await setDoc(doc(db, 'users', props.userEmail, 'watchlist', String(item.id)), {
         id: String(item.id),
         title: item.title || item.name,
         media_type: item.media_type,

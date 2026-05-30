@@ -80,10 +80,10 @@ export default function App() {
       setUser(u);
       if (u) {
         let wReady = false; let fReady = false;
-        onSnapshot(query(collection(db, 'users', u.uid, 'watchlist'), orderBy('addedAt', 'desc')), (snap) => {
+        onSnapshot(query(collection(db, 'users', u.email, 'watchlist'), orderBy('addedAt', 'desc')), (snap) => {
           setWatchlist(snap.docs.map(d => ({ id: d.id, ...d.data() }))); wReady = true; if (fReady) setLoading(false);
         });
-        onSnapshot(collection(db, 'users', u.uid, 'franchises'), (snap) => {
+        onSnapshot(collection(db, 'users', u.email, 'franchises'), (snap) => {
           setFranchises(snap.docs.map(d => ({ id: d.id, ...d.data() }))); fReady = true; if (wReady) setLoading(false);
         });
       } else { 
@@ -98,7 +98,7 @@ export default function App() {
     if (!user()) return;
     if (confirm("DANGER: Entire Vault will be wiped. Sure?")) {
       showToast("Nuking Vault...");
-      const snap = await getDocs(collection(db, 'users', user().uid, 'watchlist'));
+      const snap = await getDocs(collection(db, 'users', user().email, 'watchlist'));
       const docs = snap.docs;
       for (let i = 0; i < docs.length; i += 500) {
         const batch = writeBatch(db);
@@ -206,15 +206,15 @@ export default function App() {
           </Show>
           <Show when={view() === 'franchises'}>
             <Show when={user()} fallback={<GuestPrompt onLogin={handleLogin} />}>
-              <FranchisesView watchlist={watchlist} franchises={franchises} uid={user().uid} openMovie={setDetailsId} showToast={showToast} />
+              <FranchisesView watchlist={watchlist} franchises={franchises} userEmail={user().email} openMovie={setDetailsId} showToast={showToast} />
             </Show>
           </Show>
           <Show when={view() === 'upcoming'}>
-            <UpcomingView watchlist={watchlist} uid={user()?.uid} showToast={showToast} isGuest={!user()} onLogin={handleLogin} />
+            <UpcomingView watchlist={watchlist} userEmail={user()?.email} showToast={showToast} isGuest={!user()} onLogin={handleLogin} />
           </Show>
           <Show when={view() === 'sync'}>
             <Show when={user()} fallback={<GuestPrompt onLogin={handleLogin} />}>
-              <DataSync watchlist={watchlist} uid={user().uid} showToast={showToast} />
+              <DataSync watchlist={watchlist} userEmail={user().email} showToast={showToast} />
             </Show>
           </Show>
         </main>
@@ -246,7 +246,7 @@ export default function App() {
         <Show when={searchModal()}>
           <SearchModal
             onClose={() => setSearchModal(false)}
-            uid={user()?.uid}
+            userEmail={user()?.email}
             showToast={showToast}
             watchlist={watchlist()}
             isGuest={!user()}
@@ -268,7 +268,7 @@ export default function App() {
               setDetailsId(null); setPreviewSource(null);
               if (src === 'fromPerson') setSearchModal(true);
             }}
-            uid={user()?.uid}
+            userEmail={user()?.email}
             showToast={showToast}
             theme={theme}
             isGuest={!user()}
@@ -283,7 +283,7 @@ export default function App() {
         </Show>
         <Show when={serverSettingsModal()}>
           <ServerSettingsModal 
-            uid={user()?.uid} 
+            userEmail={user()?.email}
             showToast={showToast} 
             onClose={() => setServerSettingsModal(false)} 
           />

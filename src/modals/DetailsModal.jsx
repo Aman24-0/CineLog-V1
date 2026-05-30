@@ -156,7 +156,7 @@ export function DetailsModal(props) {
                   updates.status = 'Watching';
               }
               
-              await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), updates);
+              await updateDoc(doc(db, 'users', props.userEmail, 'watchlist', String(movie().id)), updates);
               if(props.showToast) props.showToast("Progress Saved! 🍿");
               
               setWatchProgress(null); 
@@ -191,7 +191,7 @@ export function DetailsModal(props) {
   onMount(async () => {
     if (!props.isGuest) {
       try {
-        const userDoc = await getDoc(doc(db, 'users', props.uid || 'unknown'));
+        const userDoc = await getDoc(doc(db, 'users', props.userEmail || 'unknown'));
         const customSettings = userDoc.data()?.customServers || {};
         setCustomServers(customSettings);
       } catch (e) {}
@@ -241,7 +241,7 @@ export function DetailsModal(props) {
               if(d.Response === 'True') {
                   const rt = d.Ratings?.find(r=>r.Source === 'Rotten Tomatoes')?.Value || '-';
                   setOmdbData({ imdb: d.imdbRating || '-', rt: rt });
-                  if (!isPreview() && !props.isGuest) updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), { imdbRating: d.imdbRating || '-', rtRating: rt.replace('%','') });
+                  if (!isPreview() && !props.isGuest) updateDoc(doc(db, 'users', props.userEmail, 'watchlist', String(movie().id)), { imdbRating: d.imdbRating || '-', rtRating: rt.replace('%','') });
               }
           });
 
@@ -309,7 +309,7 @@ export function DetailsModal(props) {
                   const missingInDb = fetchedNames.filter(n => !currentDbPlatforms.includes(n));
                   if(missingInDb.length > 0) {
                       const mergedPlatforms = [...new Set([...currentDbPlatforms, ...fetchedNames])];
-                      await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), { platformsList: mergedPlatforms });
+                      await updateDoc(doc(db, 'users', props.userEmail, 'watchlist', String(movie().id)), { platformsList: mergedPlatforms });
                   }
               }
           };
@@ -325,7 +325,7 @@ export function DetailsModal(props) {
       if (props.onLogin) props.onLogin();
       return;
     }
-    await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), { 
+    await updateDoc(doc(db, 'users', props.userEmail, 'watchlist', String(movie().id)), {
       status: form().status, 
       rating: parseFloat(form().rating)||0, 
       watchDate: form().watchDate, 
@@ -359,7 +359,7 @@ export function DetailsModal(props) {
       const castNames = details().credits?.cast?.slice(0, 5).map(c => c.name) || [];
       const director = details().credits?.crew?.find(c => c.job === 'Director')?.name || '';
       const castList = [...castNames, director].filter(Boolean);
-      await setDoc(doc(db, 'users', props.uid, 'watchlist', String(item.id)), {
+      await setDoc(doc(db, 'users', props.userEmail, 'watchlist', String(item.id)), {
         id: String(item.id), title: item.title || item.name, media_type: item.media_type || 'movie', poster_path: item.poster_path, backdrop_path: item.backdrop_path, release_date: item.release_date || item.first_air_date || '', status: 'Planned', addedAt: new Date(), castList: castList
       });
       props.showToast("Added to Vault! 🍿");
@@ -505,7 +505,7 @@ export function DetailsModal(props) {
                                       if (props.onLogin) props.onLogin();
                                       return;
                                     }
-                                    let n = (parseInt(movie().episode)||1)+1; let s = movie().status==='Planned'?'Watching':movie().status; if(movie().totalEps>0 && n>=movie().totalEps) { s='Completed'; props.showToast("Completed! 🎉"); } await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), {episode: n, status: s}); }} class="w-full bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/30 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-[var(--primary)] hover:text-[#0c0e14] active:scale-95 transition-all">+1 Episode</button>
+                                    let n = (parseInt(movie().episode)||1)+1; let s = movie().status==='Planned'?'Watching':movie().status; if(movie().totalEps>0 && n>=movie().totalEps) { s='Completed'; props.showToast("Completed! 🎉"); } await updateDoc(doc(db, 'users', props.userEmail, 'watchlist', String(movie().id)), {episode: n, status: s}); }} class="w-full bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/30 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-[var(--primary)] hover:text-[#0c0e14] active:scale-95 transition-all">+1 Episode</button>
                             </Show>
                         </div>
                     </Show>
@@ -605,7 +605,7 @@ export function DetailsModal(props) {
                               if (props.onLogin) props.onLogin();
                               return;
                             }
-                            if(confirm("Permanently delete?")) { await deleteDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id))); props.showToast("Deleted"); props.onClose(); } 
+                            if(confirm("Permanently delete?")) { await deleteDoc(doc(db, 'users', props.userEmail, 'watchlist', String(movie().id))); props.showToast("Deleted"); props.onClose(); }
                           }} class="text-red-500/50 hover:text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-colors mx-auto active:scale-95"><Icon name="delete" class="text-sm"/> Remove from Universe</button></div>
                     </Show>
                   </div>
@@ -704,7 +704,7 @@ export function DetailsModal(props) {
       <Show when={personId()}>
         <PersonModal
           personId={personId()}
-          uid={props.uid}
+          userEmail={props.userEmail}
           watchlist={props.watchlist}
           showToast={props.showToast}
           onClose={() => setPersonId(null)}

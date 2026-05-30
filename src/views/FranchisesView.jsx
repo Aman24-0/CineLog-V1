@@ -16,7 +16,7 @@ function AddToFolderModal(props) {
 
   const addToFolder = async (m) => {
     const nextOrder = props.currentMovies().length + 1;
-    await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(m.id)), { [`franchises.${props.folderId}`]: nextOrder });
+    await updateDoc(doc(db, 'users', props.userEmail, 'watchlist', String(m.id)), { [`franchises.${props.folderId}`]: nextOrder });
     props.showToast('Added!');
   };
 
@@ -100,7 +100,7 @@ export function FranchisesView(props) {
   const createFolder = async () => {
     const n = prompt('Folder Name:');
     if (n && n.trim()) {
-      await addDoc(collection(db, 'users', props.uid, 'franchises'), { name: n.trim(), parentId: currentFolder(), createdAt: serverTimestamp() });
+      await addDoc(collection(db, 'users', props.userEmail, 'franchises'), { name: n.trim(), parentId: currentFolder(), createdAt: serverTimestamp() });
       props.showToast('Folder created!');
     }
   };
@@ -110,7 +110,7 @@ export function FranchisesView(props) {
     if (index + dir < 0 || index + dir >= arr.length) return;
     const batch = writeBatch(db);
     [arr[index], arr[index + dir]] = [arr[index + dir], arr[index]];
-    arr.forEach((m, i) => batch.update(doc(db, 'users', props.uid, 'watchlist', String(m.id)), { [`franchises.${currentFolder()}`]: i + 1 }));
+    arr.forEach((m, i) => batch.update(doc(db, 'users', props.userEmail, 'watchlist', String(m.id)), { [`franchises.${currentFolder()}`]: i + 1 }));
     await batch.commit();
   };
 
@@ -118,7 +118,7 @@ export function FranchisesView(props) {
     if (!confirm(`"${m.title || m.name}" ko folder se hatayein?`)) return;
     const updated = { ...m.franchises };
     delete updated[currentFolder()];
-    await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(m.id)), { franchises: updated });
+    await updateDoc(doc(db, 'users', props.userEmail, 'watchlist', String(m.id)), { franchises: updated });
     props.showToast('Removed from folder');
   };
 
@@ -171,7 +171,7 @@ export function FranchisesView(props) {
                     <h3 class="font-headline text-3xl text-white leading-tight drop-shadow-lg">{f.name}</h3>
                     <p class="label-mono mt-1" style="color: var(--muted)">{movieCount()} titles</p>
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); confirm('Delete folder?') && deleteDoc(doc(db, 'users', props.uid, 'franchises', f.id)); }}
+                  <button onClick={(e) => { e.stopPropagation(); confirm('Delete folder?') && deleteDoc(doc(db, 'users', props.userEmail, 'franchises', f.id)); }}
                     class="absolute top-4 right-4 z-30 w-10 h-10 flex items-center justify-center rounded-full transition-all"
                     style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); color: white">
                     <Icon name="delete" class="text-lg" />
@@ -249,7 +249,7 @@ export function FranchisesView(props) {
       </Show>
 
       <Show when={showAddModal() && currentFolder()}>
-        <AddToFolderModal uid={props.uid} folderId={currentFolder()} watchlist={props.watchlist}
+        <AddToFolderModal userEmail={props.userEmail} folderId={currentFolder()} watchlist={props.watchlist}
           currentMovies={currentMovies} showToast={props.showToast} onClose={() => setShowAddModal(false)} />
       </Show>
     </div>

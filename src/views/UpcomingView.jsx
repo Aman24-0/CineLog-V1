@@ -131,7 +131,7 @@ export function UpcomingView(props) {
     if(props.watchlist().some(item => String(item.id) === String(m.id))) return props.showToast("Already in vault!");
     const endpoint = m.media_type === 'tv' ? 'tv' : 'movie';
     const detailRes = await fetch(`https://api.themoviedb.org/3/${endpoint}/${m.id}?api_key=${TMDB_KEY}`); const fullData = await detailRes.json();
-    await setDoc(doc(db, 'users', props.uid, 'watchlist', String(m.id)), {
+    await setDoc(doc(db, 'users', props.userEmail, 'watchlist', String(m.id)), {
       id: m.id, title: m.title || m.name, poster_path: m.poster_path, backdrop_path: m.backdrop_path, media_type: m.media_type, status: 'Planned', addedAt: serverTimestamp(),
       release_date: m.calc_date || '', region: activeTab() === 'Indian' ? 'Indian' : 'International', season: 1, episode: 0, totalEps: fullData.number_of_episodes || 0, runtime: fullData.runtime || fullData.episode_run_time?.[0] || 0
     }); props.showToast("Added to Vault"); setPreviewMovie(null);
