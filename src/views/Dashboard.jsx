@@ -1,37 +1,10 @@
-import { createMemo, createSignal, onMount, For, Show } from 'solid-js';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase';
-import { Icon, TMDB_KEY } from '../utils';
+import { createMemo, For, Show } from 'solid-js';
+import { Icon } from '../utils';
 import { MovieCard } from '../components/MovieCard';
 import { AIRecommend } from '../components/AIRecommend';
 
 export function Dashboard(props) {
 
-  const [newEpisodes, setNewEpisodes] = createSignal([]);
-
-  onMount(async () => {
-    if (props.isGuest || !props.uid) return;
-    const watchingShows = props.watchlist().filter(m => m.media_type === 'tv' && m.status === 'Watching').slice(0, 12);
-    const found = [];
-    for (const show of watchingShows) {
-      try {
-        const res = await fetch(`https://api.themoviedb.org/3/tv/${show.id}?api_key=${TMDB_KEY}`);
-        if (!res.ok) continue;
-        const data = await res.json();
-        const last = data.last_episode_to_air;
-        if (!last?.air_date || new Date(last.air_date) > new Date()) continue;
-        const currentSeason = Number(show.season || 1);
-        const currentEpisode = Number(show.episode || 0);
-        const hasNew = Number(last.season_number || 0) > currentSeason || (Number(last.season_number || 0) === currentSeason && Number(last.episode_number || 0) > currentEpisode);
-        if (hasNew) found.push({ ...show, latestEpisode: last });
-        await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(show.id)), {
-          lastEpisodeCheckedAt: new Date().toISOString(),
-          latestEpisodeKnown: last ? { season: last.season_number, episode: last.episode_number, airDate: last.air_date } : null
-        });
-      } catch (e) {}
-    }
-    setNewEpisodes(found);
-  });
   const stats = createMemo(() => ({
     total:     props.watchlist().length,
     completed: props.watchlist().filter(m => m.status === 'Completed').length,
@@ -172,28 +145,6 @@ export function Dashboard(props) {
         </div>
       </div>
 
-
-      <Show when={newEpisodes().length > 0}>
-        <div class="animate-fade-up">
-          <div class="flex items-center gap-2 mb-4 px-1">
-            <Icon name="notifications_active" class="text-[18px]" style="color: var(--p)" />
-            <div class="label-mono font-bold uppercase tracking-widest text-[10px]" style="color: var(--p)">New Episodes</div>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            <For each={newEpisodes()}>{(m) => (
-              <button onClick={() => props.openMovie(m.id)} class="glass-surface rounded-2xl p-4 text-left border border-white/5 hover:border-[var(--p)]/40 transition-all">
-                <div class="flex items-center gap-3">
-                  <img src={m.poster_path ? `https://image.tmdb.org/t/p/w92${m.poster_path}` : ''} class="w-10 h-14 rounded-xl object-cover bg-black/40" />
-                  <div class="min-w-0">
-                    <p class="font-black text-white truncate">{m.title || m.name}</p>
-                    <p class="text-[10px] font-bold uppercase tracking-widest" style="color: var(--p)">S{m.latestEpisode.season_number} E{m.latestEpisode.episode_number} available</p>
-                  </div>
-                </div>
-              </button>
-            )}</For>
-          </div>
-        </div>
-      </Show>
 
       {/* ── CONTINUE WATCHING (MOVED HERE) ── */}
       <Show when={continueWatchingList().length > 0}>

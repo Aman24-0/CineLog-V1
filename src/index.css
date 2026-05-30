@@ -14,7 +14,6 @@
 body.theme-sage       { --p: #a8ff78; --p2: #ff78c4; --p-glow: rgba(168,255,120,0.22); --p-dim: rgba(168,255,120,0.08); }
 body.theme-matrix     { --p: #39ff14; --p2: #00f5a0; --p-glow: rgba(57,255,20,0.22);  --p-dim: rgba(57,255,20,0.08); }
 body.theme-netflix    { --p: #ff2d55; --p2: #ff9500; --p-glow: rgba(255,45,85,0.22);  --p-dim: rgba(255,45,85,0.08); }
-body.theme-cyberpunk  { --p: #ffe600; --p2: #ff003c; --p-glow: rgba(255,230,0,0.22); --p-dim: rgba(255,230,0,0.08); }
 body.theme-interstellar { --p: #00c2ff; --p2: #f9a620; --p-glow: rgba(0,194,255,0.22); --p-dim: rgba(0,194,255,0.08); }
 body.theme-neonhorizon { --p: #ff2af0; --p2: #00ffe7; --p-glow: rgba(255,42,240,0.22); --p-dim: rgba(255,42,240,0.08); }
 body.theme-vibranium  { --p: #9d4edd; --p2: #06ffd4; --p-glow: rgba(157,78,221,0.22); --p-dim: rgba(157,78,221,0.08); }

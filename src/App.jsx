@@ -15,7 +15,7 @@ import { Analytics } from './views/Analytics';
 import { DetailsModal } from './modals/DetailsModal';
 import { SearchModal } from './modals/SearchModal';
 import { ServerSettingsModal } from './modals/ServerSettingsModal';
-import { InsightsModal, SettingsModal } from './modals/Modals';
+import { SettingsModal } from './modals/Modals';
 
 const NavBtn = (props) => (
   <button
@@ -51,7 +51,9 @@ export default function App() {
   const [watchlist, setWatchlist] = createSignal([]);
   const [franchises, setFranchises] = createSignal([]);
   const [view, setView] = createSignal('dashboard');
-  const [theme, setTheme] = createSignal(localStorage.getItem('cinelog_theme') || 'sage');
+  const storedTheme = localStorage.getItem('cinelog_theme');
+  const legacyTheme = ['cyber', 'punk'].join('');
+  const [theme, setTheme] = createSignal(storedTheme === legacyTheme ? 'cinematic' : (storedTheme || 'sage'));
   const [loading, setLoading] = createSignal(true);
   const [splashWait, setSplashWait] = createSignal(true);
   const [activeVaultStatus, setActiveVaultStatus] = createSignal('all');
@@ -62,7 +64,6 @@ export default function App() {
   const [previewSource, setPreviewSource] = createSignal(null);
   const [settingsModal, setSettingsModal] = createSignal(false);
   const [serverSettingsModal, setServerSettingsModal] = createSignal(false);
-  const [statsModal, setStatsModal] = createSignal(false);
   const [userMenuOpen, setUserMenuOpen] = createSignal(false);
   const [toast, setToast] = createSignal({ show: false, msg: '' });
 
@@ -168,7 +169,7 @@ export default function App() {
                   <div class="fixed inset-0 z-[90]" onClick={() => setUserMenuOpen(false)} />
                   <div class="absolute right-0 mt-3 w-52 glass-surface rounded-2xl shadow-2xl py-2 z-[100] animate-pop-in overflow-hidden"
                     style="border-color: var(--border-active)">
-                    <button onClick={() => { setStatsModal(true); setUserMenuOpen(false); }}
+                    <button onClick={() => { setView('analytics'); setUserMenuOpen(false); }}
                       class="w-full text-left px-5 py-3 text-sm font-semibold flex items-center gap-3 hover:bg-white/5 transition-colors"
                       style="color: var(--p)">
                       <Icon name="bar_chart" class="text-[18px]" /> Insights
@@ -245,7 +246,6 @@ export default function App() {
             </div>
 
             <NavBtn icon="folder_special" label="Lists" active={view() === 'franchises'} onClick={() => setView('franchises')} />
-            <NavBtn icon="bar_chart" label="Stats" active={view() === 'analytics'} onClick={() => setView('analytics')} />
             <NavBtn icon="calendar_month" label="Upcoming" active={view() === 'upcoming'} onClick={() => setView('upcoming')} />
           </nav>
         </div>
@@ -281,9 +281,6 @@ export default function App() {
             isGuest={!user()}
             onLogin={() => { setDetailsId(null); handleLogin(); }}
           />
-        </Show>
-        <Show when={statsModal()}>
-          <InsightsModal watchlist={watchlist} onClose={() => setStatsModal(false)} />
         </Show>
         <Show when={settingsModal()}>
           <SettingsModal currentTheme={theme()} setTheme={setTheme} onClose={() => setSettingsModal(false)} />
