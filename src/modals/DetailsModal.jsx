@@ -116,7 +116,27 @@ export function DetailsModal(props) {
 
   const selectedSeasonData = createMemo(() => tvSeasons().find(s => Number(s.season_number) === Number(selectedSeason())));
   const selectedSeasonEpisodes = createMemo(() => seasonEpisodes()[selectedSeason()]?.episodes || []);
+  const currentSeasonNumber = createMemo(() => parseInt(form().season || movie()?.season || 1) || 1);
+  const currentEpisodeNumber = createMemo(() => parseInt(form().episode || movie()?.episode || 1) || 1);
   const episodeDocId = (season, episode) => `s${season}_e${episode}`;
+  const compareEpisodePosition = (aSeason, aEpisode, bSeason, bEpisode) => (Number(aSeason) - Number(bSeason)) || (Number(aEpisode) - Number(bEpisode));
+  const getEpisodesForSeason = (season) => (seasonEpisodes()[season]?.episodes || []).slice().sort((a, b) => Number(a.episode_number) - Number(b.episode_number));
+  const findNextEpisodePointer = (season, episode) => {
+    const currentSeasonEpisodes = getEpisodesForSeason(season);
+    const nextInSeason = currentSeasonEpisodes.find(ep => Number(ep.episode_number) > Number(episode));
+    if (nextInSeason) return { season: Number(season), episode: Number(nextInSeason.episode_number) };
+
+    const nextSeason = tvSeasons().find(s => Number(s.season_number) > Number(season));
+    if (!nextSeason) return null;
+    const nextSeasonNumber = Number(nextSeason.season_number);
+    const nextSeasonEpisodes = getEpisodesForSeason(nextSeasonNumber);
+    return { season: nextSeasonNumber, episode: Number(nextSeasonEpisodes[0]?.episode_number || 1) };
+  };
+  const getCurrentEpisode = () => {
+    const season = currentSeasonNumber();
+    const episode = currentEpisodeNumber();
+    return getEpisodesForSeason(season).find(ep => Number(ep.episode_number) === episode) || { season_number: season, episode_number: episode, name: `Episode ${episode}` };
+  };
   const seasonCacheKey = () => `tmdb_${movie()?.id}_seasons`;
   const cacheIsFresh = (cache) => cache?.timestamp && (Date.now() - cache.timestamp < 24 * 60 * 60 * 1000);
 
@@ -165,6 +185,33 @@ export function DetailsModal(props) {
     }
   };
 
+  const updateCurrentEpisodePointer = async (nextPointer, completed = false) => {
+    const nextSeason = Number(nextPointer?.season || currentSeasonNumber());
+    const nextEpisode = Number(nextPointer?.episode || currentEpisodeNumber());
+    const nextStatus = completed ? 'Completed' : (movie()?.status === 'Planned' || movie()?.status === 'Plan to Watch' || movie()?.status === 'Completed' ? 'Watching' : (movie()?.status || 'Watching'));
+    const nextProgress = {
+      currentTime: 0,
+      duration: inferDurationSeconds() || 0,
+      server: activeServer() || null,
+      updatedAt: new Date().toISOString(),
+      season: nextSeason,
+      episode: nextEpisode
+    };
+
+    setForm(prev => ({ ...prev, season: nextSeason, episode: nextEpisode, status: nextStatus }));
+    setWatchProgress(nextProgress);
+    setPlayerStartProgress(0);
+
+    if (!props.isGuest && props.uid && movie() && !isPreview()) {
+      await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), {
+        season: nextSeason,
+        episode: nextEpisode,
+        status: nextStatus,
+        watchProgress: nextProgress
+      });
+    }
+  };
+
   const toggleEpisodeWatched = async (ep) => {
     if (props.isGuest) {
       props.showToast("Sign in to track episodes! 🔒");
@@ -172,12 +219,14 @@ export function DetailsModal(props) {
       return;
     }
     if (!props.uid || !movie() || !ep) return;
-    const season = Number(ep.season_number || selectedSeason() || 1);
+
+    const season = Number(ep.season_number || selectedSeason() || currentSeasonNumber());
     const episode = Number(ep.episode_number || 1);
     const id = episodeDocId(season, episode);
     const isWatched = !!watchedEpisodes()[id]?.watched;
+    const nextWatched = !isWatched;
     const payload = {
-      watched: !isWatched,
+      watched: nextWatched,
       season,
       episode,
       episodeId: id,
@@ -186,9 +235,26 @@ export function DetailsModal(props) {
       runtime: ep.runtime || null,
       updatedAt: new Date().toISOString()
     };
-    await setDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id), 'episodes', id), payload, { merge: true });
+
     setWatchedEpisodes(prev => ({ ...prev, [id]: payload }));
-    props.showToast(payload.watched ? `S${season} E${episode} marked watched` : `S${season} E${episode} marked unwatched`);
+
+    try {
+      await setDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id), 'episodes', id), payload, { merge: true });
+
+      if (nextWatched) {
+        const nextPointer = findNextEpisodePointer(season, episode);
+        await updateCurrentEpisodePointer(nextPointer || { season, episode }, !nextPointer);
+        props.showToast(nextPointer ? `S${season} E${episode} watched — next S${nextPointer.season} E${nextPointer.episode}` : `S${season} E${episode} watched — show completed`);
+      } else {
+        if (compareEpisodePosition(currentSeasonNumber(), currentEpisodeNumber(), season, episode) > 0 || movie()?.status === 'Completed') {
+          await updateCurrentEpisodePointer({ season, episode }, false);
+        }
+        props.showToast(`S${season} E${episode} marked unwatched`);
+      }
+    } catch (e) {
+      setWatchedEpisodes(prev => ({ ...prev, [id]: { ...payload, watched: isWatched } }));
+      props.showToast("Could not update episode. Try again.");
+    }
   };
 
   const availableServers = createMemo(() => {
@@ -258,8 +324,8 @@ export function DetailsModal(props) {
                       duration: prog.duration || contentDuration() || inferDurationSeconds() || 0,
                       server: activeServer(),
                       updatedAt: new Date().toISOString(),
-                      season: movie().season || 1,
-                      episode: movie().episode || 1
+                      season: currentSeasonNumber(),
+                      episode: currentEpisodeNumber()
                   }
               };
               
@@ -524,8 +590,13 @@ export function DetailsModal(props) {
     setIsEdit(false); 
   };
   
-  const isCompleted = createMemo(() => !isPreview() && movie()?.status === 'Completed');
-  const progressPct = createMemo(() => isCompleted() ? 100 : Math.min(((movie()?.episode||0) / (movie()?.totalEps||1)) * 100, 100));
+  const isCompleted = createMemo(() => !isPreview() && (form().status || movie()?.status) === 'Completed');
+  const progressPct = createMemo(() => {
+    if (isCompleted()) return 100;
+    const loadedSeasonTotal = getEpisodesForSeason(currentSeasonNumber()).length;
+    const total = Number(movie()?.totalEps) || loadedSeasonTotal || 1;
+    return Math.min((currentEpisodeNumber() / total) * 100, 100);
+  });
   const movieFranchises = createMemo(() => props.franchises?.filter(f => movie()?.franchises?.[f.id] !== undefined).map(f => f.name).join(', '));
 
   const addToVaultFromPreview = async () => {
@@ -554,8 +625,8 @@ export function DetailsModal(props) {
   const getStreamUrl = (serverId) => { 
     if (!serverId) return '';
     const id = movie().id; 
-    const s = movie().season || 1; 
-    const e = movie().episode || 1; 
+    const s = movie().media_type === 'tv' ? currentSeasonNumber() : (movie().season || 1);
+    const e = movie().media_type === 'tv' ? currentEpisodeNumber() : (movie().episode || 1);
     const type = movie().media_type === 'tv' ? 'tv' : 'movie';
     
     const serverConfig = availableServers().find(srv => srv.id === serverId);
@@ -734,16 +805,16 @@ export function DetailsModal(props) {
                                         <For each={selectedSeasonEpisodes()}>
                                             {(ep) => {
                                                 const epId = episodeDocId(ep.season_number || selectedSeason(), ep.episode_number);
-                                                const watched = !!watchedEpisodes()[epId]?.watched;
-                                                const expanded = !!expandedEpisodes()[epId];
+                                                const watched = createMemo(() => !!watchedEpisodes()[epId]?.watched);
+                                                const expanded = createMemo(() => !!expandedEpisodes()[epId]);
                                                 return (
                                                   <div class="group rounded-2xl border border-white/5 bg-black/30 hover:bg-white/[0.035] hover:border-[var(--p)]/40 transition-all overflow-hidden">
                                                     <div class="flex gap-3 p-3">
                                                         <div class="relative w-28 sm:w-36 aspect-video rounded-xl overflow-hidden bg-[#11131b] shrink-0 border border-white/5">
                                                             <Show when={ep.still_path} fallback={<div class="w-full h-full skeleton-bg flex items-center justify-center"><Icon name="movie" class="text-2xl text-gray-700" /></div>}>
-                                                                <img src={`https://image.tmdb.org/t/p/w300${ep.still_path}`} loading="lazy" class={`w-full h-full object-cover transition-all duration-300 ${watched ? 'opacity-45 grayscale' : 'group-hover:scale-105'}`} />
+                                                                <img src={`https://image.tmdb.org/t/p/w300${ep.still_path}`} loading="lazy" class={`w-full h-full object-cover transition-all duration-300 ${watched() ? 'opacity-45 grayscale' : 'group-hover:scale-105'}`} />
                                                             </Show>
-                                                            <Show when={watched}>
+                                                            <Show when={watched()}>
                                                                 <div class="absolute inset-0 flex items-center justify-center bg-black/20"><Icon name="check_circle" fill class="text-3xl" style="color: var(--p)" /></div>
                                                             </Show>
                                                         </div>
@@ -758,15 +829,15 @@ export function DetailsModal(props) {
                                                                 </div>
                                                                 <button type="button" onClick={(e) => { e.stopPropagation(); toggleEpisodeWatched(ep); }}
                                                                     class="shrink-0 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border active:scale-95"
-                                                                    style={watched
-                                                                      ? 'background: var(--p); color: #05060a; border-color: var(--p)'
-                                                                      : 'background: transparent; color: var(--p); border-color: var(--border-active)'}>
-                                                                    {watched ? 'Watched ✓' : 'Watch'}
+                                                                    style={watched()
+                                                                      ? 'background: var(--p2); color: #05060a; border-color: var(--p2); box-shadow: 0 0 16px rgba(255,255,255,0.08)'
+                                                                      : 'background: var(--p-dim); color: var(--p); border-color: var(--p)'}>
+                                                                    {watched() ? 'Watched ✓' : 'Watch'}
                                                                 </button>
                                                             </div>
-                                                            <button type="button" onClick={() => setExpandedEpisodes(prev => ({ ...prev, [epId]: !expanded }))} class="text-left w-full mt-2">
-                                                                <p class={`text-xs text-gray-400 leading-relaxed transition-all duration-300 ${expanded ? '' : 'line-clamp-2'}`}>{ep.overview || 'No episode overview available.'}</p>
-                                                                <span class="inline-flex items-center gap-1 mt-1 text-[9px] font-black uppercase tracking-widest" style="color: var(--p)">{expanded ? 'Show less' : 'More'} <Icon name={expanded ? 'expand_less' : 'expand_more'} class="text-xs" /></span>
+                                                            <button type="button" onClick={() => setExpandedEpisodes(prev => ({ ...prev, [epId]: !expanded() }))} class="text-left w-full mt-2">
+                                                                <p class={`text-xs text-gray-400 leading-relaxed transition-all duration-300 ${expanded() ? '' : 'line-clamp-2'}`}>{ep.overview || 'No episode overview available.'}</p>
+                                                                <span class="inline-flex items-center gap-1 mt-1 text-[9px] font-black uppercase tracking-widest" style="color: var(--p)">{expanded() ? 'Show less' : 'More'} <Icon name={expanded() ? 'expand_less' : 'expand_more'} class="text-xs" /></span>
                                                             </button>
                                                         </div>
                                                     </div>
@@ -784,17 +855,11 @@ export function DetailsModal(props) {
                         <div class="glass-surface p-5 rounded-2xl border border-white/5 mb-6">
                             <div class="flex justify-between items-center mb-3">
                                 <span class="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2"><Icon name="video_library" class="text-[14px] text-[var(--primary)]"/> Tracker</span>
-                                <span class="font-black text-sm text-white">{isCompleted() ? 'Completed' : `S${movie().season||1} E${movie().episode||1}`}</span>
+                                <span class="font-black text-sm text-white">{isCompleted() ? 'Completed' : `S${currentSeasonNumber()} E${currentEpisodeNumber()}`}</span>
                             </div>
                             <div class="w-full h-2 bg-black rounded-full overflow-hidden mb-4"><div class="h-full bg-[var(--primary)] transition-all shadow-[0_0_10px_var(--primary)]" style={{width:`${progressPct()}%`}}></div></div>
                             <Show when={!isCompleted()}>
-                                <button onClick={async () => { 
-                                    if (props.isGuest) {
-                                      props.showToast("Sign in to track progress! 🔒");
-                                      if (props.onLogin) props.onLogin();
-                                      return;
-                                    }
-                                    let n = (parseInt(movie().episode)||1)+1; let s = movie().status==='Planned'?'Watching':movie().status; if(movie().totalEps>0 && n>=movie().totalEps) { s='Completed'; props.showToast("Completed! 🎉"); } await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), {episode: n, status: s}); }} class="w-full bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/30 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest hover:bg-[var(--primary)] hover:text-[#0c0e14] active:scale-95 transition-all">+1 Episode</button>
+                                <button onClick={() => toggleEpisodeWatched(getCurrentEpisode())} class="w-full rounded-xl py-2 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all" style="background: var(--p-dim); color: var(--p); border: 1px solid var(--p)">Mark Current Watched → Next Episode</button>
                             </Show>
                         </div>
                     </Show>
