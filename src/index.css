@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;900&family=Azeret+Mono:wght@300;400;500;700&family=Bebas+Neue&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,8 +9,6 @@
    Aesthetic: Obsidian Terminal · Chromatic Glow · Brutalist Precision
    Fonts: Bebas Neue (headlines) · Azeret Mono (mono) · Outfit (body)
    ═══════════════════════════════════════════════════════════ */
-
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;900&family=Azeret+Mono:wght@300;400;500;700&family=Bebas+Neue&display=swap');
 
 /* ── THEME TOKENS ── */
 body.theme-sage       { --p: #a8ff78; --p2: #ff78c4; --p-glow: rgba(168,255,120,0.22); --p-dim: rgba(168,255,120,0.08); }
