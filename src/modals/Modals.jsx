@@ -30,6 +30,7 @@ export function SettingsModal(props) {
     { id: 'interstellar', n: 'Interstellar', h: '#00c2ff' },
     { id: 'neonhorizon', n: 'Neon Horizon', h: '#ff2af0' },
     { id: 'vibranium', n: 'Vibranium', h: '#9d4edd' },
+    { id: 'minimaldark', n: 'Minimal Dark', h: '#ffffff' },
   ];
 
   return (
