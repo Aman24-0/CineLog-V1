@@ -59,6 +59,22 @@ const SkeletonCard = () => (
 );
 
 export function AIRecommend(props) {
+  const hasGeminiApiKey = Boolean(import.meta.env.VITE_GEMINI_API_KEY?.trim());
+
+  if (!hasGeminiApiKey) {
+    return (
+      <div class="glass-surface rounded-[2rem] p-8 border border-white/5 text-center relative overflow-hidden" style="background: var(--raised)">
+        <div class="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-10 blur-3xl pointer-events-none" style="background: radial-gradient(circle, var(--p), transparent)" />
+        <div class="w-20 h-20 rounded-3xl flex items-center justify-center mb-6 mx-auto"
+          style="background: var(--p-dim); border: 1px solid var(--border-active)">
+          <span class="material-symbols-outlined filled text-5xl" style="color: var(--p)">auto_awesome</span>
+        </div>
+        <h3 class="font-headline text-3xl text-white mb-3">AI Recommendations Unavailable</h3>
+        <p class="text-sm leading-relaxed max-w-md mx-auto" style="color: var(--muted)">VITE_GEMINI_API_KEY is not configured. Add it to your environment variables to enable Gemini-powered recommendations.</p>
+      </div>
+    );
+  }
+
   const [recommendations, setRecommendations] = createSignal([]);
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal('');

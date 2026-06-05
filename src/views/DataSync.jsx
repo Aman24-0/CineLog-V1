@@ -17,11 +17,14 @@ export function DataSync(props) {
 
   // 🛠️ The Deep Scan & Repair Engine
   const runDeepScan = async () => {
+    const list = props.watchlist();
+    const total = list.length;
+    if (total > 200) {
+      props.showToast(`Large vault detected (${total} items). Deep Scan may take several minutes and hit API rate limits. Proceed carefully.`);
+    }
     if(!confirm("Start Deep Scan?\nThis will check and update missing streaming platforms and genres for all your saved movies. Your personal edits remain 100% untouched.")) return;
 
     setIsSyncing(true);
-    const list = props.watchlist();
-    const total = list.length;
     let updatedCount = 0;
 
     for (let i = 0; i < total; i++) {

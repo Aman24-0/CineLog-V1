@@ -8,12 +8,10 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: false,
+      includeAssets: ['icons/*.png', 'icons/*.ico'],
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        globIgnores: ['**/node_modules/**/*'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
       },
-      // Tells vite-plugin-pwa where built assets live
-      includeAssets: ['**/*'],
     })
   ],
   build: {
