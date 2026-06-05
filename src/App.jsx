@@ -99,26 +99,36 @@ export default function App() {
 
   const nukeCollection = async () => {
     if (!user()) return;
-    if (confirm("DANGER: Entire Vault will be wiped. Sure?")) {
-      showToast("Nuking Vault...");
-      const snap = await getDocs(collection(db, 'users', user().uid, 'watchlist'));
-      const docs = snap.docs;
-      for (let i = 0; i < docs.length; i += 500) {
-        const batch = writeBatch(db);
-        docs.slice(i, i + 500).forEach(d => batch.delete(d.ref));
-        await batch.commit();
-      }
-      showToast("Vault wiped!"); setUserMenuOpen(false);
+    if (!confirm("This will permanently delete your entire Vault. Are you sure?")) return;
+    if (prompt("Type DELETE to confirm") !== "DELETE") {
+      showToast("Cancelled. Vault is safe.");
+      return;
     }
+
+    showToast("Nuking Vault...");
+    const snap = await getDocs(collection(db, 'users', user().uid, 'watchlist'));
+    const docs = snap.docs;
+    for (let i = 0; i < docs.length; i += 500) {
+      const batch = writeBatch(db);
+      docs.slice(i, i + 500).forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    }
+    showToast("Vault wiped!"); setUserMenuOpen(false);
   };
 
   return (
-    <ErrorBoundary fallback={(err) => (
-      <div class="h-screen flex flex-col items-center justify-center p-10 text-center">
-        <Icon name="error" class="text-6xl mb-4" style="color: var(--p)" />
-        <h2 class="text-xl font-bold text-white mb-2">Something broke!</h2>
-        <p class="text-xs mb-6" style="color: var(--muted)">{err.toString()}</p>
-        <button onClick={() => window.location.reload()} class="px-6 py-3 rounded-full font-bold text-black text-sm" style="background: var(--p)">Reload App</button>
+    <ErrorBoundary fallback={() => (
+      <div class="h-screen flex items-center justify-center p-10 text-center">
+        <div class="glass-surface rounded-[2rem] p-8 border max-w-md w-full"
+          style="background: var(--raised); border-color: var(--border-active); box-shadow: 0 0 40px var(--p-glow)">
+          <div class="w-20 h-20 rounded-3xl flex items-center justify-center mb-6 mx-auto"
+            style="background: var(--p-dim); border: 1px solid var(--border-active)">
+            <Icon name="warning" class="text-5xl" style="color: var(--p)" />
+          </div>
+          <h2 class="font-headline text-4xl text-white mb-3">Something went wrong</h2>
+          <p class="text-sm mb-8 leading-relaxed" style="color: var(--muted)">An unexpected error occurred. Please reload the app.</p>
+          <button onClick={() => window.location.reload()} class="px-8 py-3.5 rounded-full font-bold text-black text-sm uppercase tracking-widest active:scale-95 transition-all" style="background: var(--p); box-shadow: 0 0 20px var(--p-glow)">Reload App</button>
+        </div>
       </div>
     )}>
     <div class="cinelog-root min-h-screen pb-32 lg:pb-0 lg:pl-64" onClick={() => setUserMenuOpen(false)}>
