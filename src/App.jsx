@@ -16,6 +16,9 @@ import { DetailsModal } from './modals/DetailsModal';
 import { SearchModal } from './modals/SearchModal';
 import { ServerSettingsModal } from './modals/ServerSettingsModal';
 import { SettingsModal } from './modals/Modals';
+import { MovieStreamModal } from './modals/MovieStreamModal';
+import { MovieStreamFAB } from './components/MovieStreamFAB';
+import { VideoPlayer } from './components/VideoPlayer';
 
 const NavBtn = (props) => (
   <button
@@ -66,6 +69,8 @@ export default function App() {
   const [serverSettingsModal, setServerSettingsModal] = createSignal(false);
   const [userMenuOpen, setUserMenuOpen] = createSignal(false);
   const [toast, setToast] = createSignal({ show: false, msg: '' });
+  const [movieStreamModal, setMovieStreamModal] = createSignal(false);
+  const [currentVideo, setCurrentVideo] = createSignal(null);
 
   const showToast = (msg) => {
     setToast({ show: true, msg });
@@ -261,6 +266,13 @@ export default function App() {
         </div>
 
         {/* ── MODALS ── */}
+        <Show when={movieStreamModal()}>
+          <MovieStreamModal
+            isOpen={movieStreamModal()}
+            onClose={() => setMovieStreamModal(false)}
+            onVideoFound={(video) => setCurrentVideo(video)}
+          />
+        </Show>
         <Show when={searchModal()}>
           <SearchModal
             onClose={() => { setSearchModal(false); setSearchInitialQuery(''); }}
@@ -301,6 +313,29 @@ export default function App() {
             showToast={showToast} 
             onClose={() => setServerSettingsModal(false)} 
           />
+        </Show>
+
+        {/* ── FLOATING ACTION BUTTONS ── */}
+        <MovieStreamFAB onClick={() => setMovieStreamModal(true)} />
+
+        {/* ── VIDEO PLAYER OVERLAY ── */}
+        <Show when={currentVideo()}>
+          <div class="fixed inset-0 z-[99998] bg-black/95 backdrop-blur-lg flex flex-col items-center justify-center p-4 overflow-auto">
+            <button
+              onClick={() => setCurrentVideo(null)}
+              class="absolute top-6 right-6 p-3 rounded-full hover:bg-white/10 transition-colors active:scale-95 z-[100001]"
+            >
+              <Icon name="close" class="text-2xl text-white" />
+            </button>
+            <div class="w-full max-w-5xl">
+              <VideoPlayer
+                videoUrl={currentVideo().videoUrl}
+                movieTitle={currentVideo().movieTitle}
+                poster={currentVideo().poster}
+                source={currentVideo().source}
+              />
+            </div>
+          </div>
         </Show>
 
         {/* ── TOAST ── */}
