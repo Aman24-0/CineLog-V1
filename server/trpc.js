@@ -1,8 +1,8 @@
 import { initTRPC } from '@trpc/server';
-import superjson from 'superjson';
+import superjson from 'superjson'; // 1. Superjson import karein
 
-const t = initTRPC.context().create({
-  transformer: superjson,
+const t = initTRPC.create({
+  transformer: superjson, // 2. Yahan transformer add karein
 });
 
 export const router = t.router;
