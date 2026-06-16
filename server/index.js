@@ -21,7 +21,7 @@ app.use(express.json());
 app.use('/api/trpc', createExpressMiddleware({
   router: appRouter,
   createContext,
-  transformer: superjson,
+  // transformer: superjson, <-- Is line ko bhi DELETE ya comment kar dein
 }));
 
 // Health check
