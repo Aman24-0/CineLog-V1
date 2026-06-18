@@ -1,45 +1,53 @@
 // server/scraper.js
-
-// .env file se Prowlarr details fetch karein (Ya direct URL daal dein)
-const PROWLARR_URL = process.env.PROWLARR_URL || 'http://localhost:9696';
-const PROWLARR_API_KEY = process.env.PROWLARR_API_KEY || 'YAHAN_APNI_API_KEY_DAALEIN';
+const PROWLARR_URL = process.env.PROWLARR_URL;
+const PROWLARR_API_KEY = process.env.PROWLARR_API_KEY;
 
 export async function findVideoSource(movieTitle) {
-  console.log(`\n🎬 Searching Prowlarr for: "${movieTitle}"`);
+  console.log(`\n🎬 Prowlarr Search Triggered For: "${movieTitle}"`);
   
-  if (!PROWLARR_API_KEY || PROWLARR_API_KEY === 'YAHAN_APNI_API_KEY_DAALEIN') {
-    console.log("❌ PROWLARR_API_KEY is missing!");
+  if (!PROWLARR_URL || !PROWLARR_API_KEY) {
+    console.log("❌ Render par PROWLARR_URL ya PROWLARR_API_KEY set nahi hai!");
     return null;
   }
 
   try {
-    // 2000 aur 2040 Movies ki categories hain Prowlarr mein
-    const searchUrl = `${PROWLARR_URL}/api/v1/search?apikey=${PROWLARR_API_KEY}&query=${encodeURIComponent(movieTitle)}&categories=2000,2040`;
+    // API Key ko URL se hata diya gaya hai taaki Prowlarr block na kare
+    const searchUrl = `${PROWLARR_URL}/api/v1/search?query=${encodeURIComponent(movieTitle)}&categories=2000,2040`;
     
-    // Direct fetch request to your local Prowlarr server
-    const response = await fetch(searchUrl);
+    console.log(`📡 Sending request to: ${searchUrl}`);
 
-    if (!response.ok) throw new Error('Prowlarr server unreachable');
+    const response = await fetch(searchUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'X-Api-Key': PROWLARR_API_KEY // API Key ko safely secure Headers mein bhej rahe hain
+      }
+    });
+
+    if (!response.ok) {
+      console.log(`❌ Prowlarr Server responded with status: ${response.status}`);
+      throw new Error('Prowlarr authentication or network failed');
+    }
+    
     const results = await response.json();
 
     if (results && results.length > 0) {
-      // Sabse zyada Seeders (fastest working link) wale torrent ko top par layein
+      // Highest seeders wale torrent ko choose karne ke liye sort
       const sortedResults = results.sort((a, b) => (b.seeders || 0) - (a.seeders || 0));
       
       for (const item of sortedResults) {
-        // Prowlarr ya toh magnetUrl deta hai ya direct downloadUrl
         const link = item.magnetUrl || item.downloadUrl;
         if (link) {
-          console.log(`✅ Best Prowlarr Match Found: ${item.title} (Seeders: ${item.seeders})`);
+          console.log(`✅ Real Link Found: ${item.title} (Seeders: ${item.seeders})`);
           return link; 
         }
       }
     }
 
-    console.log(`❌ No working link found for "${movieTitle}"`);
+    console.log(`❌ No stream found on Prowlarr for "${movieTitle}"`);
     return null;
   } catch (error) {
-    console.error(`❌ Error fetching from Prowlarr:`, error.message);
+    console.error(`❌ Scraper Error:`, error.message);
     return null;
   }
 }
