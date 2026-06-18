@@ -63,8 +63,8 @@ export const VideoPlayer = (props) => {
   return (
     <div class="w-full bg-black rounded-2xl overflow-hidden relative" style={{ "aspect-ratio": '16 / 9', "box-shadow": '0 20px 60px rgba(0,0,0,0.5)' }}>
       
-      {/* Agar link Magnet hai toh Video.js ki jagah Action UI dikhayega */}
-      <Show when={!isMagnet()} fallback={
+      {/* Yahan update karein */}
+      <Show when={!isTorrent()} fallback={
         <div class="w-full h-full flex flex-col items-center justify-center bg-[#0c0e14] text-white p-6 text-center border border-white/10 rounded-2xl">
           <Icon name="cloud_download" class="text-6xl text-[var(--primary)] mb-4 animate-bounce" />
           <h2 class="text-2xl font-black mb-2 text-white">Best Source Found!</h2>
