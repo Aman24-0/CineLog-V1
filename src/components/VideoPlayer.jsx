@@ -11,15 +11,18 @@ export const VideoPlayer = (props) => {
   // Check agar link Prowlarr se aya Magnet link hai
   const isMagnet = () => props.videoUrl && props.videoUrl.startsWith('magnet:');
 
-  const getVideoType = (url) => {
-    if (!url) return 'video/mp4';
-    if (url.includes('.m3u8') || url.includes('m3u8')) return 'application/x-mpegURL';
-    return 'video/mp4';
+  // src/components/VideoPlayer.jsx me isMagnet function ko isse replace karein:
+
+  // Naya smart checker jo har tarah ke p2p links ko pehchan lega
+  const isTorrent = () => {
+    if (!props.videoUrl) return false;
+    const url = props.videoUrl.toLowerCase();
+    return url.startsWith('magnet:') || url.includes('.torrent') || url.includes('download');
   };
 
   const initializePlayer = () => {
-    // Agar magnet hai toh video.js ko init na karein
-    if (!videoRef || isMagnet()) return;
+    // Agar link torrent hai toh player init mat karo
+    if (!videoRef || isTorrent()) return;
 
     if (playerInstance) {
       playerInstance.dispose();
