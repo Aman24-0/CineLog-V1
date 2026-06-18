@@ -12,10 +12,17 @@ export async function findVideoSource(movieTitle) {
   }
 
   try {
-    const searchUrl = `${baseUrl}/api/v1/search?query=${encodeURIComponent(movieTitle)}&type=search&categories=2000,2040`;
-    console.log(`📡 Fetching from: ${searchUrl}`);
+    // 💡 URL Builder (Status 400 fix)
+    // Ye Prowlarr ke exact .NET format me URL parameters banata hai
+    const url = new URL(`${baseUrl}/api/v1/search`);
+    url.searchParams.append('query', movieTitle);
+    url.searchParams.append('type', 'search');
+    url.searchParams.append('categories', '2000'); // Standard Movies
+    url.searchParams.append('categories', '2040'); // HD Movies
 
-    const response = await fetch(searchUrl, {
+    console.log(`📡 Fetching from: ${url.toString()}`);
+
+    const response = await fetch(url.toString(), {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -30,7 +37,7 @@ export async function findVideoSource(movieTitle) {
     const results = await response.json();
 
     if (!results || results.length === 0) {
-      return []; // Agar koi movie nahi mili toh empty list return karega
+      return []; // Agar movie nahi mili
     }
 
     // Top 20 results (Seeders ke hisaab se sorted)
@@ -49,7 +56,7 @@ export async function findVideoSource(movieTitle) {
         size: sizeStr,
         indexer: item.indexer || 'Torrent'
       };
-    }).filter(item => item.link); // Sirf wahi torrent rakho jisme real link ho
+    }).filter(item => item.link);
 
     return streams;
 
