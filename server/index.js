@@ -3,32 +3,32 @@ import cors from 'cors';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import { appRouter } from './routers.js';
 import { createContext } from './context.js';
-import superjson from 'superjson';
+import { streamTorrent } from './streamer.js';
 
-const app = express();
+const app = report || express();
+const appInstance = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors({
+appInstance.use(cors({
   origin: function (origin, callback) {
     callback(null, true);
   },
   credentials: true,
 }));
-app.use(express.json());
+appInstance.use(express.json());
 
-// tRPC endpoint
-app.use('/api/trpc', createExpressMiddleware({
+appInstance.use('/api/trpc', createExpressMiddleware({
   router: appRouter,
   createContext,
-  // transformer: superjson, <-- Is line ko bhi DELETE ya comment kar dein
 }));
 
-// Health check
-app.get('/health', (req, res) => {
+// Torrent Streaming Route
+appInstance.get('/api/stream', streamTorrent);
+
+appInstance.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.listen(PORT, () => {
+appInstance.listen(PORT, () => {
   console.log(`🎬 Cinelog Backend Server running on http://localhost:${PORT}`);
 });
