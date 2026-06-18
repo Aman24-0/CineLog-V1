@@ -2,7 +2,6 @@
   "name": "cinelog-ultimate",
   "private": true,
   "version": "1.0.0",
-  "packageManager": "pnpm@8.15.5",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"vite\" \"node server/index.js\"",
@@ -18,7 +17,6 @@
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "firebase": "^11.0.0",
-    "puppeteer": "^21.6.0",
     "solid-js": "^1.8.17",
     "superjson": "^1.13.1",
     "video.js": "^8.23.7",
