@@ -2,6 +2,7 @@
   "name": "cinelog-ultimate",
   "private": true,
   "version": "1.0.0",
+  "packageManager": "pnpm@8.15.5",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"vite\" \"node server/index.js\"",
