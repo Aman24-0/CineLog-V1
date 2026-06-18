@@ -1,24 +1,23 @@
 // server/scraper.js
 
-export async function findVideoSource(movieTitle) {
-  console.log(`\n🎬 Prowlarr List Search For: "${movieTitle}"`);
+export async function findVideoSource(movieTitle, year) {
+  // Exact Match Query: Agar year hai toh title ke aage laga do
+  const exactQuery = year ? `${movieTitle} ${year}` : movieTitle;
+  console.log(`\n🎬 Prowlarr List Search For: "${exactQuery}"`);
 
-  // URL ke aage se extra '/' hatane ka safe tareeqa
   const baseUrl = (process.env.PROWLARR_URL || '').replace(/\/$/, '');
   const apiKey = process.env.PROWLARR_API_KEY;
 
-  if (!baseUrl || !apiKey) {
-    throw new Error("Render par PROWLARR_URL ya PROWLARR_API_KEY set nahi hai!");
-  }
+  if (!baseUrl || !apiKey) throw new Error("PROWLARR_URL ya API_KEY set nahi hai!");
 
   try {
-    // 💡 URL Builder (Status 400 fix)
-    // Ye Prowlarr ke exact .NET format me URL parameters banata hai
     const url = new URL(`${baseUrl}/api/v1/search`);
-    url.searchParams.append('query', movieTitle);
+    url.searchParams.append('query', exactQuery); // Naya exact query
     url.searchParams.append('type', 'search');
-    url.searchParams.append('categories', '2000'); // Standard Movies
-    url.searchParams.append('categories', '2040'); // HD Movies
+    url.searchParams.append('categories', '2000'); 
+    url.searchParams.append('categories', '2040'); 
+
+    //... (Baaki ka fetch response aur return streams wala code bilkul same rahega)
 
     console.log(`📡 Fetching from: ${url.toString()}`);
 
