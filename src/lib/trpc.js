@@ -1,12 +1,20 @@
 import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
+import superjson from 'superjson';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// Smart URL detection: Localhost par alag, Netlify par Render ka URL
+const getBackendUrl = () => {
+  if (window.location.hostname === 'localhost') {
+    return 'http://localhost:5000';
+  }
+  // Aapke Render server ka Live URL
+  return 'https://cinelog-0py8.onrender.com';
+};
 
 export const trpc = createTRPCProxyClient({
+  transformer: superjson,
   links: [
     httpBatchLink({
-      url: `${API_URL}/api/trpc`,
-      // transformer: superjson, <-- Is line ko DELETE ya comment kar dein
+      url: `${getBackendUrl()}/api/trpc`,
     }),
   ],
 });
