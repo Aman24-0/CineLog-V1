@@ -1,68 +1,49 @@
-/**
- * Scraper configuration using clean fetch requests instead of heavy puppeteer
- */
-const SCRAPER_SOURCES = [
-  {
-    name: 'HiMovies',
-    searchUrl: (title) => `https://himovies.to/search/${encodeURIComponent(title)}`,
-  },
-  {
-    name: 'Flixtor',
-    searchUrl: (title) => `https://flixtor.to/search/${encodeURIComponent(title)}`,
-  }
-];
+// server/scraper.js
 
-/**
- * Superfast Fetch-based scraping logic
- */
-async function scrapeFromSource(movieTitle, source) {
-  try {
-    const searchUrl = source.searchUrl(movieTitle);
-    console.log(`🔍 Fetching stream from ${source.name}: ${searchUrl}`);
-    
-    // Direct fetch request instead of loading a heavy browser
-    const response = await fetch(searchUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
-    });
-
-    if (!response.ok) return null;
-    const html = await response.text();
-
-    // Regex to extract video links (.mp4 or .m3u8) directly from the page source
-    const streamRegex = /(https?:\/\/[^\s"'><]+\.(?:mp4|m3u8|mkv)(?:[^\s"'><]*))/gi;
-    const matches = html.match(streamRegex);
-
-    if (matches && matches.length > 0) {
-      // Return the first clean playable link found
-      const videoUrl = matches[0];
-      console.log(`✅ Found Live Stream Link: ${videoUrl}`);
-      return videoUrl;
-    }
-
-    return null;
-  } catch (error) {
-    console.error(`❌ Error fetching from ${source.name}:`, error.message);
-    return null;
-  }
-}
+// .env file se Prowlarr details fetch karein (Ya direct URL daal dein)
+const PROWLARR_URL = process.env.PROWLARR_URL || 'http://localhost:9696';
+const PROWLARR_API_KEY = process.env.PROWLARR_API_KEY || 'YAHAN_APNI_API_KEY_DAALEIN';
 
 export async function findVideoSource(movieTitle) {
-  console.log(`\n🎬 Starting live fetch for: "${movieTitle}"`);
+  console.log(`\n🎬 Searching Prowlarr for: "${movieTitle}"`);
   
-  for (const source of SCRAPER_SOURCES) {
-    const videoUrl = await scrapeFromSource(movieTitle, source);
-    if (videoUrl) return videoUrl;
+  if (!PROWLARR_API_KEY || PROWLARR_API_KEY === 'YAHAN_APNI_API_KEY_DAALEIN') {
+    console.log("❌ PROWLARR_API_KEY is missing!");
+    return null;
   }
 
-  console.log(`❌ No stream found across sources for "${movieTitle}"`);
-  return null;
+  try {
+    // 2000 aur 2040 Movies ki categories hain Prowlarr mein
+    const searchUrl = `${PROWLARR_URL}/api/v1/search?apikey=${PROWLARR_API_KEY}&query=${encodeURIComponent(movieTitle)}&categories=2000,2040`;
+    
+    // Direct fetch request to your local Prowlarr server
+    const response = await fetch(searchUrl);
+
+    if (!response.ok) throw new Error('Prowlarr server unreachable');
+    const results = await response.json();
+
+    if (results && results.length > 0) {
+      // Sabse zyada Seeders (fastest working link) wale torrent ko top par layein
+      const sortedResults = results.sort((a, b) => (b.seeders || 0) - (a.seeders || 0));
+      
+      for (const item of sortedResults) {
+        // Prowlarr ya toh magnetUrl deta hai ya direct downloadUrl
+        const link = item.magnetUrl || item.downloadUrl;
+        if (link) {
+          console.log(`✅ Best Prowlarr Match Found: ${item.title} (Seeders: ${item.seeders})`);
+          return link; 
+        }
+      }
+    }
+
+    console.log(`❌ No working link found for "${movieTitle}"`);
+    return null;
+  } catch (error) {
+    console.error(`❌ Error fetching from Prowlarr:`, error.message);
+    return null;
+  }
 }
 
-/**
- * Fallback: Standard working sample video that never fails in VideoJS
- */
 export function getDemoVideoUrl() {
   return 'https://vjs.zencdn.net/v/oceans.mp4';
 }
