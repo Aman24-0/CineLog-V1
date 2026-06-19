@@ -58,6 +58,7 @@ export function DetailsModal(props) {
   const [personId, setPersonId] = createSignal(null); 
 
   const [form, setForm] = createSignal({ status: '', rating: '', watchDate: '', notes: '', region: '', season: 1, episode: 1, tag: '', platforms: '', genres: '', seasonDates: {} });
+  const [customPlatformInput, setCustomPlatformInput] = createSignal('');
   
   const [customServers, setCustomServers] = createSignal({});
   
@@ -344,6 +345,15 @@ export function DetailsModal(props) {
   });
 
   const togglePlatform = (p) => { let curr = form().platforms.split(',').map(s=>s.trim()).filter(Boolean); if(curr.includes(p)) curr = curr.filter(x=>x!==p); else curr.push(p); setForm({...form(), platforms: curr.join(', ')}); };
+  const addCustomPlatform = () => {
+    const name = customPlatformInput().trim();
+    if (!name) return;
+    const curr = form().platforms.split(',').map(s=>s.trim()).filter(Boolean);
+    if (!curr.some(x => x.toLowerCase() === name.toLowerCase())) {
+      setForm({...form(), platforms: [...curr, name].join(', ')});
+    }
+    setCustomPlatformInput('');
+  };
   
   const saveChanges = async () => { 
     if (props.isGuest) {
@@ -783,7 +793,35 @@ export function DetailsModal(props) {
                     </Show>
 
                     <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Custom Tag</label><input placeholder="e.g. Theatre" value={form().tag} onInput={e=>setForm({...form(), tag: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)] placeholder-gray-700"/></div>
-                    <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Available Platforms</label><div class="flex flex-wrap gap-2 p-3 bg-[#0c0e14] border border-white/5 rounded-xl"><For each={editablePlatformOptions()}>{p => <button type="button" onClick={()=>togglePlatform(p)} class={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors shadow-sm active:scale-95 ${form().platforms.split(',').map(s=>s.trim()).includes(p) ? 'bg-gradient-to-tr from-[var(--secondary)] to-[var(--primary)] text-[#0c0e14]' : 'bg-white/5 text-gray-400 hover:text-white border border-white/5'}`}>{p}</button>}</For></div></div>
+                    <div>
+                      <label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Available Platforms</label>
+                      <div class="p-3 bg-[#0c0e14] border border-white/5 rounded-xl space-y-3">
+                        <Show when={editablePlatformOptions().length > 0} fallback={<p class="text-[10px] text-gray-600 font-bold">No platforms yet — add one below.</p>}>
+                          <div class="flex flex-wrap gap-2">
+                            <For each={editablePlatformOptions()}>{p => {
+                              const isSelected = createMemo(() => form().platforms.split(',').map(s=>s.trim()).includes(p));
+                              return (
+                                <button type="button" onClick={()=>togglePlatform(p)}
+                                  class="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+                                  style={isSelected()
+                                    ? 'border: 1px solid var(--p); background: var(--p-dim); color: var(--p); transform: scale(1.05); box-shadow: 0 0 12px var(--p-glow)'
+                                    : 'border: 1px solid var(--border); background: var(--raised); color: var(--muted)'}>
+                                  <Show when={isSelected()}><Icon name="check" class="text-[14px]" /></Show>
+                                  {p}
+                                </button>
+                              );
+                            }}</For>
+                          </div>
+                        </Show>
+                        <div class="flex gap-2 pt-1 border-t border-white/5">
+                          <input type="text" value={customPlatformInput()} onInput={e=>setCustomPlatformInput(e.target.value)}
+                            onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); addCustomPlatform(); } }}
+                            placeholder="Not listed? Type platform name…"
+                            class="flex-1 min-w-0 bg-transparent border border-white/10 p-2 rounded-lg text-xs text-white outline-none focus:border-[var(--primary)] placeholder-gray-700"/>
+                          <button type="button" onClick={addCustomPlatform} class="shrink-0 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all" style="background: var(--p-dim); color: var(--p); border: 1px solid var(--p)">Add</button>
+                        </div>
+                      </div>
+                    </div>
                     <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Genres (Comma separated)</label><input value={form().genres || (details().genres ? details().genres.map(g=>g.name).join(', ') : '')} onInput={e=>setForm({...form(), genres: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)]"/></div>
                     <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">My Notes</label><textarea value={form().notes} onInput={e=>setForm({...form(), notes: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)] placeholder-gray-700" rows="3" placeholder="Write your thoughts..."></textarea></div>
                     <button onClick={saveChanges} class="w-full font-black py-4 rounded-xl text-[10px] uppercase tracking-widest mt-2 active:scale-95 transition-all flex items-center justify-center gap-2" style="background: var(--p); color: #05060a; box-shadow: 0 0 28px var(--p-glow), 0 4px 16px rgba(0,0,0,0.4)">Save Universe Changes</button>
