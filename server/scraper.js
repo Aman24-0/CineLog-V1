@@ -1,19 +1,18 @@
 // server/scraper.js
-
 export async function findVideoSource(movieTitle, year) {
   // Clean title aur year ko jodh kar exact query banana
   const cleanTitle = movieTitle.trim();
   const exactQuery = year ? `${cleanTitle} ${year}` : cleanTitle;
   
   console.log(`\n🎬 Prowlarr List Search For: "${exactQuery}"`);
-
+  
   const baseUrl = (process.env.PROWLARR_URL || '').replace(/\/$/, '');
   const apiKey = process.env.PROWLARR_API_KEY;
-
+  
   if (!baseUrl || !apiKey) {
     throw new Error("Render environment variables (PROWLARR_URL or PROWLARR_API_KEY) missing!");
   }
-
+  
   try {
     const url = new URL(`${baseUrl}/api/v1/search`);
     url.searchParams.append('query', exactQuery);
@@ -71,7 +70,7 @@ export async function findVideoSource(movieTitle, year) {
 
     // Safety Check: Agar Prowlarr se array nahi mila toh crash na ho
     if (!results || !Array.isArray(results)) {
-      console.log("⚠️ Prowlarr did not return an array. Response:", results);
+      console.log("⚠️ Prowlarr did not return an array. Response: ", results);
       return [];
     }
 
@@ -88,18 +87,19 @@ export async function findVideoSource(movieTitle, year) {
       if (item.size) {
         sizeStr = (item.size / (1024 * 1024 * 1024)).toFixed(2) + " GB";
       }
+      
+      // ✅ FIXED: Changed 'link' to 'magnet' to match frontend VideoPlayer expectations
       return {
         title: item.title || 'Unknown Title',
-        link: item.magnetUrl || item.downloadUrl || null,
+        magnet: item.magnetUrl || item.downloadUrl || null, // Changed from 'link' to 'magnet'
         seeders: item.seeders || 0,
         size: sizeStr,
         indexer: item.indexer || 'Torrent'
       };
-    }).filter(item => item.link);
+    }).filter(item => item.magnet); // Also updated filter to check 'magnet' instead of 'link'
 
     console.log(`✅ Successfully extracted ${streams.length} playable streams.`);
     return streams;
-
   } catch (error) {
     console.error(`❌ Scraper Exception:`, error.message);
     throw error;
