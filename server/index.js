@@ -29,11 +29,11 @@ app.use('/api/trpc', createExpressMiddleware({
 app.get('/api/stream', streamTorrent);
 
 app.get('/', (req, res) => {
-  res.json({ status: 'Cinelog Backend Running  (Torrentio Mode)' });
+  res.json({ status: 'Cinelog Backend Running 🚀 (Torrentio Mode)' });
 });
 
 app.listen(PORT, () => {
-  console.log(` Server running on port ${PORT}`);
-  console.log(`📡 tRPC: http://localhost:${PORT}/api/trpc`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(` tRPC: http://localhost:${PORT}/api/trpc`);
   console.log(`🎬 Stream: http://localhost:${PORT}/api/stream`);
 });
