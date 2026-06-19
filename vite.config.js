@@ -8,14 +8,18 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: false,
-      // Disable generating a new service worker since we have a custom one
+      // Use injectManifest strategy for custom SW
       strategies: 'injectManifest',
-      srcDir: 'public',
+      
+      // ✅ FIXED: Changed from 'public' to 'src' to prevent build collision
+      srcDir: 'src', 
       filename: 'sw.js',
+      
       injectManifest: {
-        // Don't inject workbox, use our custom SW
+        // Keep globPatterns empty if you want full manual control over precaching
         globPatterns: [],
       },
+      
       includeAssets: ['icons/*.png', 'icons/*.ico'],
     })
   ],
