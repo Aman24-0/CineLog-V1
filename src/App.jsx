@@ -18,7 +18,7 @@ import { ServerSettingsModal } from './modals/ServerSettingsModal';
 import { SettingsModal } from './modals/Modals';
 import { MovieStreamModal } from './modals/MovieStreamModal';
 import { MovieStreamFAB } from './components/MovieStreamFAB';
-import { VideoPlayer } from './components/VideoPlayer';
+import VideoPlayer from './components/VideoPlayer';
 
 const NavBtn = (props) => (
   <button
