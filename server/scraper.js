@@ -1,25 +1,25 @@
 // server/scraper.js
 
 export async function findVideoSource(movieTitle, year) {
-  // Exact Match Query: Agar year hai toh title ke aage laga do
-  const exactQuery = year ? `${movieTitle} ${year}` : movieTitle;
+  // Clean title aur year ko jodh kar exact query banana
+  const cleanTitle = movieTitle.trim();
+  const exactQuery = year ? `${cleanTitle} ${year}` : cleanTitle;
+  
   console.log(`\n🎬 Prowlarr List Search For: "${exactQuery}"`);
 
   const baseUrl = (process.env.PROWLARR_URL || '').replace(/\/$/, '');
   const apiKey = process.env.PROWLARR_API_KEY;
 
-  if (!baseUrl || !apiKey) throw new Error("PROWLARR_URL ya API_KEY set nahi hai!");
+  if (!baseUrl || !apiKey) {
+    throw new Error("Render environment variables (PROWLARR_URL or PROWLARR_API_KEY) missing!");
+  }
 
   try {
     const url = new URL(`${baseUrl}/api/v1/search`);
-    url.searchParams.append('query', exactQuery); // Naya exact query
+    url.searchParams.append('query', exactQuery);
     url.searchParams.append('type', 'search');
-    url.searchParams.append('categories', '2000'); 
-    url.searchParams.append('categories', '2040'); 
-
-    //... (Baaki ka fetch response aur return streams wala code bilkul same rahega)
-
-    console.log(`📡 Fetching from: ${url.toString()}`);
+    
+    console.log(`📡 Fetching from Prowlarr: ${url.toString()}`);
 
     const response = await fetch(url.toString(), {
       method: 'GET',
@@ -30,20 +30,26 @@ export async function findVideoSource(movieTitle, year) {
     });
 
     if (!response.ok) {
-      throw new Error(`Prowlarr Connection Failed (Status: ${response.status})`);
+      throw new Error(`Prowlarr API returned HTTP Status ${response.status}`);
     }
 
     const results = await response.json();
 
-    if (!results || results.length === 0) {
-      return []; // Agar movie nahi mili
+    // Safety Check: Agar Prowlarr se array nahi mila toh crash na ho
+    if (!results || !Array.isArray(results)) {
+      console.log("⚠️ Prowlarr did not return an array. Response:", results);
+      return [];
     }
 
-    // Top 20 results (Seeders ke hisaab se sorted)
+    if (results.length === 0) {
+      console.log(`❌ Zero results returned from Prowlarr for "${exactQuery}"`);
+      return [];
+    }
+
+    // Seeders ke hisaab se sort karke top 20 nikalna
     const sorted = results.sort((a, b) => (b.seeders || 0) - (a.seeders || 0)).slice(0, 20);
 
     const streams = sorted.map(item => {
-      // File Size ko Bytes se GB mein convert karna
       let sizeStr = "Unknown Size";
       if (item.size) {
         sizeStr = (item.size / (1024 * 1024 * 1024)).toFixed(2) + " GB";
@@ -57,10 +63,11 @@ export async function findVideoSource(movieTitle, year) {
       };
     }).filter(item => item.link);
 
+    console.log(`✅ Successfully extracted ${streams.length} playable streams.`);
     return streams;
 
   } catch (error) {
-    console.error(`❌ Scraper Error:`, error.message);
+    console.error(`❌ Scraper Exception:`, error.message);
     throw error;
   }
 }
