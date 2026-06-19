@@ -317,6 +317,32 @@ export function DetailsModal(props) {
     if (m?.media_type === 'tv' && !isPreview()) loadWatchedEpisodes();
   });
 
+  createEffect(() => {
+    if (!isEdit()) return;
+    const m = movie();
+    if (!m) return;
+    setForm({
+      status: m.status || 'Planned',
+      rating: m.rating || '',
+      watchDate: m.watchDate || '',
+      notes: m.notes || '',
+      region: m.region || 'International',
+      season: m.season || 1,
+      episode: m.episode || 1,
+      tag: m.tag || '',
+      platforms: getSafePlatforms(m).join(', '),
+      genres: getSafeGenres(m).join(', '),
+      seasonDates: m.seasonDates || {}
+    });
+  });
+
+  const editablePlatformOptions = createMemo(() => {
+    const fromTmdb = richPlatforms().map(p => p.name).filter(Boolean);
+    const selected = form().platforms.split(',').map(s => s.trim()).filter(Boolean);
+    const merged = [...new Set([...fromTmdb, ...selected])];
+    return merged.length > 0 ? merged : ALL_AVAILABLE_PLATFORMS;
+  });
+
   const togglePlatform = (p) => { let curr = form().platforms.split(',').map(s=>s.trim()).filter(Boolean); if(curr.includes(p)) curr = curr.filter(x=>x!==p); else curr.push(p); setForm({...form(), platforms: curr.join(', ')}); };
   
   const saveChanges = async () => { 
@@ -757,7 +783,7 @@ export function DetailsModal(props) {
                     </Show>
 
                     <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Custom Tag</label><input placeholder="e.g. Theatre" value={form().tag} onInput={e=>setForm({...form(), tag: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)] placeholder-gray-700"/></div>
-                    <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Available Platforms</label><div class="flex flex-wrap gap-2 p-3 bg-[#0c0e14] border border-white/5 rounded-xl"><For each={ALL_AVAILABLE_PLATFORMS}>{p => <button type="button" onClick={()=>togglePlatform(p)} class={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors shadow-sm active:scale-95 ${form().platforms.split(',').map(s=>s.trim()).includes(p) ? 'bg-gradient-to-tr from-[var(--secondary)] to-[var(--primary)] text-[#0c0e14]' : 'bg-white/5 text-gray-400 hover:text-white border border-white/5'}`}>{p}</button>}</For></div></div>
+                    <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Available Platforms</label><div class="flex flex-wrap gap-2 p-3 bg-[#0c0e14] border border-white/5 rounded-xl"><For each={editablePlatformOptions()}>{p => <button type="button" onClick={()=>togglePlatform(p)} class={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors shadow-sm active:scale-95 ${form().platforms.split(',').map(s=>s.trim()).includes(p) ? 'bg-gradient-to-tr from-[var(--secondary)] to-[var(--primary)] text-[#0c0e14]' : 'bg-white/5 text-gray-400 hover:text-white border border-white/5'}`}>{p}</button>}</For></div></div>
                     <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">Genres (Comma separated)</label><input value={form().genres || (details().genres ? details().genres.map(g=>g.name).join(', ') : '')} onInput={e=>setForm({...form(), genres: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)]"/></div>
                     <div><label class="text-[9px] uppercase font-black text-gray-500 mb-1 block tracking-widest">My Notes</label><textarea value={form().notes} onInput={e=>setForm({...form(), notes: e.target.value})} class="w-full bg-[#0c0e14] border border-white/10 p-2.5 rounded-xl text-sm text-white outline-none focus:border-[var(--primary)] placeholder-gray-700" rows="3" placeholder="Write your thoughts..."></textarea></div>
                     <button onClick={saveChanges} class="w-full font-black py-4 rounded-xl text-[10px] uppercase tracking-widest mt-2 active:scale-95 transition-all flex items-center justify-center gap-2" style="background: var(--p); color: #05060a; box-shadow: 0 0 28px var(--p-glow), 0 4px 16px rgba(0,0,0,0.4)">Save Universe Changes</button>
