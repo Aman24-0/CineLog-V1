@@ -1,4 +1,4 @@
-import { createSignal, createEffect, onMount, ErrorBoundary, Show } from 'solid-js';
+import { createSignal, createEffect, onMount, onCleanup, ErrorBoundary, Show } from 'solid-js';
 import { collection, onSnapshot, query, orderBy, writeBatch, getDocs } from 'firebase/firestore';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { db, auth } from './firebase';
@@ -78,16 +78,33 @@ export default function App() {  const [user, setUser] = createSignal(null);
   createEffect(() => { document.body.className = `theme-${theme()}`; localStorage.setItem('cinelog_theme', theme()); });
   createEffect(() => { view(); window.scrollTo(0, 0); });
 
+  let authUnsub;
+  let watchlistUnsub;
+  let franchisesUnsub;
+
+  const unsubscribeUserSnapshots = () => {
+    if (watchlistUnsub) {
+      watchlistUnsub();
+      watchlistUnsub = undefined;
+    }
+    if (franchisesUnsub) {
+      franchisesUnsub();
+      franchisesUnsub = undefined;
+    }
+  };
+
   onMount(() => {
     setTimeout(() => setSplashWait(false), 3000);
-    onAuthStateChanged(auth, (u) => {
+    authUnsub = onAuthStateChanged(auth, (u) => {
+      unsubscribeUserSnapshots();
       setUser(u);
       if (u) {
+        setLoading(true);
         let wReady = false; let fReady = false;
-        onSnapshot(query(collection(db, 'users', u.uid, 'watchlist'), orderBy('addedAt', 'desc')), (snap) => {
+        watchlistUnsub = onSnapshot(query(collection(db, 'users', u.uid, 'watchlist'), orderBy('addedAt', 'desc')), (snap) => {
           setWatchlist(snap.docs.map(d => ({ id: d.id, ...d.data() }))); wReady = true; if (fReady) setLoading(false);
         });
-        onSnapshot(collection(db, 'users', u.uid, 'franchises'), (snap) => {
+        franchisesUnsub = onSnapshot(collection(db, 'users', u.uid, 'franchises'), (snap) => {
           setFranchises(snap.docs.map(d => ({ id: d.id, ...d.data() }))); fReady = true; if (wReady) setLoading(false);
         });
       } else {
@@ -96,6 +113,14 @@ export default function App() {  const [user, setUser] = createSignal(null);
         setLoading(false);
       }
     });
+  });
+
+  onCleanup(() => {
+    if (authUnsub) {
+      authUnsub();
+      authUnsub = undefined;
+    }
+    unsubscribeUserSnapshots();
   });
   const nukeCollection = async () => {
     if (!user()) return;
