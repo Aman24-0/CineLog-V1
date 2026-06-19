@@ -66,7 +66,7 @@ export const MovieStreamModal = (props) => {
   const handlePlayStream = (stream) => {
     props.onVideoFound({
       movieTitle: selectedMovie().title,
-      videoUrl: stream.magnet, // ✅ Uses 'magnet' key from Torrentio
+      magnetLink: stream.magnet, // ✅ Uses 'magnet' key from Torrentio
       poster: selectedMovie().poster,
       source: 'torrentio',
     });

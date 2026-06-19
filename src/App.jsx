@@ -331,7 +331,7 @@ export default function App() {  const [user, setUser] = createSignal(null);
               </button>
               <div class="w-full max-w-5xl">
                 <VideoPlayer
-                  videoUrl={currentVideo().videoUrl}
+                  magnetLink={currentVideo().magnetLink}
                   movieTitle={currentVideo().movieTitle}
                   poster={currentVideo().poster}
                   source={currentVideo().source}
