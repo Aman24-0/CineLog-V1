@@ -10,9 +10,9 @@ const getBackendUrl = () => {
 };
 
 export const trpc = createTRPCProxyClient({
-  // Yahan se 'transformer' hata diya gaya hai taaki backend se match ho jaye
   links: [
     httpBatchLink({
+      // ✅ FIXED: Ensures path matches backend /api/trpc
       url: `${getBackendUrl()}/api/trpc`,
     }),
   ],
