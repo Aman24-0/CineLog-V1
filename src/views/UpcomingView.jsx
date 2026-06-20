@@ -69,10 +69,19 @@ export function UpcomingView(props) {
   const [selectedDate, setSelectedDate] = createSignal(new Date().toISOString().split('T')[0]);
   const [movies, setMovies] = createSignal([]);
   const [loading, setLoading] = createSignal(false);
+  const [fetchError, setFetchError] = createSignal(false);
+  const [retryTick, setRetryTick] = createSignal(0);
   const [previewMovie, setPreviewMovie] = createSignal(null);
 
+  const fetchJson = (url) => fetch(url).then(r => {
+    if (!r.ok) throw new Error(`TMDB ${r.status}`);
+    return r.json();
+  });
+
   createEffect(() => {
+    retryTick();
     setLoading(true);
+    setFetchError(false);
     const dateObj = new Date(selectedDate());
     const startDate = dateObj.toISOString().split('T')[0];
     dateObj.setDate(dateObj.getDate() + 30); 
@@ -87,8 +96,8 @@ export function UpcomingView(props) {
     }
     
     Promise.all([
-        fetch(mUrl + '&page=1').then(r=>r.json()), fetch(mUrl + '&page=2').then(r=>r.json()),
-        fetch(tUrl + '&page=1').then(r=>r.json()), fetch(tUrl + '&page=2').then(r=>r.json())
+        fetchJson(mUrl + '&page=1'), fetchJson(mUrl + '&page=2'),
+        fetchJson(tUrl + '&page=1'), fetchJson(tUrl + '&page=2')
     ]).then(async ([m1, m2, t1, t2]) => { 
         let combinedMovies = [...(m1.results||[]), ...(m2.results||[])].map(m => ({...m, media_type: 'movie', calc_date: m.release_date}));
         let tvBaseList = [...(t1.results||[]), ...(t2.results||[])];
@@ -119,7 +128,7 @@ export function UpcomingView(props) {
         const unique = []; const seen = new Set();
         for(const item of resList) { if(!seen.has(item.id)) { seen.add(item.id); unique.push(item); } }
         setMovies(unique); setLoading(false); 
-    }).catch(()=>setLoading(false));
+    }).catch(()=>{ setLoading(false); setFetchError(true); });
   });
 
   const handleAdd = async (m) => {
@@ -192,7 +201,8 @@ export function UpcomingView(props) {
       </div>
 
       <Show when={loading()} fallback={
-        <Show when={movies().filter(m => m.media_type === mediaType()).length > 0} fallback={<div class="text-center p-12 glass-surface rounded-[2rem] text-gray-500 text-sm font-bold border border-white/5 flex flex-col items-center gap-3"><Icon name="event_busy" class="text-4xl opacity-50"/> No releases found.</div>}>
+        <Show when={fetchError()} fallback={
+          <Show when={movies().filter(m => m.media_type === mediaType()).length > 0} fallback={<div class="text-center p-12 glass-surface rounded-[2rem] text-gray-500 text-sm font-bold border border-white/5 flex flex-col items-center gap-3"><Icon name="event_busy" class="text-4xl opacity-50"/> No releases found.</div>}>
           <div class="space-y-6 relative before:absolute before:inset-0 before:ml-[38px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-white/10 before:to-transparent">
             <For each={movies().filter(m => m.media_type === mediaType())}>{(m) => {
               const day = new Date(m.calc_date).getDate(); const month = new Date(m.calc_date).toLocaleString('default', { month: 'short' });
@@ -212,6 +222,13 @@ export function UpcomingView(props) {
                 </div>
               </div>
             )}}</For>
+          </div>
+          </Show>
+        }>
+          <div class="text-center p-12 glass-surface rounded-[2rem] text-gray-500 text-sm font-bold border border-white/5 flex flex-col items-center gap-3">
+            <Icon name="cloud_off" class="text-4xl opacity-50"/>
+            <span>TMDB server unavailable right now.<br/>This is on their end, not the app — try again in a bit.</span>
+            <button type="button" onClick={() => setRetryTick(t => t + 1)} class="mt-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all" style="background: var(--p-dim); color: var(--p); border: 1px solid var(--p)">Retry</button>
           </div>
         </Show>
       }><div class="text-center p-12 flex flex-col items-center gap-4 text-[var(--primary)] animate-pulse font-bold text-sm tracking-widest uppercase"><Icon name="radar" class="text-5xl animate-spin"/> Scanning Radar...</div></Show>
