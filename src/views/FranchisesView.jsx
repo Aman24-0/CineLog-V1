@@ -191,17 +191,6 @@ export function FranchisesView(props) {
     });
   });
 
-  const groupedByFolder = createMemo(() => {
-    const groups = [];
-    nestedFolderIds().forEach(fid => {
-      const folder = props.franchises().find(f => f.id === fid);
-      if (!folder) return;
-      const items = props.watchlist().filter(m => m.franchises && m.franchises[fid] !== undefined).sort((a,b)=>(a.franchises[fid]||0)-(b.franchises[fid]||0));
-      if (items.length) groups.push({ folder, items });
-    });
-    return groups;
-  });
-
   const detectSubCollectionName = (m) => {
     const t = (m.title || m.name || '').toLowerCase();
     if (t.includes('iron man')) return 'Iron Man Collection';

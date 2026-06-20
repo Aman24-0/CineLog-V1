@@ -1,7 +1,6 @@
 import { createMemo, For, Show } from 'solid-js';
 import { Icon, getSafeGenres } from '../utils';
 
-const titleOf = (m) => m.title || m.name || 'Untitled';
 const yearMonth = (date) => date ? date.slice(0, 7) : null;
 
 function MetricCard(props) {

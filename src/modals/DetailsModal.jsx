@@ -90,7 +90,6 @@ export function DetailsModal(props) {
     .filter(s => Number(s.season_number) > 0)
     .sort((a, b) => Number(a.season_number) - Number(b.season_number)));
 
-  const selectedSeasonData = createMemo(() => tvSeasons().find(s => Number(s.season_number) === Number(selectedSeason())));
   const selectedSeasonEpisodes = createMemo(() => seasonEpisodes()[selectedSeason()]?.episodes || []);
   const currentSeasonNumber = createMemo(() => parseInt(form().season || movie()?.season || 1) || 1);
   const currentEpisodeNumber = createMemo(() => parseInt(form().episode || movie()?.episode || 1) || 1);
@@ -288,6 +287,12 @@ export function DetailsModal(props) {
       }
   });
 
+  createEffect(() => {
+    if (!showPlayer()) return;
+    window.addEventListener('message', handlePlayerMessages);
+    onCleanup(() => window.removeEventListener('message', handlePlayerMessages));
+  });
+
   onMount(async () => {
     if (!props.isGuest) {
       try {
@@ -419,9 +424,6 @@ export function DetailsModal(props) {
     if ((props.watchlist || []).some(w => String(w.id) === String(item.id))) return props.showToast("Already in Vault! 🍿");
     props.showToast("Adding to Vault...");
     try {
-      const castNames = details().credits?.cast?.slice(0, 5).map(c => c.name) || [];
-      const director = details().credits?.crew?.find(c => c.job === 'Director')?.name || '';
-      const castList = [...castNames, director].filter(Boolean);
       await addPreviewToWatchlist({ uid: props.uid, item, details: details() });
       props.showToast("Added to Vault! 🍿");
       props.onClose();
