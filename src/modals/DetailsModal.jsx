@@ -91,8 +91,8 @@ export function DetailsModal(props) {
     .sort((a, b) => Number(a.season_number) - Number(b.season_number)));
 
   const selectedSeasonEpisodes = createMemo(() => seasonEpisodes()[selectedSeason()]?.episodes || []);
-  const currentSeasonNumber = createMemo(() => parseInt(form().season || movie()?.season || 1) || 1);
-  const currentEpisodeNumber = createMemo(() => parseInt(form().episode || movie()?.episode || 1) || 1);
+  const currentSeasonNumber = createMemo(() => parseInt(movie()?.season || form().season || 1) || 1);
+const currentEpisodeNumber = createMemo(() => parseInt(movie()?.episode || form().episode || 1) || 1);
   const progressControls = useWatchProgress({ movie, isPreview, isGuest: props.isGuest, uid: props.uid, activeServer, watchProgress, setWatchProgress, contentDuration, setContentDuration, playerSessionStart, setPlayerSessionStart, playerStartProgress, setPlayerStartProgress, receivedRealProgress, setReceivedRealProgress, currentSeasonNumber, currentEpisodeNumber, inferDurationSeconds, showToast: props.showToast });
   const episodeDocId = (season, episode) => `s${season}_e${episode}`;
   const compareEpisodePosition = (aSeason, aEpisode, bSeason, bEpisode) => (Number(aSeason) - Number(bSeason)) || (Number(aEpisode) - Number(bEpisode));
