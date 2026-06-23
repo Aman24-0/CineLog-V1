@@ -4,13 +4,8 @@ import { db } from '../firebase';
 import { Icon, formatRuntime, cleanPlatform, getSafeGenres, getSafePlatforms, SafeInfoRow, TMDB_KEY, OMDB_KEY, fetchTmdbWatchProviders } from '../utils';
 import { PersonModal } from './PersonModal';
 
-// 🚀 VIDSTACK PREMIUM PLAYER IMPORTS 🚀
-import 'vidstack/player/styles/default/theme.css';
-import 'vidstack/player/styles/default/layouts/video.css';
-// Isse browser ko pata chalta hai ki <media-player> tag ka kya matlab hai
-import 'vidstack/player';
-import 'vidstack/player/layouts/default';
-import 'vidstack/player/ui'; // Yeh missing tha, iske bina UI components load nahi hote!
+// 🚀 Naya Player Component Import Kiya 🚀
+import { DirectPlayPlayer } from '../components/DirectPlayPlayer';
 
 const DEFAULT_SERVERS = [
   { id: 'vidzee', name: 'VidZee (Fast)', movieUrl: 'https://player.vidzee.wtf/embed/movie/{id}', tvUrl: 'https://player.vidzee.wtf/embed/tv/{id}/{season}/{episode}', icon: 'smart_display' },
@@ -761,7 +756,6 @@ export function DetailsModal(props) {
                                 </button>
                             )}</For>
 
-                            {/* 🚀 DIRECT PLAY BUTTON INSIDE THE SERVER LIST 🚀 */}
                             <div class="w-full mt-1 flex items-center gap-2">
                                 <button type="button" onClick={(e) => { e.stopPropagation(); setActiveServer('DIRECT_PLAY'); }}
                                   class="flex-1 flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all"
@@ -776,7 +770,6 @@ export function DetailsModal(props) {
                             </div>
                         </div>
 
-                        {/* 🚀 URL EDIT BOX FOR DIRECT PLAY 🚀 */}
                         <Show when={isEditingDirectUrl()}>
                             <div class="flex gap-2 mt-1 px-1 mb-2 animate-fade-in">
                                 <input type="text" value={directPlayUrl()} onInput={e => setDirectPlayUrl(e.target.value)} placeholder="Paste custom video URL here..." class="flex-1 bg-[#0c0e14] border border-white/10 rounded-lg p-2 text-xs text-white outline-none focus:border-[#3b82f6] transition-colors"/>
@@ -792,7 +785,6 @@ export function DetailsModal(props) {
                             <div class="text-[9px] text-[#3b82f6] mt-1 px-2 truncate mb-2 animate-fade-in opacity-80">Link: {directPlayUrl()}</div>
                         </Show>
                         
-                        {/* THE FAILSAFE 'WATCH NOW' BUTTON */}
                         <button type="button" onClick={(e) => { 
                             e.preventDefault(); 
                             e.stopPropagation(); 
@@ -1128,7 +1120,6 @@ export function DetailsModal(props) {
                     <select value={activeServer()} onChange={(e) => { e.stopPropagation(); setActiveServer(e.target.value); }} class="bg-transparent text-[10px] font-black uppercase tracking-widest text-[var(--primary)] outline-none appearance-none cursor-pointer pr-4 pl-1">
                         <For each={availableServers()}>{(srv) => <option value={srv.id} class="bg-[#0c0e14] text-white">{srv.name}</option>}</For>
                         
-                        {/* 🚀 DIRECT PLAY OPTION IN FULLSCREEN DROPDOWN 🚀 */}
                         <option value="DIRECT_PLAY" class="bg-[#0c0e14] text-[#3b82f6]">DIRECT PLAY</option>
                     </select>
                     <Icon name="expand_more" class="text-gray-400 text-[14px] absolute right-1 pointer-events-none" />
@@ -1136,33 +1127,27 @@ export function DetailsModal(props) {
             </div>
           </div>
           
-                    {/* 🚀 PLAYER AREA WITH VIDSTACK FIX 🚀 */}
+          {/* 🚀 Vidstack Integration 🚀 */}
           <div class="flex-1 bg-black w-full h-full relative">
-            <div class="absolute inset-0 flex flex-col gap-3 items-center justify-center pointer-events-none opacity-50"><Icon name="dns" class="text-[var(--primary)] text-4xl animate-pulse"/><p class="text-[10px] uppercase font-black tracking-widest text-[var(--primary)]">Connecting to Node...</p></div>
-            
             <Show when={activeServer() === 'DIRECT_PLAY'} fallback={
               <iframe src={getStreamUrl(activeServer())} class="w-full h-full border-none relative z-10" allowfullscreen ></iframe>
             }>
-              {/* Vidstack Player properly integrated for SolidJS via Web Components */}
-              <media-player 
-                class="w-full h-full relative z-10 outline-none bg-black vds-video-layout" 
-                title={movie().title || movie().name} 
-                src={getStreamUrl(activeServer())} 
-                crossorigin="anonymous"
-                playsinline
-                autoplay
-              >
-                <media-provider></media-provider>
-                {/* Official Web Component Default Layout tag */}
-                <media-video-layout></media-video-layout>
-              </media-player>
+              <DirectPlayPlayer 
+                 src={getStreamUrl(activeServer())}
+                 title={movie().title || movie().name}
+                 poster={`https://image.tmdb.org/t/p/original${movie().backdrop_path}`}
+                 startTime={movie().watchProgress?.currentTime || 0}
+                 onProgress={(prog) => {
+                    setReceivedRealProgress(true);
+                    setWatchProgress(prog);
+                 }}
+              />
             </Show>
           </div>
 
         </div>
       </Show>
 
-      {/* Person Modal Overlay */}
       <Show when={personId()}>
         <PersonModal
           personId={personId()}
