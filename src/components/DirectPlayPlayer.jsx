@@ -49,7 +49,28 @@ export function DirectPlayPlayer(props) {
         playsInline
         preload="metadata"
         class="w-full max-h-screen bg-black"
-      />
+      >
+        {/* English Subtitle */}
+        {props.subtitleUrl && (
+          <track
+            kind="subtitles"
+            src={props.subtitleUrl}
+            srclang="en"
+            label="English"
+            default
+          />
+        )}
+
+        {/* Hindi Subtitle Example */}
+        {props.hindiSubtitleUrl && (
+          <track
+            kind="subtitles"
+            src={props.hindiSubtitleUrl}
+            srclang="hi"
+            label="Hindi"
+          />
+        )}
+      </video>
     </div>
   );
 }
