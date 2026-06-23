@@ -26,9 +26,9 @@ function UpcomingDetailsModal(props) {
   return (
       <div class="fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[999999] isolate animate-fade-in" onClick={props.onClose}>
           <div class="w-full max-w-xl bg-[#0c0e14] rounded-3xl overflow-hidden border border-white/10 relative max-h-[90vh] shadow-2xl animate-pop-in flex flex-col" onClick={e=>e.stopPropagation()}>
-              <button onClick={props.onClose} class="absolute top-20 md:top-4 right-4 z-[1000000] bg-black/50 backdrop-blur-md border border-white/10 p-2.5 rounded-full hover:bg-black/80 active:scale-95 transition-all"><Icon name="close" class="text-sm text-white"/></button>
+              <button onClick={props.onClose} class="absolute top-4 right-4 z-[1000000] bg-black/50 backdrop-blur-md border border-white/10 p-2.5 rounded-full hover:bg-black/80 active:scale-95 transition-all"><Icon name="close" class="text-sm text-white"/></button>
               <div class="overflow-y-auto hide-scrollbar w-full">
-                  <div class="relative h-48 md:h-64 bg-black">
+                  <div class="relative h-56 md:h-72 bg-black">
                       <Show when={!playTrailer()} fallback={<iframe class="w-full h-full absolute inset-0 z-10" src={`https://www.youtube.com/embed/${trailerKey()}?autoplay=1&rel=0`} frameborder="0" allowfullscreen></iframe>}>
                           <Show when={details().backdrop_path} fallback={<div class="w-full h-full flex items-center justify-center text-gray-700 bg-[#171921]"><Icon name="movie" class="text-6xl"/></div>}><img src={`https://image.tmdb.org/t/p/original${details().backdrop_path}`} class="w-full h-full object-cover opacity-40" /></Show>
                           <div class="absolute inset-0 bg-gradient-to-t from-[#0c0e14] to-transparent pointer-events-none" />
@@ -37,7 +37,8 @@ function UpcomingDetailsModal(props) {
                           </Show>
                       </Show>
                   </div>
-                  <div class="p-6 md:px-8 pb-28 -mt-16 relative z-10">
+                  {/* FIX: reduced negative margin and added top padding */}
+                  <div class="p-6 md:px-8 pb-28 -mt-8 pt-4 relative z-10">
                       <h2 class="text-3xl font-black drop-shadow-md mb-2">{details().title || details().name}</h2>
                       <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-6">{details().release_date || details().first_air_date} • {props.movie.media_type === 'tv' ? 'SERIES' : 'MOVIE'}<Show when={runtimeVal() > 0}> • {formatRuntime(runtimeVal())}</Show></p>
                       <p class="text-gray-400 text-sm mb-6 leading-relaxed">{details().overview || 'No overview available.'}</p>
