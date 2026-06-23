@@ -1135,7 +1135,7 @@ export function DetailsModal(props) {
             </div>
           </div>
           
-          {/* 🚀 PLAYER AREA WITH VIDSTACK FIX 🚀 */}
+                    {/* 🚀 PLAYER AREA WITH VIDSTACK FIX 🚀 */}
           <div class="flex-1 bg-black w-full h-full relative">
             <div class="absolute inset-0 flex flex-col gap-3 items-center justify-center pointer-events-none opacity-50"><Icon name="dns" class="text-[var(--primary)] text-4xl animate-pulse"/><p class="text-[10px] uppercase font-black tracking-widest text-[var(--primary)]">Connecting to Node...</p></div>
             
@@ -1147,15 +1147,17 @@ export function DetailsModal(props) {
                 class="w-full h-full relative z-10 outline-none bg-black" 
                 title={movie().title || movie().name} 
                 src={getStreamUrl(activeServer())} 
-                crossOrigin 
-                playsInline 
-                autoPlay
+                crossorigin="anonymous"
+                playsinline
+                autoplay
+                controls
               >
                 <media-provider></media-provider>
                 <media-video-layout></media-video-layout>
               </media-player>
             </Show>
           </div>
+
 
         </div>
       </Show>
