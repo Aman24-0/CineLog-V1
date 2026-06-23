@@ -221,4 +221,5 @@ export const appRouter = t.router({
     }),
 });
 
-export type AppRouter = typeof appRouter;
+// Export the router type for TypeScript support
+export { appRouter };
