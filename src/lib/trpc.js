@@ -1,32 +1,17 @@
-import { createTRPCSolid, httpBatchLink, loggerLink } from '@trpc/solid';
+import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
 
-// ============================================
-// Unified Backend URL Configuration
-// ============================================
-// Fixes: Hardcoded URLs. Now uses VITE_BACKEND_URL from .env
-const getBaseUrl = () => {
-  if (import.meta.env.VITE_BACKEND_URL) {
-    return import.meta.env.VITE_BACKEND_URL;
+const getBackendUrl = () => {
+  if (window.location.hostname === 'localhost') {
+    return 'http://localhost:5000';
   }
-  // Fallback for local development
-  return 'http://localhost:5000';
+  // Your existing Render server URL
+  return 'https://cinelog-0py8.onrender.com';
 };
 
-export const trpc = createTRPCSolid({
-  config() {
-    return {
-      links: [
-        loggerLink({
-          enabled: (op) =>
-            import.meta.env.DEV ||
-            (op.direction === 'down' && op.result instanceof Error),
-        }),
-        httpBatchLink({
-          url: `${getBaseUrl()}/trpc`,
-        }),
-      ],
-    };
-  },
+export const trpc = createTRPCProxyClient({
+  links: [
+    httpBatchLink({
+      url: `${getBackendUrl()}/api/trpc`,
+    }),
+  ],
 });
-
-export default trpc;
