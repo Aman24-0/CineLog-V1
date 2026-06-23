@@ -16,6 +16,7 @@ export function Vault(props) {
   createEffect(() => {
     const mode = viewMode();
     if (mode === 'timeline' && prevViewMode !== 'timeline') {
+      // Reset all filters except status and sort when entering timeline
       setFilters({
         ...defaultFilters,
         status: 'Completed',
@@ -96,34 +97,11 @@ export function Vault(props) {
     }).length
   );
 
-  // Helper to get the best available date from a movie
-  const getBestDate = (m) => {
-    // 1. Explicit watchDate
-    if (m.watchDate) return m.watchDate;
-    // 2. Top-level start/end (if you add them later)
-    if (m.endDate) return m.endDate;
-    if (m.startDate) return m.startDate;
-    // 3. From seasonDates: take the end date of the latest season that has one
-    if (m.seasonDates && typeof m.seasonDates === 'object') {
-      const seasonNumbers = Object.keys(m.seasonDates).filter(k => !isNaN(Number(k))).map(Number).sort((a,b) => b - a);
-      for (const sn of seasonNumbers) {
-        const sd = m.seasonDates[sn];
-        if (sd && sd.end) return sd.end;
-      }
-      // If no end, use start of latest season
-      for (const sn of seasonNumbers) {
-        const sd = m.seasonDates[sn];
-        if (sd && sd.start) return sd.start;
-      }
-    }
-    // 4. Fallback to addedAt (should rarely happen)
-    return m.addedAt;
-  };
-
+  // FIX: Use watchDate, fallback to endDate or startDate
   const timelineItems = createMemo(() =>
     filtered().filter((m) => {
       if (m.status !== 'Completed') return false;
-      const date = getBestDate(m);
+      const date = m.watchDate || m.endDate || m.startDate || m.addedAt;
       if (!date) return false;
       const watchTime = new Date(date).getTime();
       return !isNaN(watchTime);
@@ -136,7 +114,7 @@ export function Vault(props) {
     let currentGroup = null;
 
     list.forEach(m => {
-      const dateObj = new Date(getBestDate(m));
+      const dateObj = new Date(m.watchDate || m.endDate || m.startDate || m.addedAt);
       const monthYear = isNaN(dateObj.getTime()) ? 'Unknown Date' : dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
       if (!currentGroup || currentGroup.label !== monthYear) {
@@ -207,7 +185,7 @@ export function Vault(props) {
                 <div class="space-y-4">
                   <For each={group.items}>
                     {(m) => {
-                      const dateObj = new Date(getBestDate(m));
+                      const dateObj = new Date(m.watchDate || m.endDate || m.startDate || m.addedAt);
                       const day = dateObj && !isNaN(dateObj) ? dateObj.getDate() : '--';
                       return (
                         <div class="relative flex items-center group cursor-pointer pl-10 pr-2" onClick={() => props.openMovie(m.id)}>
@@ -247,7 +225,7 @@ export function Vault(props) {
       <Show when={viewMode() === 'timeline' && filtered().length > 0 && timelineItems().length === 0}>
         <div class="text-center p-12" style="color: var(--muted)">
           <Icon name="event_busy" class="text-5xl mb-3" />
-          <p class="font-semibold text-sm">Timeline only shows completed titles with a valid Watch Date (or a season end date).</p>
+          <p class="font-semibold text-sm">Timeline only shows completed titles with a valid Watch Date (or End Date).</p>
         </div>
       </Show>
 
