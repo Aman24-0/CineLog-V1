@@ -1,6 +1,12 @@
 import { defineConfig } from 'vite';
 import solid from 'vite-plugin-solid';
 import { VitePWA } from 'vite-plugin-pwa';
+import { Buffer } from 'buffer';
+import process from 'process';
+
+// Polyfills for Node.js compatibility
+globalThis.Buffer = Buffer;
+globalThis.process = process;
 
 export default defineConfig({
   plugins: [
