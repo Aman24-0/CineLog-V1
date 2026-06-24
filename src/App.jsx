@@ -1,3 +1,4 @@
+// src/App.jsx
 import { createSignal, createEffect, onMount, ErrorBoundary, Show } from 'solid-js';
 import { collection, onSnapshot, query, orderBy, writeBatch, getDocs } from 'firebase/firestore';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
@@ -10,6 +11,7 @@ import { FranchisesView } from './views/FranchisesView';
 import { UpcomingView } from './views/UpcomingView';
 import { DataSync } from './views/DataSync';
 import { Analytics } from './views/Analytics';
+import { SettingsView } from './views/SettingsView';
 import { DetailsModal } from './modals/DetailsModal';
 import { SearchModal } from './modals/SearchModal';
 import { ServerSettingsModal } from './modals/ServerSettingsModal';
@@ -19,11 +21,12 @@ import { useModalState } from './hooks/useModalState';
 const NavBtn = (props) => (
   <button
     onClick={props.onClick}
-    class="flex flex-col lg:flex-row items-center gap-1 lg:gap-4 w-14 lg:w-full lg:px-4 lg:py-3 lg:rounded-xl lg:hover:bg-white/5 transition-all"
-    style={props.active ? 'color: var(--p)' : 'color: var(--dim)'}
+    class="flex flex-col lg:flex-row items-center lg:justify-start justify-center gap-1 lg:gap-4 flex-1 lg:flex-none h-full lg:h-auto relative lg:w-full lg:px-4 lg:py-3 lg:rounded-xl lg:hover:bg-white/5 transition-all"
+    style={props.active ? 'color: var(--p)' : 'color: #555'}
   >
+    {props.active && <div class="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-b-full lg:hidden" style="background: var(--p)" />}
     <Icon name={props.icon} fill={props.active} />
-    <span class="label-mono lg:text-[10px] lg:font-bold lg:uppercase lg:tracking-[0.2em]">{props.label}</span>
+    <span class="text-[10px] lg:text-[10px] font-medium lg:font-bold lg:uppercase lg:tracking-[0.2em]">{props.label}</span>
   </button>
 );
 
@@ -130,13 +133,11 @@ export default function App() {
       </div>
     )}>
       <div class="cinelog-root min-h-screen pb-32 lg:pb-0 lg:pl-64" onClick={() => setUserMenuOpen(false)}>
-        <div class="orb-primary" />
-        <div class="orb-secondary" />
         <Show when={!loading() && !splashWait()} fallback={<LoadingScreen />}>
           
           {/* ─ HEADER ── */}
-          <header class="sticky top-0 z-50 flex justify-between items-center px-6 py-4 border-b"
-            style="background: rgba(5,6,10,0.8); backdrop-filter: blur(24px); border-color: var(--border)">
+          <header class="sticky top-0 z-50 flex justify-between items-center px-6 py-4"
+            style="background: #000; border-bottom: 1px solid rgba(255,255,255,0.08);">
             
             {/* Logo Container */}
             <div class="flex items-center gap-3">
@@ -154,11 +155,11 @@ export default function App() {
             {/* Header Controls */}
             <div class="flex items-center gap-3">
               <button
-                onClick={() => setSettingsModal(true)}
-                class="glass-surface p-2.5 rounded-full"
-                style="border-color: var(--border-active)"
+                onClick={() => { setSearchInitialQuery(''); setSearchModal(true); }}
+                class="p-2.5 rounded-full"
+                style="background:#111; border: 1px solid rgba(255,255,255,0.1)"
               >
-                <Icon name="palette" class="text-sm" style="color: var(--muted)" />
+                <Icon name="search" class="text-sm" style="color: var(--muted)" />
               </button>
               
               {/* Login / Profile Toggle */}
@@ -238,28 +239,28 @@ export default function App() {
                 <DataSync watchlist={watchlist} uid={user().uid} showToast={showToast} />
               </Show>
             </Show>
+            <Show when={view() === 'settings'}>
+              <SettingsView user={user()} theme={theme()} setTheme={setTheme} onLogout={() => signOut(auth)} onNuke={nukeCollection} uid={user()?.uid} showToast={showToast} setView={setView} onServerSettings={() => setServerSettingsModal(true)} />
+            </Show>
           </main>
 
-          {/* ── BOTTOM NAV ── */}
-          <div class="fixed bottom-6 lg:bottom-0 lg:left-0 w-full lg:w-64 px-4 lg:px-0 flex justify-center lg:h-screen z-50 pointer-events-none">
-            <nav class="nav-pill w-full max-w-md lg:max-w-none lg:h-full lg:rounded-none lg:flex-col lg:justify-start lg:gap-8 lg:pt-32 flex justify-around items-center px-2 py-3 lg:px-6 pointer-events-auto lg:border-r" style="border-color: var(--border)">
-              <NavBtn icon="dashboard" label="Home" active={view() === 'dashboard'} onClick={() => setView('dashboard')} />
-              <NavBtn icon="visibility" label="Vault" active={view() === 'watchlist'} onClick={() => setView('watchlist')} />
-              {/* Center Add button */}
-              <div class="relative -mt-8 lg:mt-0 mx-1">
-                <button
-                  onClick={() => { setSearchInitialQuery(''); setSearchModal(true); }}
-                  class="w-14 h-14 rounded-full flex items-center justify-center text-black font-black border-4 active:scale-95 lg:w-full lg:h-auto lg:py-4 lg:rounded-2xl lg:border-none lg:flex-row lg:gap-3 lg:px-6"
-                  style="background: var(--p); border-color: var(--void); box-shadow: 0 0 24px var(--p-glow), 0 8px 20px rgba(0,0,0,0.5)"
-                >
-                  <Icon name="search" class="text-3xl lg:text-xl" />
-                  <span class="hidden lg:block font-bold uppercase tracking-widest text-[10px]">Discover</span>
-                </button>
-              </div>
-              <NavBtn icon="folder_special" label="Lists" active={view() === 'franchises'} onClick={() => setView('franchises')} />
-              <NavBtn icon="calendar_month" label="Upcoming" active={view() === 'upcoming'} onClick={() => setView('upcoming')} />
-            </nav>
+          {/* ── DESKTOP SIDEBAR ── */}
+          <div class="hidden lg:flex fixed top-0 left-0 h-screen w-64 bg-black border-r border-white/10 z-40 flex-col pt-24 px-6 gap-2">
+            <NavBtn icon="dashboard" label="Home" active={view() === 'dashboard'} onClick={() => setView('dashboard')} />
+            <NavBtn icon="visibility" label="Vault" active={view() === 'watchlist'} onClick={() => setView('watchlist')} />
+            <NavBtn icon="folder_special" label="Lists" active={view() === 'franchises'} onClick={() => setView('franchises')} />
+            <NavBtn icon="calendar_month" label="Upcoming" active={view() === 'upcoming'} onClick={() => setView('upcoming')} />
+            <NavBtn icon="settings" label="Settings" active={view() === 'settings'} onClick={() => setView('settings')} />
           </div>
+
+          {/* ── MOBILE BOTTOM NAV ── */}
+          <nav class="fixed bottom-0 left-0 w-full z-50 flex lg:hidden bottom-nav-bar h-16">
+            <NavBtn icon="dashboard" label="Home" active={view() === 'dashboard'} onClick={() => setView('dashboard')} />
+            <NavBtn icon="visibility" label="Vault" active={view() === 'watchlist'} onClick={() => setView('watchlist')} />
+            <NavBtn icon="folder_special" label="Lists" active={view() === 'franchises'} onClick={() => setView('franchises')} />
+            <NavBtn icon="calendar_month" label="Upcoming" active={view() === 'upcoming'} onClick={() => setView('upcoming')} />
+            <NavBtn icon="settings" label="Settings" active={view() === 'settings'} onClick={() => setView('settings')} />
+          </nav>
 
           {/* ── MODALS ── */}
           <Show when={searchModal()}>
