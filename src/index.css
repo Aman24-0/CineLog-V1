@@ -11,6 +11,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 /* ── THEME TOKENS ── */
+body.theme-pearl      { --p: #ffffff; --p2: #a0a0a0; --p-glow: rgba(255,255,255,0.15); --p-dim: rgba(255,255,255,0.06); }
 body.theme-sage       { --p: #a8ff78; --p2: #ff78c4; --p-glow: rgba(168,255,120,0.22); --p-dim: rgba(168,255,120,0.08); }
 body.theme-matrix     { --p: #39ff14; --p2: #00f5a0; --p-glow: rgba(57,255,20,0.22);  --p-dim: rgba(57,255,20,0.08); }
 body.theme-netflix    { --p: #ff2d55; --p2: #ff9500; --p-glow: rgba(255,45,85,0.22);  --p-dim: rgba(255,45,85,0.08); }
@@ -18,7 +19,6 @@ body.theme-interstellar { --p: #00c2ff; --p2: #f9a620; --p-glow: rgba(0,194,255,
 body.theme-neonhorizon { --p: #ff2af0; --p2: #00ffe7; --p-glow: rgba(255,42,240,0.22); --p-dim: rgba(255,42,240,0.08); }
 body.theme-vibranium  { --p: #9d4edd; --p2: #06ffd4; --p-glow: rgba(157,78,221,0.22); --p-dim: rgba(157,78,221,0.08); }
 body.theme-cinematic { --p: #FFD700; --p2: #FF6B00; --p-glow: rgba(255,215,0,0.40); --p-dim: rgba(255,215,0,0.10); --void: #000; --deep: #000; --surface: #111111; --raised: #171722; --border: rgba(255,215,0,0.10); --border-active: rgba(255,215,0,0.40); --text: #F5F5F5; --muted: #8A8A9A; --dim: rgba(138,138,154,0.32); }
-body.theme-pearl { --p: #ffffff; --p2: #a0a0a0; --p-glow: rgba(255,255,255,0.15); --p-dim: rgba(255,255,255,0.06); }
 
 :root {
   --void: #000000;
@@ -99,7 +99,6 @@ header.sticky {
 .nav-pill {
   background: #000;
   border-top: 1px solid rgba(255,255,255,0.08);
-  position: relative;
 }
 .nav-pill::before {
   content: '';
@@ -115,7 +114,6 @@ header.sticky {
 .bottom-nav-bar { 
   background: #000; 
   border-top: 1px solid rgba(255,255,255,0.08); 
-  position: relative;
 }
 .bottom-nav-bar::before {
   content: '';
