@@ -18,6 +18,7 @@ body.theme-interstellar { --p: #00c2ff; --p2: #f9a620; --p-glow: rgba(0,194,255,
 body.theme-neonhorizon { --p: #ff2af0; --p2: #00ffe7; --p-glow: rgba(255,42,240,0.22); --p-dim: rgba(255,42,240,0.08); }
 body.theme-vibranium  { --p: #9d4edd; --p2: #06ffd4; --p-glow: rgba(157,78,221,0.22); --p-dim: rgba(157,78,221,0.08); }
 body.theme-cinematic { --p: #FFD700; --p2: #FF6B00; --p-glow: rgba(255,215,0,0.40); --p-dim: rgba(255,215,0,0.10); --void: #000; --deep: #000; --surface: #111111; --raised: #171722; --border: rgba(255,215,0,0.10); --border-active: rgba(255,215,0,0.40); --text: #F5F5F5; --muted: #8A8A9A; --dim: rgba(138,138,154,0.32); }
+body.theme-pearl { --p: #ffffff; --p2: #a0a0a0; --p-glow: rgba(255,255,255,0.15); --p-dim: rgba(255,255,255,0.06); }
 
 :root {
   --void: #000000;
