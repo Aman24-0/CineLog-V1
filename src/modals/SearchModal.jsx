@@ -1,3 +1,4 @@
+// src/modals/SearchModal.jsx
 import { createSignal, createEffect, For, Show, onMount, onCleanup } from 'solid-js';
 import { doc, setDoc, serverTimestamp, collection, getDocs, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -45,7 +46,6 @@ export function SearchModal(props) {
       try {
         const res = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${TMDB_KEY}&query=${encodeURIComponent(query)}`);
         const data = await res.json();
-        // Include movies, tv AND persons
         setResults((data.results || []).filter(r => r.media_type === 'movie' || r.media_type === 'tv' || r.media_type === 'person'));
       } catch(e) {}
       setSearching(false);
@@ -77,7 +77,6 @@ export function SearchModal(props) {
       return;
     }
 
-    // Duplicate check
     if (props.watchlist.some(item => String(item.id) === String(m.id))) {
       return props.showToast("Already in Vault! 🍿");
     }
@@ -179,11 +178,11 @@ export function SearchModal(props) {
   };
 
   return (
-    <div class="fixed inset-0 bg-black/70 backdrop-blur-md p-4 pt-16 sm:pt-24 z-[999999] flex justify-center items-center animate-fade-in" onClick={props.onClose}>
-      <div class="w-full max-w-2xl mx-auto glass-surface rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.7)] overflow-hidden flex flex-col max-h-[75vh] border border-white/10 animate-pop-in bg-[#08090b]/95" onClick={e => e.stopPropagation()}>
+    <div class="fixed inset-0 p-4 pt-16 sm:pt-24 z-[999999] flex justify-center items-center animate-fade-in" style="background: rgba(0,0,0,0.92)" onClick={props.onClose}>
+      <div class="w-full max-w-2xl mx-auto rounded-[1.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.7)] overflow-hidden flex flex-col max-h-[75vh] animate-pop-in" style="background:#111; border: 1px solid rgba(255,255,255,0.1);" onClick={e => e.stopPropagation()}>
 
         {/* Search Input */}
-        <div class="p-5 lg:p-8 border-b border-white/5 flex gap-4 items-center bg-gradient-to-b from-white/5 to-transparent">
+        <div class="p-5 lg:p-8 border-b border-white/5 flex gap-4 items-center bg-transparent">
           <Icon name="search" class="text-[var(--p)] text-2xl"/>
           <input
             autofocus
@@ -227,7 +226,7 @@ export function SearchModal(props) {
                 return (
                   <div
                     onClick={() => setPersonId(item.id)}
-                    class="flex items-center gap-4 p-3 glass-surface rounded-[1.5rem] border border-transparent hover:border-[var(--p)]/30 hover:bg-white/5 transition-all cursor-pointer group shadow-sm"
+                    class="flex items-center gap-4 p-3 rounded-[1.5rem] border border-transparent hover:border-[var(--p)]/30 hover:bg-white/5 transition-all cursor-pointer group shadow-sm"
                   >
                     <img
                       src={item.profile_path
@@ -251,7 +250,7 @@ export function SearchModal(props) {
               return (
                 <div
                   onClick={() => !isSaved && props.openPreview(item)}
-                  class={`flex gap-4 p-3 glass-surface rounded-[1.5rem] border border-transparent hover:border-[var(--p)]/30 hover:bg-white/5 transition-all ${isSaved ? 'opacity-60' : 'cursor-pointer'} group shadow-sm`}
+                  class={`flex gap-4 p-3 rounded-[1.5rem] border border-transparent hover:border-[var(--p)]/30 hover:bg-white/5 transition-all ${isSaved ? 'opacity-60' : 'cursor-pointer'} group shadow-sm`}
                 >
                   <Show when={item.poster_path} fallback={
                     <div class="w-14 h-20 bg-white/5 rounded-xl flex items-center justify-center border border-white/5 bg-[#171921] shrink-0">
