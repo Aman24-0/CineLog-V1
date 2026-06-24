@@ -1,3 +1,4 @@
+// src/views/Dashboard.jsx
 import { createMemo, createSignal, createEffect, For, Show } from 'solid-js';
 import { Icon } from '../utils';
 import { MovieCard } from '../components/MovieCard';
@@ -64,11 +65,13 @@ export function Dashboard(props) {
         </div>
       }>
         {(item) => {
-          const bgImg = item().backdrop_path ? `https://image.tmdb.org/t/p/w780${item().backdrop_path}` : (item().poster_path ? `https://image.tmdb.org/t/p/w500${item().poster_path}` : '');
+          // Fix: Made bgImg a reactive function so it updates when 'item' changes
+          const bgImg = () => item().backdrop_path ? `https://image.tmdb.org/t/p/w780${item().backdrop_path}` : (item().poster_path ? `https://image.tmdb.org/t/p/w500${item().poster_path}` : '');
+          
           return (
             <div class="featured-hero">
-              <Show when={bgImg}>
-                <img src={bgImg} class="w-full h-full object-cover" />
+              <Show when={bgImg()}>
+                <img src={bgImg()} class="w-full h-full object-cover animate-fade-in" />
               </Show>
               <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none" />
               
