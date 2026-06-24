@@ -1,5 +1,4 @@
-// src/views/Dashboard.jsx
-import { createMemo, For, Show } from 'solid-js';
+import { createMemo, createSignal, createEffect, For, Show } from 'solid-js';
 import { Icon } from '../utils';
 import { MovieCard } from '../components/MovieCard';
 
@@ -20,16 +19,38 @@ export function Dashboard(props) {
       .sort((a, b) => new Date(b.watchProgress.updatedAt).getTime() - new Date(a.watchProgress.updatedAt).getTime());
   });
 
-  const featuredItem = createMemo(() => {
-    if (continueWatchingList().length > 0) return continueWatchingList()[0];
-    if (props.watchlist().length > 0) return props.watchlist()[0];
-    return null;
+  // Calculate planned items and manage random selection state
+  const plannedList = createMemo(() => props.watchlist().filter(m => m.status === 'Planned' || m.status === 'Plan to Watch'));
+  const [randomItem, setRandomItem] = createSignal(null);
+
+  const pickRandom = () => {
+    if (props.isGuest) {
+      props.showToast("Sign in to shuffle your vault! 🔒");
+      return props.onLogin();
+    }
+    const p = plannedList();
+    if (p.length > 0) {
+      setRandomItem(p[Math.floor(Math.random() * p.length)]);
+    } else {
+      props.showToast("Planned list is empty! Add some titles first.");
+    }
+  };
+
+  // Initially pick a random item when the dashboard loads and data is available
+  createEffect(() => {
+    const p = plannedList();
+    if (p.length > 0 && !randomItem()) {
+      setRandomItem(p[Math.floor(Math.random() * p.length)]);
+    }
   });
+
+  // Fallback to first item in the vault if planned list is empty, just so hero isn't blank
+  const featuredItem = createMemo(() => randomItem() || (props.watchlist().length > 0 ? props.watchlist()[0] : null));
 
   return (
     <div class="animate-fade-in pb-6 space-y-8">
 
-      {/* ── FEATURED HERO ── */}
+      {/* ── FEATURED HERO (RANDOM PICK) ── */}
       <Show when={featuredItem()} fallback={
         <div class="featured-hero flex flex-col items-center justify-center text-center p-6 bg-[#141414]">
           <Show when={props.isGuest} fallback={
@@ -50,8 +71,16 @@ export function Dashboard(props) {
                 <img src={bgImg} class="w-full h-full object-cover" />
               </Show>
               <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none" />
-              <div class="absolute bottom-0 left-0 w-full p-4 lg:p-6 flex flex-col gap-2">
-                <h2 class="font-headline text-3xl lg:text-5xl text-white leading-none">{item().title || item().name}</h2>
+              
+              <Show when={plannedList().some(m => m.id === item().id)}>
+                <div class="absolute top-4 left-4 lg:top-6 lg:left-6 bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full flex items-center gap-1.5 z-10">
+                  <Icon name="casino" class="text-sm" style="color: var(--p)" />
+                  <span class="text-[9px] font-bold uppercase tracking-widest text-white">Random Pick</span>
+                </div>
+              </Show>
+
+              <div class="absolute bottom-0 left-0 w-full p-4 lg:p-6 flex flex-col gap-2 z-10">
+                <h2 class="font-headline text-3xl lg:text-5xl text-white leading-none drop-shadow-md">{item().title || item().name}</h2>
                 <div class="flex items-center gap-2 text-sm text-gray-300 font-medium">
                   <span>{(item().release_date || item().first_air_date || '').split('-')[0]}</span>
                   <Show when={item().imdbRating || item().rating}>
@@ -63,19 +92,16 @@ export function Dashboard(props) {
                 </div>
                 <div class="flex items-center gap-3 mt-2">
                   <button 
-                    onClick={() => {
-                      const isContinue = continueWatchingList().some(m => m.id === item().id);
-                      props.openMovie(isContinue ? 'RESUME_' + item().id : item().id);
-                    }}
+                    onClick={() => props.openMovie(item().id)}
                     class="bg-white text-black px-6 py-2 rounded-full font-bold flex items-center gap-2 active:scale-95 transition-transform"
                   >
                     <Icon name="play_arrow" fill class="text-xl" /> Play
                   </button>
                   <button 
-                    onClick={() => props.openMovie(item().id)}
-                    class="bg-transparent border border-white text-white px-6 py-2 rounded-full font-bold flex items-center gap-2 active:scale-95 transition-transform hover:bg-white/10"
+                    onClick={pickRandom}
+                    class="bg-black/40 backdrop-blur-md border border-white text-white px-6 py-2 rounded-full font-bold flex items-center gap-2 active:scale-95 transition-transform hover:bg-white/10"
                   >
-                    <Icon name="info" class="text-xl" /> Info
+                    <Icon name="shuffle" class="text-xl" /> Shuffle
                   </button>
                 </div>
               </div>
