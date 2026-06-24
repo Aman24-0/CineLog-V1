@@ -1,3 +1,4 @@
+// src/modals/PersonModal.jsx
 import { createSignal, createEffect, createMemo, Show, For, onMount, onCleanup } from 'solid-js';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -13,8 +14,9 @@ export function PersonModal(props) {
   onCleanup(() => document.body.style.overflow = '');
 
   createEffect(() => {
-    if (props.personId) {
-      fetch(`https://api.themoviedb.org/3/person/${props.personId}?api_key=${TMDB_KEY}&append_to_response=combined_credits`)
+    // FIX: Changed props.personId to props.id to correctly receive the ID
+    if (props.id) {
+      fetch(`https://api.themoviedb.org/3/person/${props.id}?api_key=${TMDB_KEY}&append_to_response=combined_credits`)
         .then(r => r.json())
         .then(data => {
           setPerson(data);
@@ -89,7 +91,7 @@ export function PersonModal(props) {
     >
       <div class="absolute inset-0 bg-black/80 backdrop-blur-sm pointer-events-none"></div>
       <div
-        class="w-full max-w-3xl lg:max-w-[800px] bg-[#08090b] sm:rounded-[2.5rem] rounded-t-[2.5rem] border border-white/10 relative h-[90vh] shadow-2xl flex flex-col overflow-hidden animate-pop-in"        
+        class="w-full max-w-3xl lg:max-w-[800px] bg-[#111111] sm:rounded-[2.5rem] rounded-t-[2.5rem] border border-white/10 relative h-[90vh] shadow-2xl flex flex-col overflow-hidden animate-pop-in"        
         onClick={e => e.stopPropagation()}
       >
         <button
@@ -110,7 +112,7 @@ export function PersonModal(props) {
             />
             <div class="flex-1 overflow-hidden">
               <h2 class="text-2xl font-black text-white truncate">{person().name}</h2>
-              <p class="text-[10px] text-[var(--primary)] font-bold uppercase tracking-widest mt-1 mb-2">
+              <p class="text-[10px] text-[var(--p)] font-bold uppercase tracking-widest mt-1 mb-2">
                 {person().known_for_department} • {person().birthday || 'Unknown'}
                 {person().deathday ? ` → ${person().deathday}` : ''}
               </p>
@@ -141,9 +143,9 @@ export function PersonModal(props) {
                 onChange={e => setSortBy(e.target.value)}
                 class="bg-transparent text-[10px] font-black uppercase tracking-widest text-white outline-none cursor-pointer"
               >
-                <option value="popularity" class="bg-[#0c0e14]">Most Popular</option>
-                <option value="release_desc" class="bg-[#0c0e14]">Release (New → Old)</option>
-                <option value="release_asc" class="bg-[#0c0e14]">Release (Old → New)</option>
+                <option value="popularity" class="bg-[#111111]">Most Popular</option>
+                <option value="release_desc" class="bg-[#111111]">Release (New → Old)</option>
+                <option value="release_asc" class="bg-[#111111]">Release (Old → New)</option>
               </select>
             </div>
           </div>
@@ -159,32 +161,32 @@ export function PersonModal(props) {
                     onClick={() => props.openPreview(item, 'fromPerson')}
                   >
                     <Show when={item.poster_path} fallback={
-                      <div class="w-full aspect-[2/3] rounded-xl shadow-lg border border-white/10 group-hover:border-[var(--primary)] transition-all bg-[#171921] flex items-center justify-center text-center p-2">
+                      <div class="w-full aspect-[2/3] rounded-xl shadow-lg border border-white/10 group-hover:border-[var(--p)] transition-all bg-[#171921] flex items-center justify-center text-center p-2">
                         <span class="text-[10px] font-black uppercase tracking-widest text-gray-500">No Poster</span>
                       </div>
                     }>
                       <img
                         src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
-                        class="w-full aspect-[2/3] object-cover rounded-xl shadow-lg border border-white/10 group-hover:border-[var(--primary)] transition-all"
+                        class="w-full aspect-[2/3] object-cover rounded-xl shadow-lg border border-white/10 group-hover:border-[var(--p)] transition-all"
                         loading="lazy"
                       />
                     </Show>
                     {/* Name — always visible */}
                     <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent rounded-xl flex flex-col justify-end p-2 pointer-events-none">
                       <p class="text-[9px] font-black text-white truncate leading-tight">{item.title || item.name}</p>
-                      <p class="text-[8px] text-[var(--primary)] font-bold">{(item.release_date || item.first_air_date || '').substring(0, 4)}</p>
+                      <p class="text-[8px] text-[var(--p)] font-bold">{(item.release_date || item.first_air_date || '').substring(0, 4)}</p>
                     </div>
                     {/* Add / Saved Button */}
                     <Show when={!isSaved}>
                       <button
                         onClick={(e) => quickAddToVault(item, e)}
-                        class="absolute top-2 right-2 w-8 h-8 bg-black/60 backdrop-blur-md rounded-full border border-white/20 flex items-center justify-center hover:bg-[var(--primary)] hover:text-[#0c0e14] hover:border-[var(--primary)] transition-all active:scale-95 z-10 text-white shadow-lg"
+                        class="absolute top-2 right-2 w-8 h-8 bg-black/60 backdrop-blur-md rounded-full border border-white/20 flex items-center justify-center hover:bg-[var(--p)] hover:text-[#0c0e14] hover:border-[var(--p)] transition-all active:scale-95 z-10 text-white shadow-lg"
                       >
                         <Icon name="add" class="text-sm"/>
                       </button>
                     </Show>
                     <Show when={isSaved}>
-                      <div class="absolute top-2 right-2 w-8 h-8 bg-[var(--primary)] rounded-full flex items-center justify-center text-[#0c0e14] shadow-lg z-10">
+                      <div class="absolute top-2 right-2 w-8 h-8 bg-[var(--p)] rounded-full flex items-center justify-center text-[#0c0e14] shadow-lg z-10">
                         <Icon name="check" class="text-sm"/>
                       </div>
                     </Show>
@@ -200,7 +202,7 @@ export function PersonModal(props) {
 
         <Show when={!person()}>
           <div class="flex-1 flex items-center justify-center">
-            <Icon name="radar" class="text-[var(--primary)] text-5xl animate-spin opacity-50"/>
+            <Icon name="radar" class="text-[var(--p)] text-5xl animate-spin opacity-50"/>
           </div>
         </Show>
       </div>
