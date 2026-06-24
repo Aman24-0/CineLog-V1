@@ -4,6 +4,7 @@ import { Icon } from '../utils';
 
 export function SettingsView(props) {
   const themes = [
+    { id: 'pearl', name: 'Pearl', hex: '#ffffff' },
     { id: 'sage', name: 'Sage', hex: '#a8ff78' },
     { id: 'matrix', name: 'Matrix', hex: '#39ff14' },
     { id: 'netflix', name: 'Netflix', hex: '#ff2d55' },
@@ -40,7 +41,6 @@ export function SettingsView(props) {
               <p class="font-bold text-white text-lg">{props.user.displayName}</p>
               <p class="text-sm text-gray-400">{props.user.email}</p>
             </div>
-            <Icon name="edit" class="text-gray-500" />
           </div>
         </Show>
       </div>
