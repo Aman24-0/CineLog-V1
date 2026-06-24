@@ -66,7 +66,6 @@ export default function App() {
     settingsModal, setSettingsModal, serverSettingsModal, setServerSettingsModal
   } = useModalState();
   
-  const [userMenuOpen, setUserMenuOpen] = createSignal(false);
   const [toast, setToast] = createSignal({ show: false, msg: '' });
 
   const showToast = (msg) => {
@@ -114,7 +113,7 @@ export default function App() {
       docs.slice(i, i + 500).forEach(d => batch.delete(d.ref));
       await batch.commit();
     }
-    showToast("Vault wiped!"); setUserMenuOpen(false);
+    showToast("Vault wiped!");
   };
 
   return (
@@ -132,7 +131,7 @@ export default function App() {
         </div>
       </div>
     )}>
-      <div class="cinelog-root min-h-screen pb-32 lg:pb-0 lg:pl-64" onClick={() => setUserMenuOpen(false)}>
+      <div class="cinelog-root min-h-screen pb-32 lg:pb-0 lg:pl-64">
         <Show when={!loading() && !splashWait()} fallback={<LoadingScreen />}>
           
           {/* ─ HEADER ── */}
@@ -154,14 +153,6 @@ export default function App() {
 
             {/* Header Controls */}
             <div class="flex items-center gap-3">
-              <button
-                onClick={() => { setSearchInitialQuery(''); setSearchModal(true); }}
-                class="p-2.5 rounded-full"
-                style="background:#111; border: 1px solid rgba(255,255,255,0.1)"
-              >
-                <Icon name="search" class="text-sm" style="color: var(--muted)" />
-              </button>
-              
               {/* Login / Profile Toggle */}
               <Show when={user()} fallback={
                 <button
@@ -172,43 +163,12 @@ export default function App() {
                   Sign In
                 </button>
               }>
-                <div class="relative">
-                  <img
-                    src={user().photoURL}
-                    onClick={(e) => { e.stopPropagation(); setUserMenuOpen(!userMenuOpen()); }}
-                    class="w-9 h-9 rounded-full cursor-pointer object-cover"
-                    style="border: 2px solid var(--p); box-shadow: 0 0 12px var(--p-glow)"
-                  />
-                  <Show when={userMenuOpen()}>
-                    <div class="fixed inset-0 z-[90]" onClick={() => setUserMenuOpen(false)} />
-                    <div class="absolute right-0 mt-3 w-52 glass-surface rounded-2xl shadow-2xl py-2 z-[100] animate-pop-in overflow-hidden"
-                      style="border-color: var(--border-active)">
-                      <button onClick={() => { setView('analytics'); setUserMenuOpen(false); }}
-                        class="w-full text-left px-5 py-3 text-sm font-semibold flex items-center gap-3 hover:bg-white/5 transition-colors"
-                        style="color: var(--p)">
-                        <Icon name="bar_chart" class="text-[18px]" /> Insights
-                      </button>
-                      <div class="my-1" style="border-top: 1px solid var(--border)" />
-                      <button onClick={() => { setServerSettingsModal(true); setUserMenuOpen(false); }}
-                        class="w-full text-left px-5 py-3 text-sm font-semibold flex items-center gap-3 hover:bg-white/5 transition-colors text-gray-300">
-                        <Icon name="dns" class="text-[18px]" /> Streaming Servers
-                      </button>
-                      <button onClick={() => { setView('sync'); setUserMenuOpen(false); }}
-                        class="w-full text-left px-5 py-3 text-sm font-semibold flex items-center gap-3 hover:bg-white/5 transition-colors text-gray-300">
-                        <Icon name="import_export" class="text-[18px]" /> Data Sync
-                      </button>
-                      <button onClick={() => signOut(auth)}
-                        class="w-full text-left px-5 py-3 text-sm font-semibold flex items-center gap-3 hover:bg-white/5 transition-colors text-gray-300">
-                        <Icon name="logout" class="text-[18px]" /> Logout
-                      </button>
-                      <div class="my-1" style="border-top: 1px solid var(--border)" />
-                      <button onClick={nukeCollection}
-                        class="w-full text-left px-5 py-3 text-sm font-semibold text-red-500 hover:bg-red-500/10 flex items-center gap-3 transition-colors">
-                        <Icon name="delete_forever" class="text-[18px]" /> Nuke Vault
-                      </button>
-                    </div>
-                  </Show>
-                </div>
+                <img
+                  src={user().photoURL}
+                  onClick={() => setView('settings')}
+                  class="w-9 h-9 rounded-full cursor-pointer object-cover active:scale-95 transition-all"
+                  style="border: 2px solid var(--p);"
+                />
               </Show>
             </div>
           </header>
@@ -250,7 +210,6 @@ export default function App() {
             <NavBtn icon="visibility" label="Vault" active={view() === 'watchlist'} onClick={() => setView('watchlist')} />
             <NavBtn icon="folder_special" label="Lists" active={view() === 'franchises'} onClick={() => setView('franchises')} />
             <NavBtn icon="calendar_month" label="Upcoming" active={view() === 'upcoming'} onClick={() => setView('upcoming')} />
-            <NavBtn icon="settings" label="Settings" active={view() === 'settings'} onClick={() => setView('settings')} />
           </div>
 
           {/* ── MOBILE BOTTOM NAV ── */}
@@ -259,7 +218,6 @@ export default function App() {
             <NavBtn icon="visibility" label="Vault" active={view() === 'watchlist'} onClick={() => setView('watchlist')} />
             <NavBtn icon="folder_special" label="Lists" active={view() === 'franchises'} onClick={() => setView('franchises')} />
             <NavBtn icon="calendar_month" label="Upcoming" active={view() === 'upcoming'} onClick={() => setView('upcoming')} />
-            <NavBtn icon="settings" label="Settings" active={view() === 'settings'} onClick={() => setView('settings')} />
           </nav>
 
           {/* ── MODALS ── */}
