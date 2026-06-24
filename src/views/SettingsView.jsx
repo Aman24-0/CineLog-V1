@@ -16,6 +16,13 @@ export function SettingsView(props) {
   return (
     <div class="pb-24 animate-fade-in px-5 max-w-2xl mx-auto">
       
+      <div class="flex items-center gap-3 mb-6">
+        <button onClick={() => props.setView('dashboard')} class="p-2 rounded-full active:scale-95" style="background:#1a1a1a; border:1px solid rgba(255,255,255,0.1)">
+          <Icon name="arrow_back" class="text-white text-sm" />
+        </button>
+        <h1 class="font-bold text-lg text-white">Profile & Settings</h1>
+      </div>
+
       {/* ACCOUNT section */}
       <p class="section-title">Account</p>
       <div class="bg-[#141414] rounded-2xl border border-white/10 p-4 mb-6">
