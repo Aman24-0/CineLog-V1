@@ -1,5 +1,5 @@
 // src/App.jsx
-import { createSignal, createEffect, onMount, ErrorBoundary, Show } from 'solid-js';
+import { createSignal, createEffect, onMount, onCleanup, ErrorBoundary, Show } from 'solid-js';
 import { collection, onSnapshot, query, orderBy, writeBatch, getDocs } from 'firebase/firestore';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { db, auth } from './firebase';
@@ -60,6 +60,9 @@ export default function App() {
   const [splashWait, setSplashWait] = createSignal(true);
   const [activeVaultStatus, setActiveVaultStatus] = createSignal('all');
   
+  // Global Scroll-to-Top State
+  const [showScrollTop, setShowScrollTop] = createSignal(false);
+  
   const {
     searchModal, setSearchModal, searchInitialQuery, setSearchInitialQuery,
     detailsId, setDetailsId, previewSource, setPreviewSource,
@@ -80,6 +83,11 @@ export default function App() {
 
   onMount(() => {
     setTimeout(() => setSplashWait(false), 3000);
+    
+    // Scroll Event Listener
+    const handleScroll = () => setShowScrollTop(window.scrollY > 400);
+    window.addEventListener('scroll', handleScroll);
+    
     onAuthStateChanged(auth, (u) => {
       setUser(u);
       if (u) {
@@ -96,7 +104,13 @@ export default function App() {
         setLoading(false);
       }
     });
+
+    onCleanup(() => window.removeEventListener('scroll', handleScroll));
   });
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const nukeCollection = async () => {
     if (!user()) return;
@@ -263,6 +277,18 @@ export default function App() {
               showToast={showToast}
               onClose={() => setServerSettingsModal(false)}
             />
+          </Show>
+
+          {/* ── GLOBAL SCROLL TO TOP FAB ── */}
+          <Show when={showScrollTop()}>
+            <button
+              onClick={scrollToTop}
+              class="fixed bottom-24 lg:bottom-8 right-5 lg:right-8 w-12 h-12 rounded-full flex items-center justify-center z-[80] transition-all animate-pop-in hover:scale-105 active:scale-95 no-print"
+              style="background: var(--p); color: #000; box-shadow: 0 0 20px var(--p-glow)"
+              title="Back to top"
+            >
+              <Icon name="keyboard_arrow_up" class="text-3xl font-black" />
+            </button>
           </Show>
 
           {/* ── TOAST ── */}
