@@ -745,30 +745,74 @@ export function DetailsModal(props) {
                         <div class="flex justify-between items-center mb-3 px-1">
                             <span class="text-[9px] uppercase font-black text-gray-400 tracking-widest flex items-center gap-1.5"><Icon name="router" class="text-[12px] text-[var(--primary)]"/> Streaming Node</span>
                         </div>
-                        <div class="flex flex-wrap gap-2 pb-2 px-1">
-                            <For each={availableServers()}>{(srv) => (
-                                <button type="button" onClick={(e) => { e.stopPropagation(); setActiveServer(srv.id); }}
-                                  class="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all"
-                                  style={activeServer() === srv.id
-                                    ? 'border: 1px solid var(--p); background: var(--p-dim); color: var(--p); transform: scale(1.05); box-shadow: 0 0 12px var(--p-glow)'
-                                    : 'border: 1px solid var(--border); background: var(--raised); color: var(--muted)'}>
-                                    <Icon name={srv.icon} class="text-[14px]" /> {srv.name}
-                                </button>
-                            )}</For>
+                        {(() => {
+                            const FAST_IDS = ['vidzee', 'vidlink'];
+                            const EMBED_IDS = ['vidsrcru', 'peachify', 'vidsrccc', 'autoembed', 'vidnest'];
+                            const fastList = () => availableServers().filter(s => FAST_IDS.includes(s.id));
+                            const embedList = () => availableServers().filter(s => EMBED_IDS.includes(s.id));
+                            const customList = () => availableServers().filter(s => !FAST_IDS.includes(s.id) && !EMBED_IDS.includes(s.id));
 
-                            <div class="w-full mt-1 flex items-center gap-2">
-                                <button type="button" onClick={(e) => { e.stopPropagation(); setActiveServer('DIRECT_PLAY'); }}
-                                  class="flex-1 flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all"
-                                  style={activeServer() === 'DIRECT_PLAY'
-                                    ? 'border: 1px solid #3b82f6; background: rgba(59,130,246,0.15); color: #3b82f6; transform: scale(1.02); box-shadow: 0 0 12px rgba(59,130,246,0.4)'
-                                    : 'border: 1px solid var(--border); background: var(--raised); color: var(--muted)'}>
-                                    <Icon name="dns" class="text-[14px]" /> Direct Play
+                            const Chip = (srv) => (
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setActiveServer(srv.id); }}
+                                    class="flex items-center justify-center gap-1.5 w-full h-9 px-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95"
+                                    style={activeServer() === srv.id
+                                        ? 'border: 1px solid var(--p); background: var(--p-dim); color: var(--p); box-shadow: 0 0 10px var(--p-glow)'
+                                        : 'border: 1px solid var(--border); background: var(--raised); color: var(--muted)'}>
+                                    <Icon name={srv.icon} class="text-[13px] shrink-0" />
+                                    <span class="truncate">{srv.name}</span>
                                 </button>
-                                <button type="button" onClick={(e) => { e.stopPropagation(); setIsEditingDirectUrl(!isEditingDirectUrl()); }} class="p-2.5 rounded-xl border border-white/10 bg-white/5 text-gray-400 hover:text-white transition-colors" title="Edit Custom URL">
-                                    <Icon name="edit" class="text-[14px]" />
-                                </button>
-                            </div>
-                        </div>
+                            );
+
+                            const GroupLabel = (label) => (
+                                <div class="flex items-center gap-2 mt-3 mb-1.5">
+                                    <span class="text-[8px] font-black uppercase tracking-[0.18em] shrink-0" style="color: var(--muted)">{label}</span>
+                                    <div class="flex-1 h-px" style="background: var(--border)" />
+                                </div>
+                            );
+
+                            return (
+                                <div class="pb-1">
+                                    <Show when={fastList().length > 0}>
+                                        {GroupLabel('⚡ Fast')}
+                                        <div class="grid grid-cols-2 gap-1.5">
+                                            <For each={fastList()}>{(srv) => <div>{Chip(srv)}</div>}</For>
+                                        </div>
+                                    </Show>
+                                    <Show when={embedList().length > 0}>
+                                        {GroupLabel('📡 Embed')}
+                                        <div class="grid grid-cols-2 gap-1.5">
+                                            <For each={embedList()}>{(srv) => <div>{Chip(srv)}</div>}</For>
+                                        </div>
+                                    </Show>
+                                    <Show when={customList().length > 0}>
+                                        {GroupLabel('🔗 Custom')}
+                                        <div class="grid grid-cols-2 gap-1.5">
+                                            <For each={customList()}>{(srv) => <div>{Chip(srv)}</div>}</For>
+                                        </div>
+                                    </Show>
+                                    <div class="flex items-center gap-2 mt-3">
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); setActiveServer('DIRECT_PLAY'); }}
+                                            class="flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95"
+                                            style={activeServer() === 'DIRECT_PLAY'
+                                                ? 'border: 1px solid #3b82f6; background: rgba(59,130,246,0.15); color: #3b82f6; box-shadow: 0 0 10px rgba(59,130,246,0.3)'
+                                                : 'border: 1px solid var(--border); background: var(--raised); color: var(--muted)'}>
+                                            <Icon name="dns" class="text-[13px] shrink-0" /> Direct Play
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); setIsEditingDirectUrl(!isEditingDirectUrl()); }}
+                                            class="w-9 h-9 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-400 hover:text-white transition-colors shrink-0"
+                                            title="Edit Custom URL">
+                                            <Icon name="edit" class="text-[13px]" />
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                         <Show when={isEditingDirectUrl()}>
                             <div class="flex gap-2 mt-1 px-1 mb-2 animate-fade-in">
