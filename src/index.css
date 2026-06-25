@@ -617,7 +617,8 @@ button:active {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .no-print, header, nav, .bottom-nav-bar, .cinelog-root > .hidden, .toast-container { 
+  /* Added .fixed to hide all toasts, navbars, and floating buttons automatically */
+  .no-print, header, nav, .bottom-nav-bar, .cinelog-root > .hidden, .fixed { 
     display: none !important; 
   }
   .print-only {
@@ -635,3 +636,4 @@ button:active {
 .print-only {
   display: none;
 }
+
