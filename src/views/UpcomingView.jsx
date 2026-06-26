@@ -1,10 +1,8 @@
 import { createSignal, createEffect, For, Show, onMount, onCleanup } from 'solid-js';
+import { Portal } from 'solid-js/web'; // 🚀 IMPORTED PORTAL TO ESCAPE THE HEADER
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Icon, cleanPlatform, TMDB_KEY, formatRuntime, SafeInfoRow } from '../utils';
-
-// Ported Details Modal Component
-import { DetailsModal } from '../modals/DetailsModal';
 
 function UpcomingDetailsModal(props) {
   const [details, setDetails] = createSignal(props.movie);
@@ -43,7 +41,6 @@ function UpcomingDetailsModal(props) {
   const runtimeVal = () => details().runtime || details().episode_run_time?.[0] || 0;
 
   return (
-    // FIXED: Ensured fixed position with immense z-index overrides EVERYTHING (including App header/navbars)
     <div class="fixed inset-0 flex items-center justify-center p-0 sm:p-4 z-[99999999] animate-fade-in" onClick={props.onClose}>
       
       {/* Background Dimmer */}
@@ -55,7 +52,7 @@ function UpcomingDetailsModal(props) {
       </div>
 
       {/* Main Modal Window */}
-      <div class="w-full max-w-xl bg-[#08090b]/80 backdrop-blur-3xl sm:rounded-[2.5rem] rounded-t-[2.5rem] mt-10 sm:mt-0 overflow-hidden border border-white/10 relative h-[100vh] sm:h-auto max-h-[95vh] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] animate-pop-in flex flex-col" onClick={e => e.stopPropagation()}>
+      <div class="w-full max-w-xl bg-[#08090b]/80 backdrop-blur-3xl sm:rounded-[2.5rem] rounded-t-[2.5rem] mt-0 overflow-hidden border border-white/10 relative h-[100vh] sm:h-auto max-h-[100vh] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] animate-pop-in flex flex-col" onClick={e => e.stopPropagation()}>
         
         {/* Close button */}
         <button onClick={props.onClose} class="absolute top-4 right-4 z-[100] bg-black/50 backdrop-blur-md border border-white/10 p-2.5 rounded-full hover:bg-black/80 active:scale-95 transition-all">
@@ -100,7 +97,6 @@ function UpcomingDetailsModal(props) {
               <SafeInfoRow icon="format_list_bulleted" label="Genre" value={<span class="text-xs text-gray-300">{(details().genres || []).map(g => g.name).join(', ') || 'N/A'}</span>} />
               <SafeInfoRow icon="language" label="Language" value={<span class="text-xs text-gray-300">{(details().spoken_languages?.[0]?.english_name) || (details().original_language ? details().original_language.toUpperCase() : 'N/A')}</span>} />
               <Show when={ottPlatform()}>
-                {/* FIXED THEME COLOR */}
                 <SafeInfoRow icon="connected_tv" label="Platform" value={<span class="text-[10px] font-black uppercase tracking-widest border px-2 py-0.5 rounded" style="background: var(--p-dim); border-color: var(--p); color: var(--p)">{ottPlatform()}</span>} />
               </Show>
             </div>
@@ -114,7 +110,6 @@ function UpcomingDetailsModal(props) {
                       const d = dir();
                       return (
                         <div class="flex flex-col items-center min-w-[70px] shrink-0">
-                          {/* FIXED THEME COLOR FOR DIRECTOR BORDER */}
                           <img src={d.profile_path ? `https://image.tmdb.org/t/p/w200${d.profile_path}` : `https://api.dicebear.com/7.x/initials/svg?seed=${d.name}&backgroundColor=171921`} class="w-16 h-16 rounded-full object-cover border-2 mb-2 bg-[#171921]" style="border-color: var(--p2, #fff)" />
                           <p class="text-[9px] font-black text-center text-white truncate w-full">{d.name}</p>
                           <p class="text-[7px] font-black text-center uppercase tracking-widest mt-0.5" style="color: var(--p2, #fff)">{details().created_by ? 'Creator' : 'Director'}</p>
@@ -135,7 +130,6 @@ function UpcomingDetailsModal(props) {
               </div>
             </Show>
 
-            {/* FIXED ADD TO VAULT BUTTON (Theme Colors) */}
             <button onClick={props.onAdd} class="w-full mt-2 font-black py-4 px-5 rounded-xl text-xs uppercase tracking-widest active:scale-95 transition-transform flex items-center justify-center gap-2 border" style="background: var(--p); color: #05060a; border-color: var(--p); box-shadow: 0 0 24px var(--p-glow); min-height: 52px; opacity: 1; visibility: visible">
               <Icon name="add_circle" class="text-lg"/> Add to My Universe
             </button>
@@ -335,9 +329,11 @@ export function UpcomingView(props) {
         </div>
       </Show>
 
-      {/* Render the details modal natively so it escapes parent clipping */}
+      {/* 🚀 WRAPPED IN PORTAL TO ESCAPE Z-INDEX CLIPPING OVER HEADER 🚀 */}
       <Show when={previewMovie()}>
-        <UpcomingDetailsModal movie={previewMovie()} onClose={() => setPreviewMovie(null)} onAdd={() => handleAdd(previewMovie())} />
+        <Portal>
+          <UpcomingDetailsModal movie={previewMovie()} onClose={() => setPreviewMovie(null)} onAdd={() => handleAdd(previewMovie())} />
+        </Portal>
       </Show>
     </div>
   );
