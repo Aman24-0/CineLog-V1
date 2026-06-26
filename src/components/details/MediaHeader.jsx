@@ -21,7 +21,7 @@ export function MediaHeader(props) {
     const overview = props.details?.overview || props.movie?.overview || 'No overview available.';
 
     // EXACT TEXT FORMATTING
-    const shareText = `${typeIcon} *${title}*\n\n*⭐ Rating: ${rating}/10*\n*🏷️ ${genres}*\n\n*📖 Introduction*\n${overview}\n\n*🍿 Watch now:*\nhttps://anivortex.in/watch/${props.movie?.id}\n\n*📲 Download App:*\nhttps://anivortex.in`;
+    const shareText = `${typeIcon} *${title}*\n\n*⭐ Rating: ${rating}/10*\n*🏷️ ${genres}*\n\n*📖 Introduction*\n${overview}\n\n*🍿 Watch now:*\nhttps://cinlog.netlify.app${props.movie?.id}*;
 
     if (navigator.share) {
       try {
