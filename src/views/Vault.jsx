@@ -2,6 +2,47 @@ import { createSignal, createEffect, createMemo, For, Show, onMount, onCleanup }
 import { Icon, getSafeGenres, getSafePlatforms } from '../utils';
 import { MovieCard } from '../components/MovieCard';
 
+// ✅ FIX: Sahi date nikalne ka helper
+// TV shows ke liye seasonDates ka latest end date use karta hai
+// Movies ke liye watchDate
+// Fallback: addedAt (Firestore Timestamp bhi handle karta hai)
+const resolveTimelineDate = (m) => {
+  // 1. Movie watchDate (string)
+  if (m.watchDate && typeof m.watchDate === 'string' && m.watchDate.trim()) {
+    const d = new Date(m.watchDate);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // 2. TV show — seasonDates ka latest end date
+  if (m.seasonDates && typeof m.seasonDates === 'object') {
+    const ends = Object.values(m.seasonDates)
+      .map(s => s?.end ? new Date(s.end) : null)
+      .filter(d => d && !isNaN(d.getTime()));
+    if (ends.length > 0) {
+      // Sabse latest end date lo
+      return new Date(Math.max(...ends.map(d => d.getTime())));
+    }
+    // seasonDates mein end nahi, start try karo
+    const starts = Object.values(m.seasonDates)
+      .map(s => s?.start ? new Date(s.start) : null)
+      .filter(d => d && !isNaN(d.getTime()));
+    if (starts.length > 0) {
+      return new Date(Math.max(...starts.map(d => d.getTime())));
+    }
+  }
+
+  // 3. endDate / startDate (agar kisi ne manually save kiya ho)
+  if (m.endDate) { const d = new Date(m.endDate); if (!isNaN(d.getTime())) return d; }
+  if (m.startDate) { const d = new Date(m.startDate); if (!isNaN(d.getTime())) return d; }
+
+  // 4. Firestore Timestamp (addedAt) — .seconds field se convert karo
+  if (m.addedAt?.seconds) return new Date(m.addedAt.seconds * 1000);
+  if (m.addedAt instanceof Date) return m.addedAt;
+  if (typeof m.addedAt === 'string') { const d = new Date(m.addedAt); if (!isNaN(d.getTime())) return d; }
+
+  return null;
+};
+
 export function Vault(props) {
   const [search, setSearch] = createSignal('');
   const defaultFilters = { type: 'all', status: props.activeStatus || 'all', region: 'all', genre: 'all', platform: 'all', sort: 'recent', tag: 'all', imdbMin: '', imdbMax: '', rtMin: '', rtMax: '', yearMin: '', yearMax: '', runtimeMin: '', runtimeMax: '' };
@@ -16,7 +57,6 @@ export function Vault(props) {
   createEffect(() => {
     const mode = viewMode();
     if (mode === 'timeline' && prevViewMode !== 'timeline') {
-      // Reset all filters except status and sort when entering timeline
       setFilters({
         ...defaultFilters,
         status: 'Completed',
@@ -74,14 +114,15 @@ export function Vault(props) {
     
     return f.sort((a, b) => {
       if (filters().sort === 'watch_desc' || filters().sort === 'watch_asc') {
-          const dA = a.watchDate ? new Date(a.watchDate).getTime() : NaN;
-          const dB = b.watchDate ? new Date(b.watchDate).getTime() : NaN;
-          const hasA = !isNaN(dA);
-          const hasB = !isNaN(dB);
-          if (hasA && !hasB) return -1;
-          if (!hasA && hasB) return 1;
-          if (!hasA && !hasB) return 0;
-          return filters().sort === 'watch_desc' ? dB - dA : dA - dB;
+        // ✅ FIX: resolveTimelineDate use karo sort ke liye bhi
+        const dA = resolveTimelineDate(a);
+        const dB = resolveTimelineDate(b);
+        const hasA = dA !== null;
+        const hasB = dB !== null;
+        if (hasA && !hasB) return -1;
+        if (!hasA && hasB) return 1;
+        if (!hasA && !hasB) return 0;
+        return filters().sort === 'watch_desc' ? dB.getTime() - dA.getTime() : dA.getTime() - dB.getTime();
       }
       if (filters().sort === 'year_desc') return (parseInt(String(b.release_date || b.first_air_date || '').substring(0, 4)) || 0) - (parseInt(String(a.release_date || a.first_air_date || '').substring(0, 4)) || 0);
       if (filters().sort === 'rating_desc') return (b.rating || 0) - (a.rating || 0);
@@ -97,14 +138,12 @@ export function Vault(props) {
     }).length
   );
 
-  // FIX: Use watchDate, fallback to endDate or startDate
+  // ✅ FIX: resolveTimelineDate use karo — seasonDates + Firestore Timestamp handle hoga
   const timelineItems = createMemo(() =>
     filtered().filter((m) => {
       if (m.status !== 'Completed') return false;
-      const date = m.watchDate || m.endDate || m.startDate || m.addedAt;
-      if (!date) return false;
-      const watchTime = new Date(date).getTime();
-      return !isNaN(watchTime);
+      const date = resolveTimelineDate(m);
+      return date !== null;
     })
   );
 
@@ -114,8 +153,9 @@ export function Vault(props) {
     let currentGroup = null;
 
     list.forEach(m => {
-      const dateObj = new Date(m.watchDate || m.endDate || m.startDate || m.addedAt);
-      const monthYear = isNaN(dateObj.getTime()) ? 'Unknown Date' : dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      // ✅ FIX: resolveTimelineDate se dateObj lo
+      const dateObj = resolveTimelineDate(m);
+      const monthYear = !dateObj ? 'Unknown Date' : dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
       if (!currentGroup || currentGroup.label !== monthYear) {
         currentGroup = { label: monthYear, items: [] };
@@ -185,8 +225,9 @@ export function Vault(props) {
                 <div class="space-y-4">
                   <For each={group.items}>
                     {(m) => {
-                      const dateObj = new Date(m.watchDate || m.endDate || m.startDate || m.addedAt);
-                      const day = dateObj && !isNaN(dateObj) ? dateObj.getDate() : '--';
+                      // ✅ FIX: resolveTimelineDate use karo
+                      const dateObj = resolveTimelineDate(m);
+                      const day = dateObj ? dateObj.getDate() : '--';
                       return (
                         <div class="relative flex items-center group cursor-pointer pl-10 pr-2" onClick={() => props.openMovie(m.id)}>
                           <div class="absolute left-[1.25rem] -translate-x-1/2 w-8 h-8 rounded-full bg-[#08090b] border-2 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform z-10" style="border-color: var(--p)">
@@ -225,7 +266,7 @@ export function Vault(props) {
       <Show when={viewMode() === 'timeline' && filtered().length > 0 && timelineItems().length === 0}>
         <div class="text-center p-12" style="color: var(--muted)">
           <Icon name="event_busy" class="text-5xl mb-3" />
-          <p class="font-semibold text-sm">Timeline only shows completed titles with a valid Watch Date (or End Date).</p>
+          <p class="font-semibold text-sm">Timeline only shows completed titles with a Watch Date or Season Date.</p>
         </div>
       </Show>
 
