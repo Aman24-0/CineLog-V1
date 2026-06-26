@@ -1,14 +1,20 @@
 import { createSignal, createEffect, For, Show, onMount, onCleanup } from 'solid-js';
-import { Portal } from 'solid-js/web'; // 🚀 IMPORTED PORTAL TO ESCAPE THE HEADER
+import { Portal } from 'solid-js/web';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Icon, cleanPlatform, TMDB_KEY, formatRuntime, SafeInfoRow } from '../utils';
+
+// 🚀 IMPORTED PERSON MODAL
+import { PersonModal } from '../modals/PersonModal';
 
 function UpcomingDetailsModal(props) {
   const [details, setDetails] = createSignal(props.movie);
   const [trailerKey, setTrailerKey] = createSignal(null);
   const [playTrailer, setPlayTrailer] = createSignal(false);
   const [ottPlatform, setOttPlatform] = createSignal('');
+  
+  // 🚀 STATE FOR PERSON MODAL
+  const [personId, setPersonId] = createSignal(null);
 
   onMount(() => { document.body.style.overflow = 'hidden'; });
   onCleanup(() => { document.body.style.overflow = ''; });
@@ -52,7 +58,7 @@ function UpcomingDetailsModal(props) {
       </div>
 
       {/* Main Modal Window */}
-      <div class="w-full max-w-xl bg-[#08090b]/80 backdrop-blur-3xl sm:rounded-[2.5rem] rounded-t-[2.5rem] mt-0 overflow-hidden border border-white/10 relative h-[100vh] sm:h-auto max-h-[100vh] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] animate-pop-in flex flex-col" onClick={e => e.stopPropagation()}>
+      <div class="w-full max-w-xl bg-[#08090b]/80 backdrop-blur-3xl sm:rounded-[2.5rem] rounded-t-[2.5rem] mt-10 sm:mt-0 overflow-hidden border border-white/10 relative h-[100vh] sm:h-auto max-h-[95vh] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] animate-pop-in flex flex-col" onClick={e => e.stopPropagation()}>
         
         {/* Close button */}
         <button onClick={props.onClose} class="absolute top-4 right-4 z-[100] bg-black/50 backdrop-blur-md border border-white/10 p-2.5 rounded-full hover:bg-black/80 active:scale-95 transition-all">
@@ -109,9 +115,10 @@ function UpcomingDetailsModal(props) {
                     {(dir) => {
                       const d = dir();
                       return (
-                        <div class="flex flex-col items-center min-w-[70px] shrink-0">
-                          <img src={d.profile_path ? `https://image.tmdb.org/t/p/w200${d.profile_path}` : `https://api.dicebear.com/7.x/initials/svg?seed=${d.name}&backgroundColor=171921`} class="w-16 h-16 rounded-full object-cover border-2 mb-2 bg-[#171921]" style="border-color: var(--p2, #fff)" />
-                          <p class="text-[9px] font-black text-center text-white truncate w-full">{d.name}</p>
+                        // 🚀 ADDED CLICK HANDLER AND HOVER EFFECTS FOR DIRECTOR
+                        <div onClick={() => setPersonId(d.id)} class="flex flex-col items-center min-w-[70px] shrink-0 cursor-pointer group">
+                          <img src={d.profile_path ? `https://image.tmdb.org/t/p/w200${d.profile_path}` : `https://api.dicebear.com/7.x/initials/svg?seed=${d.name}&backgroundColor=171921`} class="w-16 h-16 rounded-full object-cover border-2 mb-2 bg-[#171921] group-hover:scale-105 transition-all" style="border-color: var(--p2, #fff)" />
+                          <p class="text-[9px] font-black text-center text-white truncate w-full group-hover:text-[var(--p)] transition-colors">{d.name}</p>
                           <p class="text-[7px] font-black text-center uppercase tracking-widest mt-0.5" style="color: var(--p2, #fff)">{details().created_by ? 'Creator' : 'Director'}</p>
                         </div>
                       );
@@ -119,9 +126,10 @@ function UpcomingDetailsModal(props) {
                   </Show>
                   <For each={details().credits?.cast?.slice(0, 5)}>
                     {(c) => (
-                      <div class="flex flex-col items-center min-w-[70px] shrink-0">
-                        <img src={c.profile_path ? `https://image.tmdb.org/t/p/w200${c.profile_path}` : `https://api.dicebear.com/7.x/initials/svg?seed=${c.name}&backgroundColor=171921`} class="w-16 h-16 rounded-full object-cover border border-white/10 mb-2 bg-[#171921]" />
-                        <p class="text-[9px] font-black text-center text-white truncate w-full">{c.name}</p>
+                      // 🚀 ADDED CLICK HANDLER AND HOVER EFFECTS FOR CAST
+                      <div onClick={() => setPersonId(c.id)} class="flex flex-col items-center min-w-[70px] shrink-0 cursor-pointer group">
+                        <img src={c.profile_path ? `https://image.tmdb.org/t/p/w200${c.profile_path}` : `https://api.dicebear.com/7.x/initials/svg?seed=${c.name}&backgroundColor=171921`} class="w-16 h-16 rounded-full object-cover border border-white/10 mb-2 bg-[#171921] group-hover:border-[var(--p)] group-hover:scale-105 transition-all" />
+                        <p class="text-[9px] font-black text-center text-white truncate w-full group-hover:text-[var(--p)] transition-colors">{c.name}</p>
                         <p class="text-[7px] text-gray-500 text-center uppercase truncate w-full mt-0.5 font-bold">{c.character}</p>
                       </div>
                     )}
@@ -136,6 +144,18 @@ function UpcomingDetailsModal(props) {
           </div>
         </div>
       </div>
+
+      {/* 🚀 ADDED PERSON MODAL PORTAL */}
+      <Show when={personId()}>
+        <PersonModal
+          id={personId()} 
+          uid={props.uid}
+          watchlist={props.watchlist}
+          showToast={props.showToast}
+          onClose={() => setPersonId(null)}
+        />
+      </Show>
+
     </div>
   );
 }
@@ -329,10 +349,17 @@ export function UpcomingView(props) {
         </div>
       </Show>
 
-      {/* 🚀 WRAPPED IN PORTAL TO ESCAPE Z-INDEX CLIPPING OVER HEADER 🚀 */}
       <Show when={previewMovie()}>
         <Portal>
-          <UpcomingDetailsModal movie={previewMovie()} onClose={() => setPreviewMovie(null)} onAdd={() => handleAdd(previewMovie())} />
+          {/* 🚀 PASSED DOWN PROPS NEEDED FOR PERSON MODAL */}
+          <UpcomingDetailsModal 
+            movie={previewMovie()} 
+            onClose={() => setPreviewMovie(null)} 
+            onAdd={() => handleAdd(previewMovie())} 
+            uid={props.uid}
+            watchlist={props.watchlist()}
+            showToast={props.showToast}
+          />
         </Portal>
       </Show>
     </div>
