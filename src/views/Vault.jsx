@@ -53,22 +53,23 @@ export function Vault(props) {
 
   createEffect(() => setFilters(f => ({ ...f, status: props.activeStatus || 'all' })));
 
-  let prevViewMode = 'grid';
+    let prevViewMode = 'grid';
   createEffect(() => {
     const mode = viewMode();
     if (mode === 'timeline' && prevViewMode !== 'timeline') {
+      // ✅ FIX: Sirf local filters update honge, global props.onFilterChange HATA diya
       setFilters({
-        ...defaultFilters,
-        status: 'Completed',
-        sort: 'watch_desc'
+        type: 'all', status: 'Completed', region: 'all', genre: 'all', platform: 'all', sort: 'watch_desc', tag: 'all', imdbMin: '', imdbMax: '', rtMin: '', rtMax: '', yearMin: '', yearMax: '', runtimeMin: '', runtimeMax: ''
       });
-      props.onFilterChange && props.onFilterChange('Completed');
     } else if (mode === 'grid' && prevViewMode === 'timeline') {
-      setFilters(defaultFilters);
-      props.onFilterChange && props.onFilterChange(props.activeStatus || 'all');
+      // ✅ FIX: Wapas original global state par revert
+      setFilters({
+        type: 'all', status: props.activeStatus || 'all', region: 'all', genre: 'all', platform: 'all', sort: 'recent', tag: 'all', imdbMin: '', imdbMax: '', rtMin: '', rtMax: '', yearMin: '', yearMax: '', runtimeMin: '', runtimeMax: ''
+      });
     }
     prevViewMode = mode;
   });
+
 
   const handleScroll = () => {
     if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500)
