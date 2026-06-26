@@ -1,3 +1,4 @@
+// src/services/watchlistService.js
 import { doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -27,3 +28,7 @@ export const addPreviewToWatchlist = ({ uid, item, details }) => {
 
 export const upsertEpisodeWatchState = ({ uid, itemId, episodeId, payload }) =>
   setDoc(doc(db, 'users', uid, 'watchlist', String(itemId), 'episodes', episodeId), payload, { merge: true });
+
+// ✅ NEW: Per-movie direct play URL save/load
+export const saveDirectPlayUrl = (uid, itemId, url) =>
+  updateDoc(watchlistDoc(uid, itemId), { directPlayUrl: url });
