@@ -96,7 +96,8 @@ export function DetailsModal(props) {
   const [omdbData, setOmdbData] = createSignal({ imdb: '-', rt: '-' });
   const [form, setForm] = createSignal({ status: '', rating: '', watchDate: '', notes: '', region: '', season: 1, episode: 1, tag: '', platforms: '', genres: '', seasonDates: {} });
   
-  const [directPlayUrl, setDirectPlayUrl] = createSignal(localStorage.getItem('cinelog_direct_play_url') || '');
+  // ✅ CHANGE 1: Empty string — movie se load hoga, global localStorage nahi
+  const [directPlayUrl, setDirectPlayUrl] = createSignal('');
   const [isEditingDirectUrl, setIsEditingDirectUrl] = createSignal(false);
 
   const [richPlatforms, setRichPlatforms] = createSignal([]);
@@ -293,6 +294,11 @@ export function DetailsModal(props) {
   
   createEffect(() => {
     const m = movie(); if (!m?.id) { setSimilarItems([]); return; }
+
+    // ✅ CHANGE 2: Har movie ka apna saved URL load karo
+    // Pehle Firebase ka (m.directPlayUrl), fallback localStorage per-movie key
+    setDirectPlayUrl(m.directPlayUrl || localStorage.getItem(`cinelog_direct_url_${m.id}`) || '');
+
     const mediaType = m.media_type === 'tv' ? 'tv' : 'movie';
     fetch(`https://api.themoviedb.org/3/${mediaType}/${m.id}/recommendations?api_key=${TMDB_KEY}&language=en-US&page=1`).then(r => r.json()).then(d => {
         let results = (d.results || []).filter(x => x.poster_path).slice(0, 12);
@@ -405,6 +411,7 @@ export function DetailsModal(props) {
               <Show when={isEdit()} fallback={
                 <div class="animate-fade-in">
                   <Show when={!isPreview()}>
+                    {/* ✅ CHANGE 3: uid={props.uid} add kiya — per-movie Firebase save ke liye */}
                     <StreamingPanel 
                       availableServers={availableServers()} activeServer={activeServer()} setActiveServer={setActiveServer} 
                       isEditingDirectUrl={isEditingDirectUrl()} setIsEditingDirectUrl={setIsEditingDirectUrl} 
@@ -412,7 +419,8 @@ export function DetailsModal(props) {
                       movie={movie()} inferDurationSeconds={inferDurationSeconds} setContentDuration={setContentDuration} 
                       setWatchProgress={setWatchProgress} setPlayerStartProgress={setPlayerStartProgress} 
                       setReceivedRealProgress={setReceivedRealProgress} setPlayerSessionStart={setPlayerSessionStart} 
-                      setShowPlayer={setShowPlayer} 
+                      setShowPlayer={setShowPlayer}
+                      uid={props.uid}
                     />
                   </Show>
 
@@ -496,7 +504,6 @@ export function DetailsModal(props) {
         </div>
       </Show>
 
-      {/* FIXED PERSON MODAL USING id INSTEAD OF personId */}
       <Show when={personId()}>
         <PersonModal
           id={personId()} 
