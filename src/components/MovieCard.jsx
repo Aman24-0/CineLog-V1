@@ -20,9 +20,9 @@ export const MovieCard = (props) => (
         />
       </Show>
 
-      {/* Gradient overlay — stronger bottom fade */}
+      {/* Gradient overlay */}
       <div class="absolute inset-0 pointer-events-none"
-        style="background: linear-gradient(to top, rgba(0,0,0,0.97) 0%, rgba(0,0,0,0.7) 38%, rgba(0,0,0,0.15) 65%, transparent 100%)" />
+        style="background: linear-gradient(to top, rgba(0,0,0,0.98) 0%, rgba(0,0,0,0.75) 35%, rgba(0,0,0,0.1) 65%, transparent 100%)" />
 
       {/* Status badge */}
       <div class="absolute top-2 left-2 tag-chip" style="color: var(--p)">
@@ -45,13 +45,14 @@ export const MovieCard = (props) => (
 
       {/* Bottom info */}
       <div class="absolute bottom-0 left-0 w-full p-3">
-        <h4 class="text-xs font-bold truncate text-white drop-shadow mb-1 leading-tight"
-          style="text-shadow: 0 1px 6px rgba(0,0,0,0.9)">
-          {props.movie.title || props.movie.name}
-        </h4>
 
-        <p class="label-mono mb-1.5 text-gray-300"
-          style="font-size: 8px; text-shadow: 0 1px 4px rgba(0,0,0,0.9)">
+        {/* Title */}
+        <p style="font-size: 12px; font-weight: 700; color: #ffffff; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 8px rgba(0,0,0,1)">
+          {props.movie.title || props.movie.name}
+        </p>
+
+        {/* Meta: year · type · runtime */}
+        <p style="font-size: 8px; font-weight: 600; color: #cccccc; margin-bottom: 6px; letter-spacing: 0.08em; text-transform: uppercase; text-shadow: 0 1px 6px rgba(0,0,0,1)">
           {(props.movie.release_date || props.movie.first_air_date || '').split('-')[0] || 'N/A'}
           {' · '}
           {props.movie.media_type === 'tv' ? 'Series' : 'Movie'}
@@ -60,22 +61,27 @@ export const MovieCard = (props) => (
           </Show>
         </p>
 
-        {/* Ratings row */}
-        <div class="grid grid-cols-3 gap-1 w-full">
-          <span class="rating-pill"
-            style="color: #f5c518; background: rgba(0,0,0,0.65); border: 1px solid rgba(245,197,24,0.25)">
-            <Icon name="star" fill class="text-[10px]" />
-            {props.movie.imdbRating || '-'}
-          </span>
-          <span class="rating-pill"
-            style="color: #ff6b6b; background: rgba(0,0,0,0.65); border: 1px solid rgba(255,107,107,0.25)">
-            🍅 {props.movie.rtRating || '-'}
-          </span>
-          <span class="rating-pill"
-            style="color: var(--p); background: rgba(0,0,0,0.65); border: 1px solid var(--p-dim)">
-            <Icon name="person" fill class="text-[10px]" />
-            {props.movie.rating || '-'}
-          </span>
+        {/* Ratings row — NO class, pure inline */}
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; width: 100%">
+
+          {/* IMDb */}
+          <div style="display: flex; align-items: center; justify-content: center; gap: 2px; background: rgba(0,0,0,0.82); border: 1px solid rgba(245,197,24,0.45); border-radius: 6px; padding: 3px 2px">
+            <Icon name="star" fill class="text-[9px]" style="color: #f5c518; font-size: 9px" />
+            <span style="font-size: 9px; font-weight: 700; color: #f5c518">{props.movie.imdbRating || '-'}</span>
+          </div>
+
+          {/* RT */}
+          <div style="display: flex; align-items: center; justify-content: center; gap: 2px; background: rgba(0,0,0,0.82); border: 1px solid rgba(255,100,100,0.45); border-radius: 6px; padding: 3px 2px">
+            <span style="font-size: 9px">🍅</span>
+            <span style="font-size: 9px; font-weight: 700; color: #ff7070">{props.movie.rtRating || '-'}</span>
+          </div>
+
+          {/* User rating */}
+          <div style="display: flex; align-items: center; justify-content: center; gap: 2px; background: rgba(0,0,0,0.82); border: 1px solid rgba(255,45,85,0.45); border-radius: 6px; padding: 3px 2px">
+            <Icon name="person" fill class="text-[9px]" style="color: var(--p); font-size: 9px" />
+            <span style="font-size: 9px; font-weight: 700; color: var(--p)">{props.movie.rating || '-'}</span>
+          </div>
+
         </div>
       </div>
     </div>
