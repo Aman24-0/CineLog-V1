@@ -3,42 +3,43 @@ import { Icon, formatRuntime, getSafeGenres } from '../../utils';
 
 export function MediaHeader(props) {
 
-  // 🚀 FORMATTED SHARE WITH POSTER IMAGE LOGIC (FIXED FOR WHATSAPP)
+  // 🚀 PRO-LEVEL SHARE WITH POSTER IMAGE & FULL METADATA
   const handleShare = async () => {
     const title = props.movie?.title || props.movie?.name || 'Unknown Title';
     const isTv = props.movie?.media_type === 'tv';
     const typeIcon = isTv ? '📺' : '🎬';
     
-    // Fallback logic for rating
-    const rating = props.movie?.imdbRating && props.movie.imdbRating !== '-' 
+    // Ratings & Metadata
+    const releaseDate = props.movie?.release_date || props.details?.release_date || props.movie?.first_air_date || 'TBA';
+    const imdb = props.movie?.imdbRating && props.movie.imdbRating !== '-' 
         ? props.movie.imdbRating 
         : (props.details?.vote_average ? props.details.vote_average.toFixed(1) : 'N/A');
+    const rt = props.movie?.rtRating && props.movie.rtRating !== '-' ? `${props.movie.rtRating}%` : 'N/A';
 
-    // Safe genres extraction
     const genresList = props.details?.genres?.map(g => g.name) || getSafeGenres(props.movie) || [];
     const genres = genresList.length > 0 ? genresList.join(', ') : 'N/A';
 
     const overview = props.details?.overview || props.movie?.overview || 'No overview available.';
 
-    // EXACT TEXT FORMATTING (FIXED SYNTAX)
-    const shareText = `${typeIcon} *${title}*\n\n*⭐ Rating: ${rating}/10*\n*🏷️ ${genres}*\n\n*📖 Introduction*\n${overview}\n\n*🍿 Watch now:*\nhttps://cinlog.netlify.app/watch/${props.movie?.id}\n\n*📲 Download App:*\nhttps://cinlog.netlify.app`;
+    // EXACT TEXT FORMATTING (App download removed, custom CTA added)
+    const shareText = `${typeIcon} *${title}*\n\n📅 *Release:* ${releaseDate}\n⭐ *IMDb:* ${imdb}/10\n🍅 *Rotten Tomatoes:* ${rt}\n🏷️ *${genres}*\n\n📖 *Synopsis*\n${overview}\n\n📌 *Track your watch progress on Cinelog:*\nhttps://cinlog.netlify.app`;
 
     if (navigator.share) {
       try {
         if (props.showToast) props.showToast("Preparing poster... ⏳");
 
-        // NOTE: 'title' key removed. Only sending 'text' and 'files' to prevent WhatsApp from dropping the image.
+        // We specifically omit the 'title' key here. Passing 'title' with 'files' often makes WhatsApp drop the image.
         let shareData = {
           text: shareText
         };
 
-        // 🖼️ FETCH AND ATTACH POSTER IMAGE AS JPEG
+        // 🖼️ FETCH AND FORCE ATTACH POSTER IMAGE AS STRICT JPEG
         if (props.movie?.poster_path) {
           try {
             const response = await fetch(`https://image.tmdb.org/t/p/w500${props.movie.poster_path}`);
             const blob = await response.blob();
             
-            // Force the MIME type to image/jpeg so WhatsApp natively accepts it
+            // Re-create the blob as a strict jpeg file. This is the trick for WhatsApp Android.
             const file = new File([blob], 'poster.jpg', { type: 'image/jpeg' });
             
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -46,7 +47,7 @@ export function MediaHeader(props) {
             }
           } catch (imgErr) {
             console.log("Could not fetch image for sharing", imgErr);
-            // Will fallback to text-only if image fails
+            // Will fallback to text-only if image fetching fails due to network
           }
         }
 
@@ -87,7 +88,7 @@ export function MediaHeader(props) {
         </div>
         
         <div class="flex items-center gap-2 shrink-0">
-            {/* SHARE BUTTON */}
+            {/* 🚀 SHARE BUTTON */}
             <button 
               onClick={handleShare} 
               class="w-10 h-10 rounded-full border transition-all flex items-center justify-center bg-black/40 hover:bg-white/10 text-gray-400 hover:text-white border-white/10 backdrop-blur-md active:scale-95 shadow-lg"
