@@ -309,18 +309,6 @@ body.theme-cinematic .skeleton-bg {
   background-size: 200% 100%;
 }
 
-/* Movie result card hover effects */
-.movie-result-card {
-  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
-  backdrop-filter: blur(12px);
-}
-
-.movie-result-card:hover {
-  transform: translateY(-8px);
-  border-color: var(--p);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 30px var(--p-glow);
-}
-
 /* Search modal styling */
 .search-modal {
   animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
