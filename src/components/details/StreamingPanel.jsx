@@ -3,9 +3,9 @@ import { Icon } from '../../utils';
 import { saveDirectPlayUrl } from '../../services/watchlistService';
 
 export function StreamingPanel(props) {
-  const fastList = () => props.availableServers.filter(s => ['vidzee', 'vidlink'].includes(s.id));
-  const embedList = () => props.availableServers.filter(s => ['vidsrcru', 'peachify', 'vidsrccc', 'autoembed', 'vidnest'].includes(s.id));
-  const customList = () => props.availableServers.filter(s => !['vidzee', 'vidlink', 'vidsrcru', 'peachify', 'vidsrccc', 'autoembed', 'vidnest'].includes(s.id));
+  // Category Filtering
+  const multiList = () => props.availableServers.filter(s => s.type === 'multi');
+  const orgList = () => props.availableServers.filter(s => s.type === 'org');
 
   const Chip = (srv) => (
     <button
@@ -15,7 +15,7 @@ export function StreamingPanel(props) {
       style={props.activeServer === srv.id
         ? 'border: 1px solid var(--p); background: var(--p-dim); color: var(--p); box-shadow: 0 0 10px var(--p-glow)'
         : 'border: 1px solid var(--border); background: var(--raised); color: var(--muted)'}>
-      <Icon name={srv.icon} class="text-[13px] shrink-0" />
+      <Icon name={srv.icon || 'dns'} class="text-[13px] shrink-0" />
       <span class="truncate">{srv.name}</span>
     </button>
   );
@@ -44,7 +44,6 @@ export function StreamingPanel(props) {
     props.setShowPlayer(true);
   };
 
-  // ✅ Per-movie URL save handler
   const handleSaveUrl = async (e) => {
     e.stopPropagation();
     const url = props.directPlayUrl;
@@ -52,7 +51,6 @@ export function StreamingPanel(props) {
     const movieId = props.movie?.id;
 
     if (uid && movieId) {
-      // Firebase mein save karo (movie ke andar)
       try {
         await saveDirectPlayUrl(uid, movieId, url);
         if (props.showToast) props.showToast("URL saved for this movie!");
@@ -61,7 +59,6 @@ export function StreamingPanel(props) {
         if (props.showToast) props.showToast("Save failed. Try again.");
       }
     } else {
-      // Guest user — localStorage fallback with movie ID key
       localStorage.setItem(`cinelog_direct_url_${movieId}`, url);
       if (props.showToast) props.showToast("URL saved locally!");
     }
@@ -72,13 +69,20 @@ export function StreamingPanel(props) {
     <div class="mb-6 bg-black/40 backdrop-blur-md p-4 rounded-[1.5rem] border border-white/5 shadow-inner">
       <div class="flex justify-between items-center mb-3 px-1">
         <span class="text-[9px] uppercase font-black text-gray-400 tracking-widest flex items-center gap-1.5">
-          <Icon name="router" class="text-[12px] text-[var(--primary)]" /> Streaming Node
+          <Icon name="router" class="text-[12px] text-[var(--p)]" /> Streaming Node
         </span>
       </div>
       <div class="pb-1">
-        <Show when={fastList().length > 0}>{GroupLabel('⚡ Fast')}<div class="grid grid-cols-2 gap-1.5"><For each={fastList()}>{(srv) => <div>{Chip(srv)}</div>}</For></div></Show>
-        <Show when={embedList().length > 0}>{GroupLabel('📡 Embed')}<div class="grid grid-cols-2 gap-1.5"><For each={embedList()}>{(srv) => <div>{Chip(srv)}</div>}</For></div></Show>
-        <Show when={customList().length > 0}>{GroupLabel('🔗 Custom')}<div class="grid grid-cols-2 gap-1.5"><For each={customList()}>{(srv) => <div>{Chip(srv)}</div>}</For></div></Show>
+        
+        {/* Dynamic Categories */}
+        <Show when={multiList().length > 0}>{GroupLabel('🌍 Multi Audio')}<div class="grid grid-cols-2 gap-1.5"><For each={multiList()}>{(srv) => <div>{Chip(srv)}</div>}</For></div></Show>
+        <Show when={orgList().length > 0}>{GroupLabel('🎭 Org Audio')}<div class="grid grid-cols-2 gap-1.5"><For each={orgList()}>{(srv) => <div>{Chip(srv)}</div>}</For></div></Show>
+
+        <Show when={multiList().length === 0 && orgList().length === 0}>
+          <div class="text-center py-4 text-[10px] text-gray-500 font-bold uppercase tracking-widest border border-dashed border-white/5 rounded-xl mb-3">
+            No Servers Configured
+          </div>
+        </Show>
 
         <div class="flex items-center gap-2 mt-3">
           <button type="button" onClick={(e) => { e.stopPropagation(); props.setActiveServer('DIRECT_PLAY'); }}
@@ -86,7 +90,7 @@ export function StreamingPanel(props) {
             style={props.activeServer === 'DIRECT_PLAY'
               ? 'border: 1px solid #3b82f6; background: rgba(59,130,246,0.15); color: #3b82f6; box-shadow: 0 0 10px rgba(59,130,246,0.3)'
               : 'border: 1px solid var(--border); background: var(--raised); color: var(--muted)'}>
-            <Icon name="dns" class="text-[13px] shrink-0" /> Direct Play
+            <Icon name="play_arrow" class="text-[13px] shrink-0" /> Direct Play
           </button>
           <button type="button" onClick={(e) => { e.stopPropagation(); props.setIsEditingDirectUrl(!props.isEditingDirectUrl); }}
             class="w-9 h-9 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-400 hover:text-white transition-colors shrink-0" title="Edit Custom URL">
@@ -104,7 +108,6 @@ export function StreamingPanel(props) {
             placeholder="Paste custom video URL here..."
             class="flex-1 bg-[#0c0e14] border border-white/10 rounded-lg p-2 text-xs text-white outline-none focus:border-[#3b82f6] transition-colors"
           />
-          {/* ✅ Save button — ab per-movie save hoga */}
           <button type="button" onClick={handleSaveUrl}
             class="bg-[#3b82f6] hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors">
             Save
