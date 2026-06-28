@@ -377,7 +377,7 @@ export function DetailsModal(props) {
                     "{details().overview || (typeof movie().overview === 'string' ? movie().overview : 'No overview available.')}"
                   </p>
 
-                  <                  <Show when={!isPreview() && movie().media_type === 'tv'}>
+                  <Show when={!isPreview() && movie().media_type === 'tv'}>
                     <TvTracker
                       movie={movie()} tvSeasons={tvSeasons()} selectedSeason={selectedSeason()} setSelectedSeason={setSelectedSeason}
                       seasonsLoading={seasonsLoading()} selectedSeasonEpisodes={selectedSeasonEpisodes()}
