@@ -103,14 +103,16 @@ export function DetailsModal(props) {
     currentSeasonNumber, currentEpisodeNumber, inferDurationSeconds, showToast: props.showToast,
   });
 
-  const {
+    const {
     selectedSeason, setSelectedSeason, seasonEpisodes, seasonsLoading, expandedEpisodes, setExpandedEpisodes,
     watchedEpisodes, tvSeasons, selectedSeasonEpisodes, episodeDocId, getEpisodesForSeason,
-    loadWatchedEpisodes, fetchSeasonEpisodes, toggleEpisodeWatched,
+    loadWatchedEpisodes, fetchSeasonEpisodes, toggleEpisodeWatched, checkIfWatched // 🚀 FETCH checkIfWatched
   } = useEpisodeTracking({
     movie, details, isPreview, isGuest: props.isGuest, uid: props.uid, activeServer, inferDurationSeconds,
     setForm, setWatchProgress, setPlayerStartProgress, showToast: props.showToast, onLogin: props.onLogin,
+    currentSeasonNumber, currentEpisodeNumber, isCompleted // 🚀 PASS NEW POINTERS
   });
+
 
   const getCurrentEpisode = () => {
     const season  = currentSeasonNumber();
