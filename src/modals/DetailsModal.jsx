@@ -409,7 +409,7 @@ export function DetailsModal(props) {
                   <Show when={movie().media_type === 'tv'}>
                     <TvTracker
                       movie={movie()} tvSeasons={tvSeasons()} selectedSeason={selectedSeason()} setSelectedSeason={setSelectedSeason}
-                      seasonsLoading={seasonsLoading()) } selectedSeasonEpisodes={selectedSeasonEpisodes()}
+                      seasonsLoading={seasonsLoading()} selectedSeasonEpisodes={selectedSeasonEpisodes()}
                       episodeDocId={episodeDocId} watchedEpisodes={watchedEpisodes()} expandedEpisodes={expandedEpisodes()}
                       setExpandedEpisodes={setExpandedEpisodes} toggleEpisodeWatched={toggleEpisodeWatched}
                       isCompleted={isCompleted()} currentSeasonNumber={currentSeasonNumber()} currentEpisodeNumber={currentEpisodeNumber()}
