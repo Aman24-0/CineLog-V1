@@ -23,19 +23,25 @@ export function useEpisodeTracking({ movie, details, isPreview, isGuest, uid, ac
   const getStoredSeasonCache = () => { try { return JSON.parse(localStorage.getItem(seasonCacheKey()) || '{}'); } catch (e) { return {}; } };
   const writeStoredSeasonCache = (cache) => { try { localStorage.setItem(seasonCacheKey(), JSON.stringify(cache)); } catch (e) {} };
 
-  // 🚀 THE MAGIC: Smart Implicit Watch Checker
+  // 🚀 THE MAGIC FIX: Smart Implicit Watch Checker
   const checkIfWatched = (epSeason, epNumber) => {
+    // 1. Agar series 'Completed' mark ho chuki hai, toh sab watched hai
+    if (isCompleted()) return true;
+
+    const pos = compareEpisodePosition(epSeason, epNumber, currentSeasonNumber(), currentEpisodeNumber());
+
+    // 2. FIX: Agar humara tracking pointer issi episode par hai (pos === 0),
+    // Toh ye 100% UNWATCHED hoga. Isse manual rollback (Edit form) perfectly kaam karega.
+    if (pos === 0) return false;
+
     const id = episodeDocId(epSeason, epNumber);
     const dbEntry = watchedEpisodes()[id];
-    
-    // Explicit exception (user manually unchecked a prior episode)
+
+    // 3. Explicit exception (Agar user ne kisi past episode ko manually uncheck kiya hai)
     if (dbEntry !== undefined) return dbEntry.watched;
-    
-    // Series Completed -> Everything is watched
-    if (isCompleted()) return true;
-    
-    // Implicit Check: If episode is BEFORE the current tracking pointer, it's watched!
-    return compareEpisodePosition(epSeason, epNumber, currentSeasonNumber(), currentEpisodeNumber()) < 0;
+
+    // 4. Implicit Check: Current pointer se pehle ke saare episodes automatically watched!
+    return pos < 0;
   };
 
   const loadWatchedEpisodes = async () => {
@@ -104,7 +110,7 @@ export function useEpisodeTracking({ movie, details, isPreview, isGuest, uid, ac
     const episode = Number(ep.episode_number || 1);
     const id = episodeDocId(season, episode);
     
-    // Check state using our smart implicit logic
+    // Naya implicit state check karenge pehle
     const isWatched = checkIfWatched(season, episode);
     const nextWatched = !isWatched;
 
@@ -115,12 +121,10 @@ export function useEpisodeTracking({ movie, details, isPreview, isGuest, uid, ac
       await upsertEpisodeWatchState({ uid, itemId: movie().id, episodeId: id, payload });
       
       if (nextWatched) {
-        // Find next episode and update pointer. If null, it means Series is Completed!
         const nextPointer = findNextEpisodePointer(season, episode);
         await updateCurrentEpisodePointer(nextPointer || { season, episode }, !nextPointer);
         showToast(nextPointer ? `S${season} E${episode} watched — next S${nextPointer.season} E${nextPointer.episode}` : `Series Completed! 🎉`);
       } else {
-        // If unwatched, move the pointer back to this exact episode
         if (compareEpisodePosition(currentSeasonNumber(), currentEpisodeNumber(), season, episode) > 0 || isCompleted()) {
           await updateCurrentEpisodePointer({ season, episode }, false);
         }
