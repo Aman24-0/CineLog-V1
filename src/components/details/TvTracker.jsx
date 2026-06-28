@@ -1,4 +1,4 @@
-import { Show, For, createMemo } from 'solid-js';
+import { Show, For } from 'solid-js';
 import { Icon } from '../../utils';
 
 export function TvTracker(props) {
@@ -45,8 +45,10 @@ export function TvTracker(props) {
                       <For each={props.selectedSeasonEpisodes}>
                           {(ep) => {
                               const epId = props.episodeDocId(ep.season_number || props.selectedSeason, ep.episode_number);
-                              const watched = () => !!props.watchedEpisodes[epId]?.watched;
+                              // 🚀 USE IMPLICIT CHECK INSTEAD OF MANUAL DB OVERRIDES
+                              const watched = () => props.checkIfWatched(ep.season_number || props.selectedSeason, ep.episode_number);
                               const expanded = () => !!props.expandedEpisodes[epId];
+                              
                               return (
                                 <div class="group rounded-2xl border border-white/5 bg-black/30 hover:bg-white/[0.035] hover:border-[var(--p)]/40 transition-all overflow-hidden">
                                   <div class="flex gap-3 p-3">
