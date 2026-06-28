@@ -71,7 +71,7 @@ export function DetailsModal(props) {
   const [receivedRealProgress,setReceivedRealProgress]= createSignal(false);
 
   let autoPlayTriggered = false;
-  let inferDurationSeconds = () => 0; 
+  let inferDurationSeconds = () => 0;
 
   const { details, trailerKey, richPlatforms, similarItems } = useTmdbDetails(movie, {
     uid:             props.uid,
@@ -94,7 +94,6 @@ export function DetailsModal(props) {
   const currentSeasonNumber  = createMemo(() => parseInt(form().season  || movie()?.season  || 1) || 1);
   const currentEpisodeNumber = createMemo(() => parseInt(form().episode || movie()?.episode || 1) || 1);
 
-  // 🚀 MOVED UP: isCompleted must be defined before passing it to useEpisodeTracking
   const isCompleted = createMemo(() => !isPreview() && (form().status || movie()?.status) === 'Completed');
 
   const {
@@ -109,13 +108,12 @@ export function DetailsModal(props) {
   const {
     selectedSeason, setSelectedSeason, seasonEpisodes, seasonsLoading, expandedEpisodes, setExpandedEpisodes,
     watchedEpisodes, tvSeasons, selectedSeasonEpisodes, episodeDocId, getEpisodesForSeason,
-    loadWatchedEpisodes, fetchSeasonEpisodes, toggleEpisodeWatched, checkIfWatched 
+    loadWatchedEpisodes, fetchSeasonEpisodes, toggleEpisodeWatched, checkIfWatched
   } = useEpisodeTracking({
     movie, details, isPreview, isGuest: props.isGuest, uid: props.uid, activeServer, inferDurationSeconds,
     setForm, setWatchProgress, setPlayerStartProgress, showToast: props.showToast, onLogin: props.onLogin,
     currentSeasonNumber, currentEpisodeNumber, isCompleted
   });
-
 
   const getCurrentEpisode = () => {
     const season  = currentSeasonNumber();
@@ -296,6 +294,35 @@ export function DetailsModal(props) {
     } catch { if (props.showToast) props.showToast("Error adding to vault."); }
   };
 
+  // ✅ FIX: Smart Similar Click — Vault check karo pehle
+  const handleSimilarClick = (item) => {
+    const normalizedItem = {
+      ...item,
+      media_type: item.media_type || (movie().media_type === 'tv' ? 'tv' : 'movie')
+    };
+
+    // Kya ye item already Vault mein hai?
+    const inVault = (props.watchlist || []).some(w => String(w.id) === String(item.id));
+
+    if (inVault) {
+      // Vault mein hai — normal open, saved data ke saath
+      setOverrideItem(null);
+      // baseId change karne ke liye parent se id update nahi ho sakta directly,
+      // isliye overrideItem ko Vault ka actual item set karo
+      const vaultItem = props.watchlist.find(w => String(w.id) === String(item.id));
+      setOverrideItem(vaultItem);
+    } else {
+      // Vault mein nahi — Preview mode mein kholo (Search jaisa)
+      setOverrideItem({ ...normalizedItem, _isPreviewOverride: true });
+    }
+
+    document.querySelector('.overflow-y-auto.hide-scrollbar.w-full')?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // ✅ FIX: overrideItem ke liye bhi isPreview correctly work kare
+  const isPreviewOverride = createMemo(() => !!overrideItem()?._isPreviewOverride);
+  const effectiveIsPreview = createMemo(() => isPreview() || isPreviewOverride());
+
   const getStreamUrl = (serverId) => {
     if (serverId === 'DIRECT_PLAY') return directPlayUrl();
     if (!serverId) return '';
@@ -351,7 +378,7 @@ export function DetailsModal(props) {
           <div class="overflow-y-auto hide-scrollbar w-full">
             <MediaHeader
               movie={movie()} details={details()} playTrailer={playTrailer()} setPlayTrailer={setPlayTrailer}
-              trailerKey={trailerKey()} isPreview={isPreview()} isGuest={props.isGuest}
+              trailerKey={trailerKey()} isPreview={effectiveIsPreview()} isGuest={props.isGuest}
               isEdit={isEdit()} setIsEdit={setIsEdit} showToast={props.showToast} onLogin={props.onLogin}
             />
 
@@ -360,7 +387,8 @@ export function DetailsModal(props) {
 
               <Show when={isEdit()} fallback={
                 <div class="animate-fade-in">
-                  <Show when={!isPreview()}>
+                  {/* Streaming panel — sirf real Vault items ke liye */}
+                  <Show when={!effectiveIsPreview()}>
                     <StreamingPanel
                       availableServers={availableServers()} activeServer={activeServer()} setActiveServer={setActiveServer}
                       isEditingDirectUrl={isEditingDirectUrl()} setIsEditingDirectUrl={setIsEditingDirectUrl}
@@ -377,32 +405,32 @@ export function DetailsModal(props) {
                     "{details().overview || (typeof movie().overview === 'string' ? movie().overview : 'No overview available.')}"
                   </p>
 
-                  <Show when={!isPreview() && movie().media_type === 'tv'}>
+                  {/* ✅ FIX: TV tracker — preview mein bhi dikhao (read-only mode), sirf non-preview mein full tracking */}
+                  <Show when={movie().media_type === 'tv'}>
                     <TvTracker
                       movie={movie()} tvSeasons={tvSeasons()} selectedSeason={selectedSeason()} setSelectedSeason={setSelectedSeason}
-                      seasonsLoading={seasonsLoading()} selectedSeasonEpisodes={selectedSeasonEpisodes()}
+                      seasonsLoading={seasonsLoading()) } selectedSeasonEpisodes={selectedSeasonEpisodes()}
                       episodeDocId={episodeDocId} watchedEpisodes={watchedEpisodes()} expandedEpisodes={expandedEpisodes()}
                       setExpandedEpisodes={setExpandedEpisodes} toggleEpisodeWatched={toggleEpisodeWatched}
                       isCompleted={isCompleted()} currentSeasonNumber={currentSeasonNumber()} currentEpisodeNumber={currentEpisodeNumber()}
                       progressPct={progressPct()} getCurrentEpisode={getCurrentEpisode}
                       checkIfWatched={checkIfWatched}
+                      isPreviewMode={effectiveIsPreview()}
                     />
                   </Show>
 
                   <CastCrewList credits={details().credits} setPersonId={setPersonId} />
 
                   <InfoGrid
-                    movie={movie()} isPreview={isPreview()}
+                    movie={movie()} isPreview={effectiveIsPreview()}
                     genresText={details().genres ? details().genres.map(g => g.name).join(', ') : (getSafeGenres(movie()).join(', ') || 'N/A')}
                     richPlatforms={richPlatforms()} movieFranchises={movieFranchises()} similarItems={similarItems()}
-                    onSimilarClick={(item) => {
-                      setOverrideItem({ ...item, media_type: item.media_type || (movie().media_type === 'tv' ? 'tv' : 'movie') });
-                      document.querySelector('.overflow-y-auto.hide-scrollbar.w-full')?.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
+                    onSimilarClick={handleSimilarClick}
                     calculateDays={calculateDays}
                   />
 
-                  <Show when={isPreview()}>
+                  {/* Add to Vault button — preview mode mein dikhao */}
+                  <Show when={effectiveIsPreview()}>
                     <button
                       onClick={addToVaultFromPreview}
                       class="w-full mt-6 font-black py-4 px-5 rounded-xl text-xs uppercase tracking-widest active:scale-95 transition-transform flex items-center justify-center gap-2 border"
@@ -412,7 +440,7 @@ export function DetailsModal(props) {
                     </button>
                   </Show>
 
-                  <Show when={!isPreview()}>
+                  <Show when={!effectiveIsPreview()}>
                     <div class="mt-8 flex justify-end">
                       <button
                         onClick={async () => {
