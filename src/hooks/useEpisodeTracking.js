@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { TMDB_KEY } from '../utils';
 import { upsertEpisodeWatchState } from '../services/watchlistService';
 
-export function useEpisodeTracking({ movie, details, isPreview, isGuest, uid, activeServer, inferDurationSeconds, setForm, setWatchProgress, setPlayerStartProgress, showToast, onLogin }) {
+export function useEpisodeTracking({ movie, details, isPreview, isGuest, uid, activeServer, inferDurationSeconds, setForm, setWatchProgress, setPlayerStartProgress, showToast, onLogin, currentSeasonNumber, currentEpisodeNumber, isCompleted }) {
   const [selectedSeason, setSelectedSeason] = createSignal(null);
   const [seasonEpisodes, setSeasonEpisodes] = createSignal({});
   const [seasonsLoading, setSeasonsLoading] = createSignal(false);
@@ -22,6 +22,21 @@ export function useEpisodeTracking({ movie, details, isPreview, isGuest, uid, ac
   const cacheIsFresh = (cache) => cache?.timestamp && (Date.now() - cache.timestamp < 24 * 60 * 60 * 1000);
   const getStoredSeasonCache = () => { try { return JSON.parse(localStorage.getItem(seasonCacheKey()) || '{}'); } catch (e) { return {}; } };
   const writeStoredSeasonCache = (cache) => { try { localStorage.setItem(seasonCacheKey(), JSON.stringify(cache)); } catch (e) {} };
+
+  // 🚀 THE MAGIC: Smart Implicit Watch Checker
+  const checkIfWatched = (epSeason, epNumber) => {
+    const id = episodeDocId(epSeason, epNumber);
+    const dbEntry = watchedEpisodes()[id];
+    
+    // Explicit exception (user manually unchecked a prior episode)
+    if (dbEntry !== undefined) return dbEntry.watched;
+    
+    // Series Completed -> Everything is watched
+    if (isCompleted()) return true;
+    
+    // Implicit Check: If episode is BEFORE the current tracking pointer, it's watched!
+    return compareEpisodePosition(epSeason, epNumber, currentSeasonNumber(), currentEpisodeNumber()) < 0;
+  };
 
   const loadWatchedEpisodes = async () => {
     if (isGuest || !uid || isPreview() || movie()?.media_type !== 'tv') return;
@@ -59,40 +74,56 @@ export function useEpisodeTracking({ movie, details, isPreview, isGuest, uid, ac
     const nextInSeason = getEpisodesForSeason(season).find(ep => Number(ep.episode_number) > Number(episode));
     if (nextInSeason) return { season: Number(season), episode: Number(nextInSeason.episode_number) };
     const nextSeason = tvSeasons().find(s => Number(s.season_number) > Number(season));
-    if (!nextSeason) return null;
+    if (!nextSeason) return null; // End of series!
     const nextSeasonNumber = Number(nextSeason.season_number);
     const nextSeasonEpisodes = getEpisodesForSeason(nextSeasonNumber);
     return { season: nextSeasonNumber, episode: Number(nextSeasonEpisodes[0]?.episode_number || 1) };
   };
 
-  const updateCurrentEpisodePointer = async (nextPointer, completed = false, currentSeasonNumber, currentEpisodeNumber) => {
+  const updateCurrentEpisodePointer = async (nextPointer, completed = false) => {
     const nextSeason = Number(nextPointer?.season || currentSeasonNumber());
     const nextEpisode = Number(nextPointer?.episode || currentEpisodeNumber());
     const nextStatus = completed ? 'Completed' : (movie()?.status === 'Planned' || movie()?.status === 'Plan to Watch' || movie()?.status === 'Completed' ? 'Watching' : (movie()?.status || 'Watching'));
+    
     const nextProgress = { currentTime: 0, duration: inferDurationSeconds() || 0, server: activeServer() || null, updatedAt: new Date().toISOString(), season: nextSeason, episode: nextEpisode };
+    
     setForm(prev => ({ ...prev, season: nextSeason, episode: nextEpisode, status: nextStatus }));
     setWatchProgress(nextProgress);
     setPlayerStartProgress(0);
-    if (!isGuest && uid && movie() && !isPreview()) await updateDoc(doc(db, 'users', uid, 'watchlist', String(movie().id)), { season: nextSeason, episode: nextEpisode, status: nextStatus, watchProgress: nextProgress });
+    
+    if (!isGuest && uid && movie() && !isPreview()) {
+      await updateDoc(doc(db, 'users', uid, 'watchlist', String(movie().id)), { season: nextSeason, episode: nextEpisode, status: nextStatus, watchProgress: nextProgress });
+    }
   };
 
-  const toggleEpisodeWatched = async (ep, currentSeasonNumber, currentEpisodeNumber) => {
+  const toggleEpisodeWatched = async (ep) => {
     if (isGuest) { showToast('Sign in to track episodes! 🔒'); if (onLogin) onLogin(); return; }
     if (!uid || !movie() || !ep) return;
+    
     const season = Number(ep.season_number || selectedSeason() || currentSeasonNumber());
     const episode = Number(ep.episode_number || 1);
     const id = episodeDocId(season, episode);
-    const isWatched = !!watchedEpisodes()[id]?.watched;
-    const payload = { watched: !isWatched, season, episode, episodeId: id, title: ep.name || '', airDate: ep.air_date || '', runtime: ep.runtime || null, updatedAt: new Date().toISOString() };
+    
+    // Check state using our smart implicit logic
+    const isWatched = checkIfWatched(season, episode);
+    const nextWatched = !isWatched;
+
+    const payload = { watched: nextWatched, season, episode, episodeId: id, title: ep.name || '', airDate: ep.air_date || '', runtime: ep.runtime || null, updatedAt: new Date().toISOString() };
     setWatchedEpisodes(prev => ({ ...prev, [id]: payload }));
+
     try {
       await upsertEpisodeWatchState({ uid, itemId: movie().id, episodeId: id, payload });
-      if (payload.watched) {
+      
+      if (nextWatched) {
+        // Find next episode and update pointer. If null, it means Series is Completed!
         const nextPointer = findNextEpisodePointer(season, episode);
-        await updateCurrentEpisodePointer(nextPointer || { season, episode }, !nextPointer, currentSeasonNumber, currentEpisodeNumber);
-        showToast(nextPointer ? `S${season} E${episode} watched — next S${nextPointer.season} E${nextPointer.episode}` : `S${season} E${episode} watched — show completed`);
+        await updateCurrentEpisodePointer(nextPointer || { season, episode }, !nextPointer);
+        showToast(nextPointer ? `S${season} E${episode} watched — next S${nextPointer.season} E${nextPointer.episode}` : `Series Completed! 🎉`);
       } else {
-        if (compareEpisodePosition(currentSeasonNumber(), currentEpisodeNumber(), season, episode) > 0 || movie()?.status === 'Completed') await updateCurrentEpisodePointer({ season, episode }, false, currentSeasonNumber, currentEpisodeNumber);
+        // If unwatched, move the pointer back to this exact episode
+        if (compareEpisodePosition(currentSeasonNumber(), currentEpisodeNumber(), season, episode) > 0 || isCompleted()) {
+          await updateCurrentEpisodePointer({ season, episode }, false);
+        }
         showToast(`S${season} E${episode} marked unwatched`);
       }
     } catch (e) {
@@ -101,5 +132,5 @@ export function useEpisodeTracking({ movie, details, isPreview, isGuest, uid, ac
     }
   };
 
-  return { selectedSeason, setSelectedSeason, seasonEpisodes, seasonsLoading, expandedEpisodes, setExpandedEpisodes, watchedEpisodes, tvSeasons, selectedSeasonData, selectedSeasonEpisodes, episodeDocId, getEpisodesForSeason, loadWatchedEpisodes, fetchSeasonEpisodes, toggleEpisodeWatched };
+  return { selectedSeason, setSelectedSeason, seasonEpisodes, seasonsLoading, expandedEpisodes, setExpandedEpisodes, watchedEpisodes, tvSeasons, selectedSeasonData, selectedSeasonEpisodes, episodeDocId, getEpisodesForSeason, loadWatchedEpisodes, fetchSeasonEpisodes, toggleEpisodeWatched, checkIfWatched };
 }
