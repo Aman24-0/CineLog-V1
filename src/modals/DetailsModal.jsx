@@ -51,7 +51,7 @@ export function DetailsModal(props) {
   const [isEdit,              setIsEdit]              = createSignal(false);
   const [playTrailer,         setPlayTrailer]         = createSignal(false);
   const [showPlayer,          setShowPlayer]          = createSignal(false);
-  const [activeServer,        setActiveServer]        = createSignal('DIRECT_PLAY');
+  const [activeServer,        setActiveServer]        = createSignal(null);
   const [personId,            setPersonId]            = createSignal(null);
   const [omdbData,            setOmdbData]            = createSignal({ imdb: '-', rt: '-' });
   const [customServers,       setCustomServers]       = createSignal({});
