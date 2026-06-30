@@ -1,11 +1,16 @@
-import { Show, For } from 'solid-js';
+import { createSignal, Show, For } from 'solid-js';
 import { Icon } from '../../utils';
 import { saveDirectPlayUrl } from '../../services/watchlistService';
 
 export function StreamingPanel(props) {
+  // ✅ New: list collapsed by default
+  const [expanded, setExpanded] = createSignal(false);
+
   // Category Filtering
   const multiList = () => props.availableServers.filter(s => s.type === 'multi');
   const orgList = () => props.availableServers.filter(s => s.type === 'org');
+
+  const hasServerSelected = () => !!props.activeServer;
 
   const Chip = (srv) => (
     <button
@@ -27,9 +32,7 @@ export function StreamingPanel(props) {
     </div>
   );
 
-  const handlePlayClick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const startPlayback = () => {
     if (!props.movie?.watchProgress || props.movie.watchProgress.currentTime === 0) {
       const inferred = props.inferDurationSeconds();
       if (inferred > 0) props.setContentDuration(inferred);
@@ -42,6 +45,27 @@ export function StreamingPanel(props) {
     props.setReceivedRealProgress(false);
     props.setPlayerSessionStart(Date.now());
     props.setShowPlayer(true);
+  };
+
+  // ✅ New: main button — pehli baar expand karega, dusri baar (server selected hone par) play karega
+  const handleMainButtonClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!expanded()) {
+      // Collapsed state — sirf expand karo
+      setExpanded(true);
+      return;
+    }
+
+    // Expanded state — agar server selected hai toh play karo
+    if (!hasServerSelected()) {
+      if (props.showToast) props.showToast("Pehle ek server select karo");
+      return;
+    }
+
+    startPlayback();
+    setExpanded(false); // ✅ Play hone ke baad list collapse
   };
 
   const handleSaveUrl = async (e) => {
@@ -71,59 +95,76 @@ export function StreamingPanel(props) {
         <span class="text-[9px] uppercase font-black text-gray-400 tracking-widest flex items-center gap-1.5">
           <Icon name="router" class="text-[12px] text-[var(--p)]" /> Streaming Node
         </span>
+        {/* ✅ New: chevron toggle to manually expand/collapse */}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setExpanded(!expanded()); }}
+          class="w-6 h-6 flex items-center justify-center rounded-lg text-gray-500 hover:text-white transition-colors"
+        >
+          <Icon name={expanded() ? 'expand_less' : 'expand_more'} class="text-[16px]" />
+        </button>
       </div>
-      <div class="pb-1">
-        
-        {/* Dynamic Categories */}
-        <Show when={multiList().length > 0}>{GroupLabel('🌍 Multi Audio')}<div class="grid grid-cols-2 gap-1.5"><For each={multiList()}>{(srv) => <div>{Chip(srv)}</div>}</For></div></Show>
-        <Show when={orgList().length > 0}>{GroupLabel('🎭 Org Audio')}<div class="grid grid-cols-2 gap-1.5"><For each={orgList()}>{(srv) => <div>{Chip(srv)}</div>}</For></div></Show>
 
-        <Show when={multiList().length === 0 && orgList().length === 0}>
-          <div class="text-center py-4 text-[10px] text-gray-500 font-bold uppercase tracking-widest border border-dashed border-white/5 rounded-xl mb-3">
-            No Servers Configured
+      {/* ✅ New: server list ab collapsible hai */}
+      <Show when={expanded()}>
+        <div class="pb-1 animate-fade-in">
+
+          {/* Dynamic Categories */}
+          <Show when={multiList().length > 0}>{GroupLabel('🌍 Multi Audio')}<div class="grid grid-cols-2 gap-1.5"><For each={multiList()}>{(srv) => <div>{Chip(srv)}</div>}</For></div></Show>
+          <Show when={orgList().length > 0}>{GroupLabel('🎭 Org Audio')}<div class="grid grid-cols-2 gap-1.5"><For each={orgList()}>{(srv) => <div>{Chip(srv)}</div>}</For></div></Show>
+
+          <Show when={multiList().length === 0 && orgList().length === 0}>
+            <div class="text-center py-4 text-[10px] text-gray-500 font-bold uppercase tracking-widest border border-dashed border-white/5 rounded-xl mb-3">
+              No Servers Configured
+            </div>
+          </Show>
+
+          <div class="flex items-center gap-2 mt-3">
+            <button type="button" onClick={(e) => { e.stopPropagation(); props.setActiveServer('DIRECT_PLAY'); }}
+              class="flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95"
+              style={props.activeServer === 'DIRECT_PLAY'
+                ? 'border: 1px solid #3b82f6; background: rgba(59,130,246,0.15); color: #3b82f6; box-shadow: 0 0 10px rgba(59,130,246,0.3)'
+                : 'border: 1px solid var(--border); background: var(--raised); color: var(--muted)'}>
+              <Icon name="play_arrow" class="text-[13px] shrink-0" /> Direct Play
+            </button>
+            <button type="button" onClick={(e) => { e.stopPropagation(); props.setIsEditingDirectUrl(!props.isEditingDirectUrl); }}
+              class="w-9 h-9 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-400 hover:text-white transition-colors shrink-0" title="Edit Custom URL">
+              <Icon name="edit" class="text-[13px]" />
+            </button>
+          </div>
+        </div>
+
+        <Show when={props.isEditingDirectUrl}>
+          <div class="flex gap-2 mt-1 px-1 mb-2 animate-fade-in">
+            <input
+              type="text"
+              value={props.directPlayUrl}
+              onInput={e => props.setDirectPlayUrl(e.target.value)}
+              placeholder="Paste custom video URL here..."
+              class="flex-1 bg-[#0c0e14] border border-white/10 rounded-lg p-2 text-xs text-white outline-none focus:border-[#3b82f6] transition-colors"
+            />
+            <button type="button" onClick={handleSaveUrl}
+              class="bg-[#3b82f6] hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors">
+              Save
+            </button>
           </div>
         </Show>
 
-        <div class="flex items-center gap-2 mt-3">
-          <button type="button" onClick={(e) => { e.stopPropagation(); props.setActiveServer('DIRECT_PLAY'); }}
-            class="flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95"
-            style={props.activeServer === 'DIRECT_PLAY'
-              ? 'border: 1px solid #3b82f6; background: rgba(59,130,246,0.15); color: #3b82f6; box-shadow: 0 0 10px rgba(59,130,246,0.3)'
-              : 'border: 1px solid var(--border); background: var(--raised); color: var(--muted)'}>
-            <Icon name="play_arrow" class="text-[13px] shrink-0" /> Direct Play
-          </button>
-          <button type="button" onClick={(e) => { e.stopPropagation(); props.setIsEditingDirectUrl(!props.isEditingDirectUrl); }}
-            class="w-9 h-9 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-400 hover:text-white transition-colors shrink-0" title="Edit Custom URL">
-            <Icon name="edit" class="text-[13px]" />
-          </button>
-        </div>
-      </div>
-
-      <Show when={props.isEditingDirectUrl}>
-        <div class="flex gap-2 mt-1 px-1 mb-2 animate-fade-in">
-          <input
-            type="text"
-            value={props.directPlayUrl}
-            onInput={e => props.setDirectPlayUrl(e.target.value)}
-            placeholder="Paste custom video URL here..."
-            class="flex-1 bg-[#0c0e14] border border-white/10 rounded-lg p-2 text-xs text-white outline-none focus:border-[#3b82f6] transition-colors"
-          />
-          <button type="button" onClick={handleSaveUrl}
-            class="bg-[#3b82f6] hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors">
-            Save
-          </button>
-        </div>
+        <Show when={!props.isEditingDirectUrl && props.directPlayUrl && props.activeServer === 'DIRECT_PLAY'}>
+          <div class="text-[9px] text-[#3b82f6] mt-1 px-2 truncate mb-2 animate-fade-in opacity-80">
+            Link: {props.directPlayUrl}
+          </div>
+        </Show>
       </Show>
 
-      <Show when={!props.isEditingDirectUrl && props.directPlayUrl && props.activeServer === 'DIRECT_PLAY'}>
-        <div class="text-[9px] text-[#3b82f6] mt-1 px-2 truncate mb-2 animate-fade-in opacity-80">
-          Link: {props.directPlayUrl}
-        </div>
-      </Show>
-
-      <button type="button" onClick={handlePlayClick}
+      {/* ✅ Main button — expand karega ya play karega depending on state */}
+      <button type="button" onClick={handleMainButtonClick}
         class="w-full mt-3 font-black py-4 rounded-xl uppercase text-[11px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
-        style="background: var(--p); color: #05060a; box-shadow: 0 0 24px var(--p-glow)">
+        style={
+          expanded() && !hasServerSelected()
+            ? 'background: rgba(255,255,255,0.08); color: var(--muted); box-shadow: none;'
+            : 'background: var(--p); color: #05060a; box-shadow: 0 0 24px var(--p-glow)'
+        }>
         <Icon name="play_circle" fill class="text-[18px]" />
         {props.movie?.watchProgress && props.movie.watchProgress.currentTime > 0 ? 'Resume Movie' : 'Watch Now'}
       </button>
