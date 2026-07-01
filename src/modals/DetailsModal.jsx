@@ -422,12 +422,13 @@ export function DetailsModal(props) {
                   <CastCrewList credits={details().credits} setPersonId={setPersonId} />
 
                   <InfoGrid
-                    movie={movie()} isPreview={effectiveIsPreview()}
-                    genresText={details().genres ? details().genres.map(g => g.name).join(', ') : (getSafeGenres(movie()).join(', ') || 'N/A')}
-                    richPlatforms={richPlatforms()} movieFranchises={movieFranchises()} similarItems={similarItems()}
-                    onSimilarClick={handleSimilarClick}
-                    calculateDays={calculateDays}
-                  />
+  movie={movie()} isPreview={effectiveIsPreview()}
+  details={details()}
+  genresText={details().genres ? details().genres.map(g => g.name).join(', ') : (getSafeGenres(movie()).join(', ') || 'N/A')}
+  richPlatforms={richPlatforms()} movieFranchises={movieFranchises()} similarItems={similarItems()}
+  onSimilarClick={handleSimilarClick}
+  calculateDays={calculateDays}
+/>
 
                   {/* Add to Vault button — preview mode mein dikhao */}
                   <Show when={effectiveIsPreview()}>
