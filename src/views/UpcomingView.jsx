@@ -3,8 +3,6 @@ import { Portal } from 'solid-js/web';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Icon, cleanPlatform, TMDB_KEY, formatRuntime, SafeInfoRow } from '../utils';
-
-// 🚀 IMPORTED PERSON MODAL
 import { PersonModal } from '../modals/PersonModal';
 
 function UpcomingDetailsModal(props) {
@@ -12,16 +10,16 @@ function UpcomingDetailsModal(props) {
   const [trailerKey, setTrailerKey] = createSignal(null);
   const [playTrailer, setPlayTrailer] = createSignal(false);
   const [ottPlatform, setOttPlatform] = createSignal('');
-  
-  // 🚀 STATE FOR PERSON MODAL
   const [personId, setPersonId] = createSignal(null);
+  const [ottReleaseDate, setOttReleaseDate] = createSignal(null); // 🚀 FIX: state for OTT tracking
 
   onMount(() => { document.body.style.overflow = 'hidden'; });
   onCleanup(() => { document.body.style.overflow = ''; });
 
   createEffect(() => {
     const mediaType = props.movie.media_type || 'movie';
-    fetch(`https://api.themoviedb.org/3/${mediaType}/${props.movie.id}?api_key=${TMDB_KEY}&append_to_response=videos,credits,watch/providers`)
+    // 🚀 FIX: Added release_dates to fetch
+    fetch(`https://api.themoviedb.org/3/${mediaType}/${props.movie.id}?api_key=${TMDB_KEY}&append_to_response=videos,credits,watch/providers,release_dates`)
       .then(r => r.json())
       .then(d => {
         setDetails(d);
@@ -30,6 +28,8 @@ function UpcomingDetailsModal(props) {
           let t = vids.find(x => x.site === 'YouTube' && (x.type === 'Trailer' || x.type === 'Teaser')) || vids.find(x => x.site === 'YouTube');
           if (t) setTrailerKey(t.key);
         }
+        
+        // Extract OTT platform
         const inProviders = d['watch/providers']?.results?.IN;
         let foundProviders = [];
         if (inProviders) {
@@ -40,16 +40,45 @@ function UpcomingDetailsModal(props) {
           foundProviders = [...new Set(d.networks.map(n => cleanPlatform(n.name)))].filter(Boolean);
         }
         if (foundProviders.length > 0) setOttPlatform(foundProviders.join(', '));
+
+        // 🚀 FIX: Extract OTT Release Date
+        if (mediaType === 'movie' && d.release_dates?.results) {
+            const regionData = d.release_dates.results.find(r => r.iso_3166_1 === 'IN') || d.release_dates.results.find(r => r.iso_3166_1 === 'US') || d.release_dates.results[0];
+            const digital = regionData?.release_dates?.find(r => r.type === 4);
+            if (digital) setOttReleaseDate(new Date(digital.release_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }));
+        }
       })
       .catch(() => {});
   });
 
   const runtimeVal = () => details().runtime || details().episode_run_time?.[0] || 0;
 
+  // 🚀 FIX: ICS Calendar Reminder Function
+  const handleSetReminder = () => {
+    const title = details().title || details().name;
+    const date = props.movie.calc_date;
+    if (!date) return props.showToast("Release date not confirmed yet!");
+    
+    const [year, month, day] = date.split('-');
+    const startDate = `${year}${month}${day}`;
+    
+    // Create ICS file content
+    const ics = `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART;VALUE=DATE:${startDate}\nDTEND;VALUE=DATE:${startDate}\nSUMMARY:🍿 ${title} Release\nDESCRIPTION:Don't forget! ${title} is releasing today on CineLog.\nEND:VEVENT\nEND:VCALENDAR`;
+    
+    // Trigger download
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = window.URL.createObjectURL(blob);
+    link.setAttribute('download', `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_release.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    if (props.showToast) props.showToast("Calendar Reminder Set! 📅");
+  };
+
   return (
     <div class="fixed inset-0 flex items-center justify-center p-0 sm:p-4 z-[99999999] animate-fade-in" onClick={props.onClose}>
-      
-      {/* Background Dimmer */}
       <div class="absolute inset-0 bg-[#08090b] pointer-events-none">
         <Show when={props.movie?.backdrop_path}>
            <img src={`https://image.tmdb.org/t/p/w500${props.movie.backdrop_path}`} class="w-full h-full object-cover opacity-40 blur-3xl scale-125" />
@@ -57,16 +86,12 @@ function UpcomingDetailsModal(props) {
         <div class="absolute inset-0 bg-black/80"></div>
       </div>
 
-      {/* Main Modal Window */}
       <div class="w-full max-w-xl bg-[#08090b]/80 backdrop-blur-3xl sm:rounded-[2.5rem] rounded-t-[2.5rem] mt-10 sm:mt-0 overflow-hidden border border-white/10 relative h-[100vh] sm:h-auto max-h-[95vh] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] animate-pop-in flex flex-col" onClick={e => e.stopPropagation()}>
-        
-        {/* Close button */}
         <button onClick={props.onClose} class="absolute top-4 right-4 z-[100] bg-black/50 backdrop-blur-md border border-white/10 p-2.5 rounded-full hover:bg-black/80 active:scale-95 transition-all">
           <Icon name="close" class="text-sm text-white" />
         </button>
 
         <div class="overflow-y-auto hide-scrollbar w-full">
-          {/* Backdrop with trailer button */}
           <div class="relative h-56 md:h-72 bg-black shrink-0">
             <Show when={!playTrailer()} fallback={
               <iframe class="w-full h-full absolute inset-0 z-10" src={`https://www.youtube.com/embed/${trailerKey()}?autoplay=1&rel=0`} frameborder="0" allowfullscreen></iframe>
@@ -89,21 +114,48 @@ function UpcomingDetailsModal(props) {
             </Show>
           </div>
 
-          {/* Content */}
           <div class="px-6 md:px-8 pb-32 sm:pb-8 -mt-16 relative z-10">
             <h2 class="text-3xl font-black drop-shadow-md mb-2 leading-tight">{details().title || details().name}</h2>
-            <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1 mb-6">
+            <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1 mb-6 flex items-center gap-2">
               {details().release_date || details().first_air_date} • {props.movie.media_type === 'tv' ? 'SERIES' : 'MOVIE'}
               <Show when={runtimeVal() > 0}> • {formatRuntime(runtimeVal())}</Show>
+              
+              {/* 🚀 FIX: Theatrical vs OTT Badges based on data */}
+              <Show when={props.movie.media_type === 'movie'}>
+                <span class="bg-red-500/20 text-red-400 border border-red-500/30 px-1.5 py-0.5 rounded ml-2">Theatrical</span>
+              </Show>
             </p>
             
             <p class="text-gray-400 text-sm mb-6 leading-relaxed italic border-l-2 border-white/20 pl-3">{details().overview || 'No overview available.'}</p>
             
             <div class="glass-surface p-5 rounded-2xl border border-white/5 space-y-4 mb-6">
               <SafeInfoRow icon="format_list_bulleted" label="Genre" value={<span class="text-xs text-gray-300">{(details().genres || []).map(g => g.name).join(', ') || 'N/A'}</span>} />
-              <SafeInfoRow icon="language" label="Language" value={<span class="text-xs text-gray-300">{(details().spoken_languages?.[0]?.english_name) || (details().original_language ? details().original_language.toUpperCase() : 'N/A')}</span>} />
+              
+              {/* 🚀 FIX: Languages updated to show Orig vs Dub */}
+              <Show when={details()?.original_language}>
+                  <SafeInfoRow icon="language" label="Languages" value={
+                      <div class="flex flex-col gap-1 mt-0.5">
+                          <span class="text-xs text-gray-200 flex items-center gap-2">
+                              <span class="text-[9px] bg-white/10 px-1.5 py-0.5 rounded uppercase tracking-widest font-black text-gray-400">Orig</span>
+                              {details().original_language.toUpperCase()}
+                          </span>
+                          <Show when={details()?.spoken_languages?.length > 0 && details().spoken_languages.some(l => l.iso_639_1 !== details().original_language)}>
+                              <span class="text-[11px] text-gray-400 font-bold flex items-start gap-2 leading-tight">
+                                  <span class="text-[9px] bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20 px-1.5 py-0.5 rounded uppercase tracking-widest font-black mt-0.5">Dub</span>
+                                  <span class="flex-1">{details().spoken_languages.filter(l => l.iso_639_1 !== details().original_language).map(l => l.english_name || l.name).join(', ')}</span>
+                              </span>
+                          </Show>
+                      </div>
+                  } />
+              </Show>
+
               <Show when={ottPlatform()}>
                 <SafeInfoRow icon="connected_tv" label="Platform" value={<span class="text-[10px] font-black uppercase tracking-widest border px-2 py-0.5 rounded" style="background: var(--p-dim); border-color: var(--p); color: var(--p)">{ottPlatform()}</span>} />
+              </Show>
+
+              {/* 🚀 FIX: Display OTT Release Date if found */}
+              <Show when={ottReleaseDate()}>
+                <SafeInfoRow icon="cloud_download" label="Digital / OTT Date" value={<span class="text-xs font-bold text-[var(--primary)]">{ottReleaseDate()}</span>} />
               </Show>
             </div>
             
@@ -115,7 +167,6 @@ function UpcomingDetailsModal(props) {
                     {(dir) => {
                       const d = dir();
                       return (
-                        // 🚀 ADDED CLICK HANDLER AND HOVER EFFECTS FOR DIRECTOR
                         <div onClick={() => setPersonId(d.id)} class="flex flex-col items-center min-w-[70px] shrink-0 cursor-pointer group">
                           <img src={d.profile_path ? `https://image.tmdb.org/t/p/w200${d.profile_path}` : `https://api.dicebear.com/7.x/initials/svg?seed=${d.name}&backgroundColor=171921`} class="w-16 h-16 rounded-full object-cover border-2 mb-2 bg-[#171921] group-hover:scale-105 transition-all" style="border-color: var(--p2, #fff)" />
                           <p class="text-[9px] font-black text-center text-white truncate w-full group-hover:text-[var(--p)] transition-colors">{d.name}</p>
@@ -126,7 +177,6 @@ function UpcomingDetailsModal(props) {
                   </Show>
                   <For each={details().credits?.cast?.slice(0, 5)}>
                     {(c) => (
-                      // 🚀 ADDED CLICK HANDLER AND HOVER EFFECTS FOR CAST
                       <div onClick={() => setPersonId(c.id)} class="flex flex-col items-center min-w-[70px] shrink-0 cursor-pointer group">
                         <img src={c.profile_path ? `https://image.tmdb.org/t/p/w200${c.profile_path}` : `https://api.dicebear.com/7.x/initials/svg?seed=${c.name}&backgroundColor=171921`} class="w-16 h-16 rounded-full object-cover border border-white/10 mb-2 bg-[#171921] group-hover:border-[var(--p)] group-hover:scale-105 transition-all" />
                         <p class="text-[9px] font-black text-center text-white truncate w-full group-hover:text-[var(--p)] transition-colors">{c.name}</p>
@@ -138,14 +188,19 @@ function UpcomingDetailsModal(props) {
               </div>
             </Show>
 
-            <button onClick={props.onAdd} class="w-full mt-2 font-black py-4 px-5 rounded-xl text-xs uppercase tracking-widest active:scale-95 transition-transform flex items-center justify-center gap-2 border" style="background: var(--p); color: #05060a; border-color: var(--p); box-shadow: 0 0 24px var(--p-glow); min-height: 52px; opacity: 1; visibility: visible">
-              <Icon name="add_circle" class="text-lg"/> Add to My Universe
-            </button>
+            {/* 🚀 FIX: Added Reminder Button alongside Add to Vault */}
+            <div class="flex gap-2 mt-2">
+                <button onClick={props.onAdd} class="flex-1 font-black py-4 px-5 rounded-xl text-xs uppercase tracking-widest active:scale-95 transition-transform flex items-center justify-center gap-2 border" style="background: var(--p); color: #05060a; border-color: var(--p); box-shadow: 0 0 24px var(--p-glow); min-height: 52px;">
+                    <Icon name="add_circle" class="text-lg"/> Add to My Universe
+                </button>
+                <button onClick={handleSetReminder} class="font-black px-5 rounded-xl active:scale-95 transition-transform flex items-center justify-center border bg-white/5 border-white/10 hover:bg-white/10 text-white" style="min-height: 52px;" title="Set Calendar Reminder">
+                    <Icon name="notification_add" class="text-xl"/>
+                </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 🚀 ADDED PERSON MODAL PORTAL */}
       <Show when={personId()}>
         <PersonModal
           id={personId()} 
@@ -155,7 +210,6 @@ function UpcomingDetailsModal(props) {
           onClose={() => setPersonId(null)}
         />
       </Show>
-
     </div>
   );
 }
@@ -351,7 +405,6 @@ export function UpcomingView(props) {
 
       <Show when={previewMovie()}>
         <Portal>
-          {/* 🚀 PASSED DOWN PROPS NEEDED FOR PERSON MODAL */}
           <UpcomingDetailsModal 
             movie={previewMovie()} 
             onClose={() => setPreviewMovie(null)} 
