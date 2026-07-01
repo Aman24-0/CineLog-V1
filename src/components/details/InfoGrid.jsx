@@ -1,7 +1,26 @@
 import { Show, For } from 'solid-js';
 import { SafeInfoRow, Icon } from '../../utils';
 
+// ✅ New: Budget/Revenue ko readable currency format mein convert karo (e.g. "$325 million", "$2.05 billion")
+const formatMoney = (amount) => {
+  if (!amount || amount <= 0) return null;
+  if (amount >= 1_000_000_000) {
+    const billions = amount / 1_000_000_000;
+    return `$${billions % 1 === 0 ? billions.toFixed(0) : billions.toFixed(2)} billion`;
+  }
+  if (amount >= 1_000_000) {
+    const millions = amount / 1_000_000;
+    return `$${millions % 1 === 0 ? millions.toFixed(0) : millions.toFixed(1)} million`;
+  }
+  return `$${amount.toLocaleString()}`;
+};
+
 export function InfoGrid(props) {
+  // ✅ New: sirf movies ke liye (TV shows mein budget/revenue nahi hota TMDB pe)
+  const isMovie = () => props.movie?.media_type !== 'tv';
+  const budgetText = () => formatMoney(props.details?.budget);
+  const revenueText = () => formatMoney(props.details?.revenue);
+
   return (
     <div class="glass-surface p-5 rounded-2xl space-y-4 border border-white/5">
         <Show when={!props.isPreview}><SafeInfoRow icon="adjust" label="Status" value={<span class="text-[var(--primary)] font-black uppercase text-[10px] tracking-widest">{props.movie?.status||'Planned'}</span>} /></Show>
@@ -12,6 +31,14 @@ export function InfoGrid(props) {
 
         <Show when={!props.isPreview}><SafeInfoRow icon="public" label="Region" value={props.movie?.region || 'International'} /></Show>
         <SafeInfoRow icon="format_list_bulleted" label="Genre" value={<span class="text-xs text-gray-300">{props.genresText}</span>} />
+
+        {/* ✅ New: Budget & Box Office — sirf movies ke liye, aur sirf jab data available ho */}
+        <Show when={isMovie() && budgetText()}>
+            <SafeInfoRow icon="payments" label="Budget" value={<span class="text-xs font-bold text-gray-300">{budgetText()}</span>} />
+        </Show>
+        <Show when={isMovie() && revenueText()}>
+            <SafeInfoRow icon="trending_up" label="Box Office" value={<span class="text-xs font-bold text-gray-300">{revenueText()}</span>} />
+        </Show>
         
         <SafeInfoRow icon="connected_tv" label="Available On" value={
             <Show when={props.richPlatforms?.length > 0} fallback={<span class="text-xs font-bold text-gray-500">-</span>}>
