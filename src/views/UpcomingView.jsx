@@ -11,15 +11,13 @@ function UpcomingDetailsModal(props) {
   const [playTrailer, setPlayTrailer] = createSignal(false);
   const [ottPlatform, setOttPlatform] = createSignal('');
   const [personId, setPersonId] = createSignal(null);
-  const [ottReleaseDate, setOttReleaseDate] = createSignal(null); // 🚀 FIX: state for OTT tracking
 
   onMount(() => { document.body.style.overflow = 'hidden'; });
   onCleanup(() => { document.body.style.overflow = ''; });
 
   createEffect(() => {
     const mediaType = props.movie.media_type || 'movie';
-    // 🚀 FIX: Added release_dates to fetch
-    fetch(`https://api.themoviedb.org/3/${mediaType}/${props.movie.id}?api_key=${TMDB_KEY}&append_to_response=videos,credits,watch/providers,release_dates`)
+    fetch(`https://api.themoviedb.org/3/${mediaType}/${props.movie.id}?api_key=${TMDB_KEY}&append_to_response=videos,credits,watch/providers`)
       .then(r => r.json())
       .then(d => {
         setDetails(d);
@@ -29,7 +27,6 @@ function UpcomingDetailsModal(props) {
           if (t) setTrailerKey(t.key);
         }
         
-        // Extract OTT platform
         const inProviders = d['watch/providers']?.results?.IN;
         let foundProviders = [];
         if (inProviders) {
@@ -40,20 +37,12 @@ function UpcomingDetailsModal(props) {
           foundProviders = [...new Set(d.networks.map(n => cleanPlatform(n.name)))].filter(Boolean);
         }
         if (foundProviders.length > 0) setOttPlatform(foundProviders.join(', '));
-
-        // 🚀 FIX: Extract OTT Release Date
-        if (mediaType === 'movie' && d.release_dates?.results) {
-            const regionData = d.release_dates.results.find(r => r.iso_3166_1 === 'IN') || d.release_dates.results.find(r => r.iso_3166_1 === 'US') || d.release_dates.results[0];
-            const digital = regionData?.release_dates?.find(r => r.type === 4);
-            if (digital) setOttReleaseDate(new Date(digital.release_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }));
-        }
       })
       .catch(() => {});
   });
 
   const runtimeVal = () => details().runtime || details().episode_run_time?.[0] || 0;
 
-  // 🚀 FIX: ICS Calendar Reminder Function
   const handleSetReminder = () => {
     const title = details().title || details().name;
     const date = props.movie.calc_date;
@@ -62,10 +51,8 @@ function UpcomingDetailsModal(props) {
     const [year, month, day] = date.split('-');
     const startDate = `${year}${month}${day}`;
     
-    // Create ICS file content
     const ics = `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART;VALUE=DATE:${startDate}\nDTEND;VALUE=DATE:${startDate}\nSUMMARY:🍿 ${title} Release\nDESCRIPTION:Don't forget! ${title} is releasing today on CineLog.\nEND:VEVENT\nEND:VCALENDAR`;
     
-    // Trigger download
     const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
     const link = document.createElement('a');
     link.href = window.URL.createObjectURL(blob);
@@ -119,8 +106,6 @@ function UpcomingDetailsModal(props) {
             <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1 mb-6 flex items-center gap-2">
               {details().release_date || details().first_air_date} • {props.movie.media_type === 'tv' ? 'SERIES' : 'MOVIE'}
               <Show when={runtimeVal() > 0}> • {formatRuntime(runtimeVal())}</Show>
-              
-              {/* 🚀 FIX: Theatrical vs OTT Badges based on data */}
               <Show when={props.movie.media_type === 'movie'}>
                 <span class="bg-red-500/20 text-red-400 border border-red-500/30 px-1.5 py-0.5 rounded ml-2">Theatrical</span>
               </Show>
@@ -131,7 +116,6 @@ function UpcomingDetailsModal(props) {
             <div class="glass-surface p-5 rounded-2xl border border-white/5 space-y-4 mb-6">
               <SafeInfoRow icon="format_list_bulleted" label="Genre" value={<span class="text-xs text-gray-300">{(details().genres || []).map(g => g.name).join(', ') || 'N/A'}</span>} />
               
-              {/* 🚀 FIX: Languages updated to show Orig vs Dub */}
               <Show when={details()?.original_language}>
                   <SafeInfoRow icon="language" label="Languages" value={
                       <div class="flex flex-col gap-1 mt-0.5">
@@ -151,11 +135,6 @@ function UpcomingDetailsModal(props) {
 
               <Show when={ottPlatform()}>
                 <SafeInfoRow icon="connected_tv" label="Platform" value={<span class="text-[10px] font-black uppercase tracking-widest border px-2 py-0.5 rounded" style="background: var(--p-dim); border-color: var(--p); color: var(--p)">{ottPlatform()}</span>} />
-              </Show>
-
-              {/* 🚀 FIX: Display OTT Release Date if found */}
-              <Show when={ottReleaseDate()}>
-                <SafeInfoRow icon="cloud_download" label="Digital / OTT Date" value={<span class="text-xs font-bold text-[var(--primary)]">{ottReleaseDate()}</span>} />
               </Show>
             </div>
             
@@ -188,7 +167,6 @@ function UpcomingDetailsModal(props) {
               </div>
             </Show>
 
-            {/* 🚀 FIX: Added Reminder Button alongside Add to Vault */}
             <div class="flex gap-2 mt-2">
                 <button onClick={props.onAdd} class="flex-1 font-black py-4 px-5 rounded-xl text-xs uppercase tracking-widest active:scale-95 transition-transform flex items-center justify-center gap-2 border" style="background: var(--p); color: #05060a; border-color: var(--p); box-shadow: 0 0 24px var(--p-glow); min-height: 52px;">
                     <Icon name="add_circle" class="text-lg"/> Add to My Universe
