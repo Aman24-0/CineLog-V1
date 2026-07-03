@@ -102,7 +102,7 @@ function UpcomingDetailsModal(props) {
           </div>
 
           <div class="px-6 md:px-8 pb-32 sm:pb-8 -mt-16 relative z-10">
-            <h2 class="text-3xl font-black drop-shadow-md mb-2 leading-tight">{details().title || details().name}</h2>
+            <h2 class="text-3xl font-headline font-black drop-shadow-md mb-2 leading-tight">{details().title || details().name}</h2>
             <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1 mb-6 flex items-center gap-2">
               {details().release_date || details().first_air_date} • {props.movie.media_type === 'tv' ? 'SERIES' : 'MOVIE'}
               <Show when={runtimeVal() > 0}> • {formatRuntime(runtimeVal())}</Show>
@@ -192,6 +192,25 @@ function UpcomingDetailsModal(props) {
   );
 }
 
+/* ── Time Helpers ── */
+const getDaysDiff = (dateStr) => {
+  if (!dateStr) return 999;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr);
+  target.setHours(0, 0, 0, 0);
+  return Math.round((target - today) / (1000 * 60 * 60 * 24));
+};
+
+const getGroupInfo = (dateStr) => {
+  const diff = getDaysDiff(dateStr);
+  if (diff < 0) return { label: "Released", order: 0 };
+  if (diff === 0) return { label: "Today", order: 1 };
+  if (diff === 1) return { label: "Tomorrow", order: 2 };
+  if (diff <= 6) return { label: "This Week", order: 3 };
+  return { label: "Upcoming", order: 4 };
+};
+
 export function UpcomingView(props) {
   const [activeTab, setActiveTab] = createSignal('Indian');
   const [mediaType, setMediaType] = createSignal('movie');
@@ -277,6 +296,25 @@ export function UpcomingView(props) {
     });
   });
 
+  /* ── Grouped & Filtered Data ── */
+  const groupedAndFilteredMovies = createMemo(() => {
+    const filtered = movies().filter(m => m.media_type === mediaType());
+    const groupMap = {};
+    
+    filtered.forEach(m => {
+      const { label, order } = getGroupInfo(m.calc_date);
+      if (!groupMap[label]) groupMap[label] = { label, order, items: [] };
+      groupMap[label].items.push(m);
+    });
+    
+    return Object.values(groupMap)
+      .sort((a, b) => a.order - b.order)
+      .map(g => {
+        g.items.sort((a, b) => new Date(a.calc_date) - new Date(b.calc_date));
+        return g;
+      });
+  });
+
   const handleAdd = async (m) => {
     if (props.isGuest) {
       props.showToast("Sign in to add to Vault! 🔒");
@@ -309,6 +347,8 @@ export function UpcomingView(props) {
   return (
     <div class="pb-10 animate-fade-in">
       <h2 class="text-3xl font-headline font-black drop-shadow-md mb-6">Upcoming</h2>
+      
+      {/* ── Filters ── */}
       <div class="flex gap-2 p-1.5 rounded-2xl mb-4 shadow-lg" style="background: var(--raised); border: 1px solid var(--border-active)">
         <button onClick={() => { setActiveTab('Indian'); setLang('all'); }} class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all" style={activeTab() === 'Indian' ? 'background: var(--p); color: #05060a; box-shadow: 0 0 16px var(--p-glow)' : 'color: var(--muted)'}>Indian</button>
         <button onClick={() => { setActiveTab('International'); setLang('all'); }} class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all" style={activeTab() === 'International' ? 'background: var(--p); color: #05060a; box-shadow: 0 0 16px var(--p-glow)' : 'color: var(--muted)'}>International</button>
@@ -324,6 +364,7 @@ export function UpcomingView(props) {
           )}</For>
         </div>
       </Show>
+      
       <div class="flex justify-center mb-8">
         <div class="glass-surface p-2 pr-6 rounded-[2rem] flex items-center gap-4 border border-white/10 focus-within:border-[var(--p)]/50 transition-colors shadow-xl relative overflow-hidden">
           <div class="absolute inset-0 bg-gradient-to-r pointer-events-none" style="background: linear-gradient(to right, var(--p-dim), transparent)"></div>
@@ -335,40 +376,71 @@ export function UpcomingView(props) {
         </div>
       </div>
 
+      {/* ── Timeline List ── */}
       <Show when={loading()} fallback={
         <Show when={fetchError()} fallback={
-          <Show when={movies().filter(m => m.media_type === mediaType()).length > 0} fallback={<div class="text-center p-12 glass-surface rounded-[2rem] text-gray-500 text-sm font-bold border border-white/5 flex flex-col items-center gap-3"><Icon name="event_busy" class="text-4xl opacity-50" /> No releases found.</div>}>
-            <div class="space-y-6 relative before:absolute before:inset-0 before:ml-[38px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-white/10 before:to-transparent">
-              <For each={movies().filter(m => m.media_type === mediaType())}>{(m) => {
-                const day = new Date(m.calc_date).getDate();
-                const month = new Date(m.calc_date).toLocaleString('default', { month: 'short' });
-                return (
-                  <div onClick={() => setPreviewMovie(m)} class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group cursor-pointer">
-                    <div class="flex items-center justify-center w-10 h-10 rounded-full bg-[#08090b] border-4 shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 ml-5 md:ml-0 overflow-hidden transition-all" style="border-color: var(--p); box-shadow: 0 0 15px var(--p-glow)">
-                      <div class="flex flex-col items-center justify-center leading-none">
-                        <span class="text-[10px] font-black text-white">{day}</span>
-                        <span class="text-[7px] font-bold uppercase" style="color: var(--p)">{month}</span>
+          <Show when={movies().filter(m => m.media_type === mediaType()).length > 0} fallback={
+            <div class="text-center p-12 glass-surface rounded-[2rem] text-gray-500 text-sm font-bold border border-white/5 flex flex-col items-center gap-3">
+              <Icon name="event_busy" class="text-4xl opacity-50" /> No releases found.
+            </div>
+          }>
+            <div class="timeline-wrapper">
+              <div class="timeline-line"></div>
+              <For each={groupedAndFilteredMovies()}>
+                {(group) => (
+                  <div class="timeline-group">
+                    <div class="timeline-group-header">
+                      <div class="timeline-header-icon">
+                        <Icon name={group.label === 'Released' ? 'new_releases' : group.label === 'Today' ? 'today' : group.label === 'Tomorrow' ? 'event_upcoming' : 'date_range'} class="text-xl" />
                       </div>
+                      <span class="timeline-header-text">{group.label}</span>
+                      <span class="timeline-header-count">{group.items.length} {group.items.length === 1 ? 'title' : 'titles'}</span>
                     </div>
-                    <div class="w-[calc(100%-5rem)] md:w-[calc(50%-3rem)] upcoming-card p-3 rounded-[1.5rem] flex gap-4 animate-fade-up">
-                      <Show when={m.poster_path} fallback={<div class="w-16 h-24 bg-[#171921] rounded-xl flex items-center justify-center"><Icon name="movie" class="text-gray-600" /></div>}>
-                        <div class="w-16 h-24 rounded-xl overflow-hidden relative shrink-0" style="background: #141414; box-shadow: var(--shadow-card); flex-shrink: 0">
-                        <div class="poster-loading" />
-                        <img src={`https://image.tmdb.org/t/p/w200${m.poster_path}`} class="poster-img absolute inset-0 w-full h-full object-cover" onLoad={e => { e.target.classList.add('img-loaded'); e.target.previousSibling?.classList.add('hidden'); }} alt="" />
-                      </div>
-                      </Show>
-                      <div class="flex-1 flex flex-col justify-center py-1 min-w-0">
-                        <p class="font-bold text-sm text-gray-100 line-clamp-2 transition-colors" style="group-hover:color: var(--p)">{m.title}</p>
-                        <div class="flex items-center gap-2 mt-2">
-                          <Show when={m.media_type === 'tv'} fallback={<span class="text-[8px] bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-1 rounded font-black uppercase tracking-widest flex items-center gap-1 w-max"><Icon name="theaters" class="text-[10px]"/> Theatrical</span>}>
-                            <span class="text-[8px] border px-2 py-1 rounded font-black uppercase tracking-widest flex items-center gap-1 w-max" style="background: var(--p-dim); color: var(--p); border-color: var(--p)"><Icon name="tv" class="text-[10px]"/> {m.epTag || 'Series Drop'}</span>
-                          </Show>
-                        </div>
-                      </div>
+                    
+                    <div class="timeline-items">
+                      <For each={group.items}>{(m) => {
+                        const day = new Date(m.calc_date).getDate();
+                        const month = new Date(m.calc_date).toLocaleString('default', { month: 'short' });
+                        const diff = getDaysDiff(m.calc_date);
+                        const countdownText = diff < 0 ? 'Released' : diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : `${diff} days left`;
+                        const pillClass = diff < 0 ? 'released-pill' : diff === 0 ? 'today-pill' : diff === 1 ? 'tomorrow-pill' : 'countdown-pill';
+                        
+                        return (
+                          <div onClick={() => setPreviewMovie(m)} class="timeline-item cursor-pointer group">
+                            <div class="calendar-node">
+                              <div class="calendar-node-header">{month}</div>
+                              <div class="calendar-node-body">{day}</div>
+                            </div>
+                            <div class="flex-1 upcoming-card p-3 rounded-[1.5rem] flex gap-4 animate-fade-up">
+                              <Show when={m.poster_path} fallback={<div class="w-16 h-24 bg-[#171921] rounded-xl flex items-center justify-center"><Icon name="movie" class="text-gray-600" /></div>}>
+                                <div class="w-16 h-24 rounded-xl overflow-hidden relative shrink-0" style="background: #141414; box-shadow: var(--shadow-card); flex-shrink: 0">
+                                  <div class="poster-loading" />
+                                  <img src={`https://image.tmdb.org/t/p/w200${m.poster_path}`} class="poster-img absolute inset-0 w-full h-full object-cover" onLoad={e => { e.target.classList.add('img-loaded'); e.target.previousSibling?.classList.add('hidden'); }} alt="" />
+                                </div>
+                              </Show>
+                              <div class="flex-1 flex flex-col justify-center py-1 min-w-0">
+                                <p class="font-bold text-sm text-gray-100 line-clamp-2 transition-colors" style="group-hover:color: var(--p)">{m.title}</p>
+                                <div class="flex items-center gap-2 mt-2 flex-wrap">
+                                  <span class={pillClass}>{countdownText}</span>
+                                  <Show when={m.media_type === 'tv'} fallback={
+                                    <span class="text-[8px] bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-1 rounded font-black uppercase tracking-widest flex items-center gap-1 w-max">
+                                      <Icon name="theaters" class="text-[10px]"/> Theatrical
+                                    </span>
+                                  }>
+                                    <span class="text-[8px] border px-2 py-1 rounded font-black uppercase tracking-widest flex items-center gap-1 w-max" style="background: var(--p-dim); color: var(--p); border-color: var(--p)">
+                                      <Icon name="tv" class="text-[10px]"/> {m.epTag || 'Series Drop'}
+                                    </span>
+                                  </Show>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }}</For>
                     </div>
                   </div>
-                );
-              }}</For>
+                )}
+              </For>
             </div>
           </Show>
         }>
