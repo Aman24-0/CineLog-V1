@@ -130,16 +130,13 @@ export function Vault(props) {
     <div class="animate-fade-in pb-10">
 
       {/* ── Sticky toolbar ── */}
-      {/* pt-4 = 16px; pb-5 = 20px; -mx-5 px-5 for edge bleed; mb-6 = 24px */}
       <div class="sticky top-0 z-40 pt-4 pb-5 -mx-5 px-5 border-b mb-6"
         style="background: rgba(5,6,10,0.88); backdrop-filter: blur(24px); border-color: var(--border)">
 
         <div class="flex justify-between items-center mb-4">
-          {/* Page title: Bebas Neue 36px */}
           <h2 class="type-page-title text-white">VAULT</h2>
 
           <div class="flex items-center gap-3">
-            {/* View toggle */}
             <div class="flex p-1 rounded-full border shadow-sm" style="background: var(--surface); border-color: var(--border-active)">
               <button
                 onClick={() => setViewMode('grid')}
@@ -159,7 +156,6 @@ export function Vault(props) {
               </button>
             </div>
 
-            {/* Filter button */}
             <button
               onClick={() => setShowFilter(true)}
               class="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full type-caption border active:scale-95"
@@ -176,7 +172,6 @@ export function Vault(props) {
           </div>
         </div>
 
-        {/* Search bar — px-4 = 16px; py-3 = 12px; gap-3 = 12px */}
         <div
           class="flex items-center gap-3 rounded-xl px-4 py-3 border"
           style="background: var(--surface); border-color: var(--border)"
@@ -227,7 +222,6 @@ export function Vault(props) {
       </Show>
 
       {/* ── Grid view ── */}
-      {/* gap-3 = 12px */}
       <Show when={viewMode() === 'grid' && filtered().length > 0}>
         <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 animate-fade-in">
           <For each={filtered().slice(0, displayLimit())}>
@@ -238,20 +232,18 @@ export function Vault(props) {
 
       {/* ── Timeline view ── */}
       <Show when={viewMode() === 'timeline' && timelineItems().length > 0}>
-        {/* Timeline left-line — space-y-10 = 40px = 5×8; pb-10 = 40px */}
         <div class="relative before:absolute before:inset-0 before:ml-[1.25rem] before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-white/10 before:to-transparent space-y-10 animate-fade-in pb-10">
           <For each={groupedTimeline()}>
             {(group) => (
               <div class="relative">
-                {/* Month label — sticky top-[150px]; ml-10 = 40px; mb-5 = 20px */}
+                {/* Month label — fixed: removed type-caption, using explicit inline styles so CSS class can't override color */}
                 <div
-                  class="sticky top-[150px] z-30 inline-flex items-center gap-2 type-caption text-[#0c0e14] px-4 py-2 rounded-full ml-10 mb-5 shadow-[0_0_15px_var(--p-glow)]"
-                  style="background: var(--p)"
+                  class="sticky top-[150px] z-30 inline-flex items-center gap-2 px-4 py-2 rounded-full ml-10 mb-5"
+                  style="background: var(--p); color: #0c0e14; font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-family: 'Outfit', sans-serif; box-shadow: 0 0 15px var(--p-glow)"
                 >
-                  <Icon name="event" class="text-[14px]"/> {group.label}
+                  <Icon name="event" style="font-size: 14px" /> {group.label}
                 </div>
 
-                {/* Items — space-y-4 = 16px = 2×8 */}
                 <div class="space-y-4 timeline-stagger">
                   <For each={group.items}>
                     {(m) => {
@@ -262,19 +254,15 @@ export function Vault(props) {
                           class="relative flex items-center group cursor-pointer pl-10 pr-2 animate-timeline-in"
                           onClick={() => props.openMovie(m.id)}
                         >
-                          {/* Day circle */}
                           <div class="absolute left-[1.25rem] -translate-x-1/2 w-8 h-8 rounded-full bg-[#08090b] border-2 flex items-center justify-center shadow-lg z-10"
                             style="border-color: var(--p); transition: transform 200ms cubic-bezier(0.34,1.56,0.64,1)"
                             onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(-50%) scale(1.15)'; }}
                             onMouseLeave={e => { e.currentTarget.style.transform = 'translateX(-50%) scale(1)'; }}
                           >
-                            <span class="type-caption text-white">{day}</span>
+                            <span style="color: #fff; font-size: 11px; font-weight: 800; font-family: 'Outfit', sans-serif">{day}</span>
                           </div>
 
-                          {/* Card */}
-                          <div
-                            class="upcoming-card w-full p-3 rounded-[1.5rem] flex gap-4"
-                          >
+                          <div class="upcoming-card w-full p-3 rounded-[1.5rem] flex gap-4">
                             <Show when={m.poster_path} fallback={
                               <div class="w-14 h-20 sm:w-16 sm:h-24 bg-[#171921] rounded-xl flex items-center justify-center shrink-0 border border-white/5">
                                 <Icon name="movie" class="text-gray-600"/>
@@ -290,7 +278,6 @@ export function Vault(props) {
                               <p class="type-metadata font-bold text-gray-100 group-hover:text-white truncate">
                                 {m.title || m.name}
                               </p>
-                              {/* gap-2 = 8px; mt-1.5 = 6px */}
                               <div class="flex items-center gap-2 mt-1.5">
                                 <span class="type-caption bg-white/10 text-gray-300 px-2 py-0.5 rounded border border-white/5 shrink-0">
                                   {m.media_type === 'tv' ? 'Series' : 'Movie'}
@@ -332,7 +319,6 @@ export function Vault(props) {
         </div>
       </Show>
 
-      {/* Empty timeline */}
       <Show when={viewMode() === 'timeline' && filtered().length > 0 && timelineItems().length === 0}>
         <div class="text-center p-12 animate-fade-in" style="color: var(--muted)">
           <Icon name="event_busy" class="text-5xl mb-3" />
@@ -340,14 +326,12 @@ export function Vault(props) {
         </div>
       </Show>
 
-      {/* Infinite scroll indicator */}
       <Show when={viewMode() === 'grid' && filtered().length > displayLimit()}>
         <div class="flex items-center justify-center gap-2 py-8 type-caption" style="color: var(--p)">
           <Icon name="progress_activity" class="animate-spin text-sm" /> Loading more titles...
         </div>
       </Show>
 
-      {/* Filter modal */}
       <Show when={showFilter()}>
         <FilterModal
           filters={filters()}
@@ -374,16 +358,13 @@ function FilterModal(props) {
       style="background: rgba(0,0,0,0.7); backdrop-filter: blur(8px)"
       onClick={props.onClose}
     >
-      {/* p-6 = 24px; pb-32 = 128px for mobile safe area; sm:p-8 = 32px */}
       <div
         class="glass-surface w-full max-w-sm rounded-t-[2rem] sm:rounded-[2rem] p-6 pb-32 sm:p-8 shadow-2xl modal-sheet-enter"
         style="border-color: var(--border-active); background: rgba(9,11,16,0.97)"
         onClick={e => e.stopPropagation()}
       >
-        {/* Drag handle */}
         <div class="w-12 h-1.5 rounded-full mx-auto mb-6 sm:hidden" style="background: var(--border-active)" />
 
-        {/* Header — pb-4 = 16px; mb-5 = 20px */}
         <div class="flex justify-between items-center border-b pb-4 mb-5" style="border-color: var(--border)">
           <h3 class="type-modal-title text-white flex items-center gap-2" style="font-size: 20px">
             <Icon name="tune" style="color: var(--p)" /> Filters
@@ -393,7 +374,6 @@ function FilterModal(props) {
           </button>
         </div>
 
-        {/* Filter list — space-y-4 = 16px; max-h pr-1 */}
         <div class="space-y-4 max-h-[50vh] overflow-y-auto pr-1 hide-scrollbar">
           <FilterSel label="Status"  val={props.filters.status}   set={(v) => { props.setFilters({ ...props.filters, status: v });   props.onFilterChange && props.onFilterChange(v); }} opts={[{ l: 'All', v: 'all' }, { l: 'Planned', v: 'Planned' }, { l: 'Watching', v: 'Watching' }, { l: 'Completed', v: 'Completed' }]} />
           <FilterSel label="Tags"    val={props.filters.tag}      set={(v) => props.setFilters({ ...props.filters, tag: v })}      opts={[{ l: 'All Tags', v: 'all' }, ...props.uniqueTags.map(t => ({ l: t, v: t }))]} />
@@ -408,7 +388,6 @@ function FilterModal(props) {
           <FilterSel label="Sort By" val={props.filters.sort} set={(v) => props.setFilters({ ...props.filters, sort: v })} opts={[{ l: 'Recently Added', v: 'recent' }, { l: 'Watch Date (Newest)', v: 'watch_desc' }, { l: 'Watch Date (Oldest)', v: 'watch_asc' }, { l: 'Release Year (Newest)', v: 'year_desc' }, { l: 'Rating (High-Low)', v: 'rating_desc' }, { l: 'Title (A-Z)', v: 'title_asc' }]} />
         </div>
 
-        {/* Actions — gap-2 = 8px; mt-6 = 24px */}
         <div class="grid grid-cols-2 gap-2 mt-6">
           <button
             onClick={props.onClear}
