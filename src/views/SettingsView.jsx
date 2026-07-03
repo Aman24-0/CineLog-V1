@@ -132,7 +132,7 @@ export function SettingsView(props) {
               class="flex flex-col items-center gap-2 cursor-pointer group animate-fade-up shrink-0"
             >
               <div
-                class={`w-12 h-12 rounded-full border-2 active:scale-95 ${props.theme === t.id ? 'ring-2 ring-white ring-offset-2 ring-offset-black' : 'border-transparent group-hover:scale-105'}`}
+                class={`w-12 h-12 rounded-full border-2 active:scale-95 ${props.theme()=== t.id ? 'ring-2 ring-white ring-offset-2 ring-offset-black' : 'border-transparent group-hover:scale-105'}`}
                 style={{ background: t.hex, transition: 'transform 220ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 220ms ease-out', ...(props.theme === t.id ? { 'box-shadow': `0 0 16px ${t.hex}66` } : {}) }}
               />
               <span class="type-caption text-gray-400 group-hover:text-white">{t.name}</span>
