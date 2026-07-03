@@ -2,50 +2,32 @@ import { createSignal, createEffect, createMemo, For, Show, onMount, onCleanup }
 import { Icon, getSafeGenres, getSafePlatforms } from '../utils';
 import { MovieCard } from '../components/MovieCard';
 
-// ✅ FIX: Sahi date nikalne ka helper
-// TV shows ke liye seasonDates ka latest end date use karta hai
-// Movies ke liye watchDate
-// Fallback: addedAt (Firestore Timestamp bhi handle karta hai)
 const resolveTimelineDate = (m) => {
-  // 1. Movie watchDate (string)
   if (m.watchDate && typeof m.watchDate === 'string' && m.watchDate.trim()) {
     const d = new Date(m.watchDate);
     if (!isNaN(d.getTime())) return d;
   }
-
-  // 2. TV show — seasonDates ka latest end date
   if (m.seasonDates && typeof m.seasonDates === 'object') {
-    const ends = Object.values(m.seasonDates)
-      .map(s => s?.end ? new Date(s.end) : null)
-      .filter(d => d && !isNaN(d.getTime()));
-    if (ends.length > 0) {
-      // Sabse latest end date lo
-      return new Date(Math.max(...ends.map(d => d.getTime())));
-    }
-    // seasonDates mein end nahi, start try karo
-    const starts = Object.values(m.seasonDates)
-      .map(s => s?.start ? new Date(s.start) : null)
-      .filter(d => d && !isNaN(d.getTime()));
-    if (starts.length > 0) {
-      return new Date(Math.max(...starts.map(d => d.getTime())));
-    }
+    const ends = Object.values(m.seasonDates).map(s => s?.end ? new Date(s.end) : null).filter(d => d && !isNaN(d.getTime()));
+    if (ends.length > 0) return new Date(Math.max(...ends.map(d => d.getTime())));
+    const starts = Object.values(m.seasonDates).map(s => s?.start ? new Date(s.start) : null).filter(d => d && !isNaN(d.getTime()));
+    if (starts.length > 0) return new Date(Math.max(...starts.map(d => d.getTime())));
   }
-
-  // 3. endDate / startDate (agar kisi ne manually save kiya ho)
-  if (m.endDate) { const d = new Date(m.endDate); if (!isNaN(d.getTime())) return d; }
+  if (m.endDate)   { const d = new Date(m.endDate);   if (!isNaN(d.getTime())) return d; }
   if (m.startDate) { const d = new Date(m.startDate); if (!isNaN(d.getTime())) return d; }
-
-  // 4. Firestore Timestamp (addedAt) — .seconds field se convert karo
   if (m.addedAt?.seconds) return new Date(m.addedAt.seconds * 1000);
   if (m.addedAt instanceof Date) return m.addedAt;
   if (typeof m.addedAt === 'string') { const d = new Date(m.addedAt); if (!isNaN(d.getTime())) return d; }
-
   return null;
 };
 
 export function Vault(props) {
   const [search, setSearch] = createSignal('');
-  const defaultFilters = { type: 'all', status: props.activeStatus || 'all', region: 'all', genre: 'all', platform: 'all', sort: 'recent', tag: 'all', imdbMin: '', imdbMax: '', rtMin: '', rtMax: '', yearMin: '', yearMax: '', runtimeMin: '', runtimeMax: '' };
+  const defaultFilters = {
+    type: 'all', status: props.activeStatus || 'all', region: 'all', genre: 'all',
+    platform: 'all', sort: 'recent', tag: 'all',
+    imdbMin: '', imdbMax: '', rtMin: '', rtMax: '', yearMin: '', yearMax: '', runtimeMin: '', runtimeMax: ''
+  };
   const [filters, setFilters] = createSignal(defaultFilters);
   const [showFilter, setShowFilter] = createSignal(false);
   const [displayLimit, setDisplayLimit] = createSignal(20);
@@ -53,23 +35,16 @@ export function Vault(props) {
 
   createEffect(() => setFilters(f => ({ ...f, status: props.activeStatus || 'all' })));
 
-    let prevViewMode = 'grid';
+  let prevViewMode = 'grid';
   createEffect(() => {
     const mode = viewMode();
     if (mode === 'timeline' && prevViewMode !== 'timeline') {
-      // ✅ FIX: Sirf local filters update honge, global props.onFilterChange HATA diya
-      setFilters({
-        type: 'all', status: 'Completed', region: 'all', genre: 'all', platform: 'all', sort: 'watch_desc', tag: 'all', imdbMin: '', imdbMax: '', rtMin: '', rtMax: '', yearMin: '', yearMax: '', runtimeMin: '', runtimeMax: ''
-      });
+      setFilters({ type: 'all', status: 'Completed', region: 'all', genre: 'all', platform: 'all', sort: 'watch_desc', tag: 'all', imdbMin: '', imdbMax: '', rtMin: '', rtMax: '', yearMin: '', yearMax: '', runtimeMin: '', runtimeMax: '' });
     } else if (mode === 'grid' && prevViewMode === 'timeline') {
-      // ✅ FIX: Wapas original global state par revert
-      setFilters({
-        type: 'all', status: props.activeStatus || 'all', region: 'all', genre: 'all', platform: 'all', sort: 'recent', tag: 'all', imdbMin: '', imdbMax: '', rtMin: '', rtMax: '', yearMin: '', yearMax: '', runtimeMin: '', runtimeMax: ''
-      });
+      setFilters({ type: 'all', status: props.activeStatus || 'all', region: 'all', genre: 'all', platform: 'all', sort: 'recent', tag: 'all', imdbMin: '', imdbMax: '', rtMin: '', rtMax: '', yearMin: '', yearMax: '', runtimeMin: '', runtimeMax: '' });
     }
     prevViewMode = mode;
   });
-
 
   const handleScroll = () => {
     if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500)
@@ -78,25 +53,22 @@ export function Vault(props) {
   onMount(() => window.addEventListener('scroll', handleScroll));
   onCleanup(() => window.removeEventListener('scroll', handleScroll));
 
-  const uniqueGenres = createMemo(() => [...new Set(props.watchlist().flatMap(m => getSafeGenres(m)))].filter(Boolean).sort());
+  const uniqueGenres    = createMemo(() => [...new Set(props.watchlist().flatMap(m => getSafeGenres(m)))].filter(Boolean).sort());
   const uniquePlatforms = createMemo(() => [...new Set(props.watchlist().flatMap(m => getSafePlatforms(m)))].filter(Boolean).sort());
-  const uniqueTags = createMemo(() => [...new Set(props.watchlist().map(m => m.tag).filter(Boolean))].sort());
+  const uniqueTags      = createMemo(() => [...new Set(props.watchlist().map(m => m.tag).filter(Boolean))].sort());
 
   const filtered = createMemo(() => {
     let f = props.watchlist();
     if (search()) {
       const s = search().toLowerCase();
-      f = f.filter(m =>
-        (m.title || m.name || '').toLowerCase().includes(s) ||
-        (m.castList && m.castList.some(c => c.toLowerCase().includes(s)))
-      );
+      f = f.filter(m => (m.title || m.name || '').toLowerCase().includes(s) || (m.castList && m.castList.some(c => c.toLowerCase().includes(s))));
     }
-    if (filters().type !== 'all') f = f.filter(m => m.media_type === filters().type);
-    if (filters().status !== 'all') f = f.filter(m => m.status === filters().status || (filters().status === 'Planned' && m.status === 'Plan to Watch'));
-    if (filters().region !== 'all') f = f.filter(m => (m.region || 'International') === filters().region);
-    if (filters().genre !== 'all') f = f.filter(m => getSafeGenres(m).includes(filters().genre));
+    if (filters().type !== 'all')     f = f.filter(m => m.media_type === filters().type);
+    if (filters().status !== 'all')   f = f.filter(m => m.status === filters().status || (filters().status === 'Planned' && m.status === 'Plan to Watch'));
+    if (filters().region !== 'all')   f = f.filter(m => (m.region || 'International') === filters().region);
+    if (filters().genre !== 'all')    f = f.filter(m => getSafeGenres(m).includes(filters().genre));
     if (filters().platform !== 'all') f = f.filter(m => getSafePlatforms(m).includes(filters().platform));
-    if (filters().tag !== 'all') f = f.filter(m => m.tag === filters().tag);
+    if (filters().tag !== 'all')      f = f.filter(m => m.tag === filters().tag);
 
     const inRange = (value, min, max) => {
       const n = Number(value);
@@ -106,28 +78,23 @@ export function Vault(props) {
     };
     f = f.filter(m => {
       const year = parseInt(String(m.release_date || m.first_air_date || '').substring(0, 4)) || NaN;
-      const rt = Number(String(m.rtRating || '').replace('%', '')) || NaN;
+      const rt   = Number(String(m.rtRating || '').replace('%', '')) || NaN;
       return inRange(m.imdbRating, filters().imdbMin, filters().imdbMax)
         && inRange(rt, filters().rtMin, filters().rtMax)
         && inRange(year, filters().yearMin, filters().yearMax)
         && inRange(m.runtime, filters().runtimeMin, filters().runtimeMax);
     });
-    
+
     return f.sort((a, b) => {
       if (filters().sort === 'watch_desc' || filters().sort === 'watch_asc') {
-        // ✅ FIX: resolveTimelineDate use karo sort ke liye bhi
-        const dA = resolveTimelineDate(a);
-        const dB = resolveTimelineDate(b);
-        const hasA = dA !== null;
-        const hasB = dB !== null;
-        if (hasA && !hasB) return -1;
-        if (!hasA && hasB) return 1;
-        if (!hasA && !hasB) return 0;
+        const dA = resolveTimelineDate(a), dB = resolveTimelineDate(b);
+        const hasA = dA !== null, hasB = dB !== null;
+        if (hasA && !hasB) return -1; if (!hasA && hasB) return 1; if (!hasA && !hasB) return 0;
         return filters().sort === 'watch_desc' ? dB.getTime() - dA.getTime() : dA.getTime() - dB.getTime();
       }
-      if (filters().sort === 'year_desc') return (parseInt(String(b.release_date || b.first_air_date || '').substring(0, 4)) || 0) - (parseInt(String(a.release_date || a.first_air_date || '').substring(0, 4)) || 0);
+      if (filters().sort === 'year_desc')   return (parseInt(String(b.release_date || b.first_air_date || '').substring(0, 4)) || 0) - (parseInt(String(a.release_date || a.first_air_date || '').substring(0, 4)) || 0);
       if (filters().sort === 'rating_desc') return (b.rating || 0) - (a.rating || 0);
-      if (filters().sort === 'title_asc') return (a.title || a.name || '').localeCompare(b.title || b.name || '');
+      if (filters().sort === 'title_asc')   return (a.title || a.name || '').localeCompare(b.title || b.name || '');
       return (b.addedAt?.seconds || 0) - (a.addedAt?.seconds || 0);
     });
   });
@@ -139,25 +106,17 @@ export function Vault(props) {
     }).length
   );
 
-  // ✅ FIX: resolveTimelineDate use karo — seasonDates + Firestore Timestamp handle hoga
   const timelineItems = createMemo(() =>
-    filtered().filter((m) => {
-      if (m.status !== 'Completed') return false;
-      const date = resolveTimelineDate(m);
-      return date !== null;
-    })
+    filtered().filter(m => m.status === 'Completed' && resolveTimelineDate(m) !== null)
   );
 
   const groupedTimeline = createMemo(() => {
     const list = timelineItems().slice(0, displayLimit());
     const groups = [];
     let currentGroup = null;
-
     list.forEach(m => {
-      // ✅ FIX: resolveTimelineDate se dateObj lo
-      const dateObj = resolveTimelineDate(m);
+      const dateObj   = resolveTimelineDate(m);
       const monthYear = !dateObj ? 'Unknown Date' : dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-
       if (!currentGroup || currentGroup.label !== monthYear) {
         currentGroup = { label: monthYear, items: [] };
         groups.push(currentGroup);
@@ -169,92 +128,206 @@ export function Vault(props) {
 
   return (
     <div class="animate-fade-in pb-10">
+
+      {/* ── Sticky toolbar ── */}
+      {/* pt-4 = 16px; pb-5 = 20px; -mx-5 px-5 for edge bleed; mb-6 = 24px */}
       <div class="sticky top-0 z-40 pt-4 pb-5 -mx-5 px-5 border-b mb-6"
         style="background: rgba(5,6,10,0.88); backdrop-filter: blur(24px); border-color: var(--border)">
+
         <div class="flex justify-between items-center mb-4">
-          <h2 class="font-headline text-4xl text-white">VAULT</h2>
-          <div class="flex items-center gap-2 sm:gap-3">
+          {/* Page title: Bebas Neue 36px */}
+          <h2 class="type-page-title text-white">VAULT</h2>
+
+          <div class="flex items-center gap-3">
+            {/* View toggle */}
             <div class="flex p-1 rounded-full border shadow-sm" style="background: var(--surface); border-color: var(--border-active)">
-                <button onClick={() => setViewMode('grid')} class={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all ${viewMode() === 'grid' ? 'bg-[var(--p)] text-[#0c0e14] shadow-[0_0_12px_var(--p-glow)]' : 'text-gray-500 hover:text-white'}`} title="Grid View"><Icon name="grid_view" class="text-sm sm:text-base" /></button>
-                <button onClick={() => setViewMode('timeline')} class={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all ${viewMode() === 'timeline' ? 'bg-[var(--p)] text-[#0c0e14] shadow-[0_0_12px_var(--p-glow)]' : 'text-gray-500 hover:text-white'}`} title="Timeline View"><Icon name="timeline" class="text-sm sm:text-base" /></button>
+              <button
+                onClick={() => setViewMode('grid')}
+                class={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${viewMode() === 'grid' ? 'text-[#0c0e14] shadow-[0_0_12px_var(--p-glow)]' : 'text-gray-500 hover:text-white'}`}
+                style={viewMode() === 'grid' ? 'background: var(--p)' : ''}
+                title="Grid View"
+              >
+                <Icon name="grid_view" class="text-sm sm:text-base" />
+              </button>
+              <button
+                onClick={() => setViewMode('timeline')}
+                class={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${viewMode() === 'timeline' ? 'text-[#0c0e14] shadow-[0_0_12px_var(--p-glow)]' : 'text-gray-500 hover:text-white'}`}
+                style={viewMode() === 'timeline' ? 'background: var(--p)' : ''}
+                title="Timeline View"
+              >
+                <Icon name="timeline" class="text-sm sm:text-base" />
+              </button>
             </div>
-            <button onClick={() => setShowFilter(true)} class="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs font-semibold border active:scale-95 transition-transform" style="background: var(--surface); border-color: var(--border-active); color: var(--muted)">
+
+            {/* Filter button */}
+            <button
+              onClick={() => setShowFilter(true)}
+              class="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full type-caption border active:scale-95"
+              style="background: var(--surface); border-color: var(--border-active); color: var(--muted)"
+            >
               <Icon name="tune" class="text-sm" />
               <span class="hidden sm:inline">Filter</span>
               {activeFilterCount() > 0 && (
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold text-black" style="background: var(--p)">{activeFilterCount()}</span>
+                <span class="px-2 py-0.5 rounded-full type-caption text-black" style="background: var(--p)">
+                  {activeFilterCount()}
+                </span>
               )}
             </button>
           </div>
         </div>
-        <div class="flex items-center gap-3 rounded-xl px-4 py-3 border" style="background: var(--surface); border-color: var(--border); transition: border-color 0.25s" onFocusIn={e => e.currentTarget.style.borderColor = 'var(--p)'} onFocusOut={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+
+        {/* Search bar — px-4 = 16px; py-3 = 12px; gap-3 = 12px */}
+        <div
+          class="flex items-center gap-3 rounded-xl px-4 py-3 border"
+          style="background: var(--surface); border-color: var(--border)"
+          onFocusIn={e  => { e.currentTarget.style.borderColor = 'var(--p)'; }}
+          onFocusOut={e => { e.currentTarget.style.borderColor = 'var(--border)'; }}
+        >
           <Icon name="search" style="color: var(--dim)" />
-          <input value={search()} onInput={e => { setSearch(e.target.value); setDisplayLimit(30); }} placeholder="Search movies, series, actors..." class="bg-transparent border-none w-full outline-none text-white text-sm font-medium" style="color: var(--text)" />
+          <input
+            value={search()}
+            onInput={e => { setSearch(e.target.value); setDisplayLimit(30); }}
+            placeholder="Search movies, series, actors..."
+            class="bg-transparent border-none w-full outline-none type-metadata text-white"
+            style="color: var(--text)"
+          />
           <Show when={search().length > 0 || activeFilterCount() > 0}>
-            <button onClick={() => { setFilters({ type: 'all', status: 'all', region: 'all', genre: 'all', platform: 'all', sort: 'recent', tag: 'all' }); setSearch(''); setDisplayLimit(30); props.onFilterChange && props.onFilterChange('all'); }} class="text-[9px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest shrink-0" style="background: rgba(255,45,85,0.15); border: 1px solid rgba(255,45,85,0.4); color: #ff2d55">Clear</button>
+            <button
+              onClick={() => { setFilters({ type: 'all', status: 'all', region: 'all', genre: 'all', platform: 'all', sort: 'recent', tag: 'all' }); setSearch(''); setDisplayLimit(30); props.onFilterChange && props.onFilterChange('all'); }}
+              class="type-caption px-3 py-1.5 rounded-full shrink-0 active:scale-95"
+              style="background: rgba(255,45,85,0.15); border: 1px solid rgba(255,45,85,0.4); color: #ff2d55"
+            >
+              Clear
+            </button>
           </Show>
         </div>
       </div>
 
+      {/* ── Empty states ── */}
       <Show when={filtered().length === 0}>
         <Show when={props.isGuest} fallback={
-          <div class="text-center p-12" style="color: var(--muted)"><Icon name="sentiment_dissatisfied" class="text-5xl mb-3" /><p class="font-semibold text-sm">No titles match your filters.</p></div>
+          <div class="text-center p-12 animate-fade-in" style="color: var(--muted)">
+            <Icon name="sentiment_dissatisfied" class="text-5xl mb-3" />
+            <p class="type-metadata font-semibold">No titles match your filters.</p>
+          </div>
         }>
           <div class="text-center p-12 animate-fade-in border rounded-[2rem] glass-surface" style="border-color: var(--border-active)">
             <Icon name="video_library" class="text-6xl mb-4 opacity-50" style="color: var(--p)" />
             <h3 class="font-headline text-3xl text-white mb-2">Your Vault is Empty</h3>
-            <p class="text-sm text-gray-400 mb-6 max-w-sm mx-auto">Sign in to start tracking movies and series, add custom tags, and build your collection.</p>
-            <button onClick={props.onLogin} class="px-8 py-3 rounded-full font-bold text-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all" style="background: var(--p); box-shadow: 0 0 16px var(--p-glow)">Sign In Now</button>
+            <p class="type-metadata text-gray-400 mb-6 max-w-sm mx-auto">Sign in to start tracking movies and series, add custom tags, and build your collection.</p>
+            <button
+              onClick={props.onLogin}
+              class="type-button px-8 py-3 rounded-full text-black shadow-lg active:scale-95"
+              style="background: var(--p); box-shadow: 0 0 16px var(--p-glow)"
+            >
+              Sign In Now
+            </button>
           </div>
         </Show>
       </Show>
 
+      {/* ── Grid view ── */}
+      {/* gap-3 = 12px */}
       <Show when={viewMode() === 'grid' && filtered().length > 0}>
         <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 animate-fade-in">
-          <For each={filtered().slice(0, displayLimit())}>{(m) => <MovieCard movie={m} onClick={() => props.openMovie(m.id)} />}</For>
+          <For each={filtered().slice(0, displayLimit())}>
+            {(m) => <MovieCard movie={m} onClick={() => props.openMovie(m.id)} />}
+          </For>
         </div>
       </Show>
 
+      {/* ── Timeline view ── */}
       <Show when={viewMode() === 'timeline' && timelineItems().length > 0}>
+        {/* Timeline left-line — space-y-10 = 40px = 5×8; pb-10 = 40px */}
         <div class="relative before:absolute before:inset-0 before:ml-[1.25rem] before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-white/10 before:to-transparent space-y-10 animate-fade-in pb-10">
           <For each={groupedTimeline()}>
             {(group) => (
               <div class="relative">
-                <div class="sticky top-[150px] z-30 inline-flex items-center gap-2 text-[#0c0e14] font-black text-[10px] uppercase tracking-widest px-4 py-2 rounded-full ml-10 mb-5 shadow-[0_0_15px_var(--p-glow)]" style="background: var(--p)">
+                {/* Month label — sticky top-[150px]; ml-10 = 40px; mb-5 = 20px */}
+                <div
+                  class="sticky top-[150px] z-30 inline-flex items-center gap-2 type-caption text-[#0c0e14] px-4 py-2 rounded-full ml-10 mb-5 shadow-[0_0_15px_var(--p-glow)]"
+                  style="background: var(--p)"
+                >
                   <Icon name="event" class="text-[14px]"/> {group.label}
                 </div>
-                <div class="space-y-4">
+
+                {/* Items — space-y-4 = 16px = 2×8 */}
+                <div class="space-y-4 timeline-stagger">
                   <For each={group.items}>
                     {(m) => {
-                      // ✅ FIX: resolveTimelineDate use karo
                       const dateObj = resolveTimelineDate(m);
-                      const day = dateObj ? dateObj.getDate() : '--';
+                      const day     = dateObj ? dateObj.getDate() : '--';
                       return (
-                        <div class="relative flex items-center group cursor-pointer pl-10 pr-2" onClick={() => props.openMovie(m.id)}>
-                          <div class="absolute left-[1.25rem] -translate-x-1/2 w-8 h-8 rounded-full bg-[#08090b] border-2 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform z-10" style="border-color: var(--p)">
-                             <span class="text-[10px] font-black text-white">{day}</span>
+                        <div
+                          class="relative flex items-center group cursor-pointer pl-10 pr-2 animate-timeline-in"
+                          onClick={() => props.openMovie(m.id)}
+                        >
+                          {/* Day circle */}
+                          <div class="absolute left-[1.25rem] -translate-x-1/2 w-8 h-8 rounded-full bg-[#08090b] border-2 flex items-center justify-center shadow-lg z-10"
+                            style="border-color: var(--p); transition: transform 200ms cubic-bezier(0.34,1.56,0.64,1)"
+                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(-50%) scale(1.15)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.transform = 'translateX(-50%) scale(1)'; }}
+                          >
+                            <span class="type-caption text-white">{day}</span>
                           </div>
-                          <div class="glass-surface w-full p-2.5 sm:p-3 rounded-[1.5rem] border hover:bg-white/5 transition-all shadow-md flex gap-4 animate-pop-in" style="border-color: var(--border)">
-                            <Show when={m.poster_path} fallback={<div class="w-14 h-20 sm:w-16 sm:h-24 bg-[#171921] rounded-xl flex items-center justify-center shrink-0 border border-white/5"><Icon name="movie" class="text-gray-600"/></div>}>
-                               <img src={`https://image.tmdb.org/t/p/w200${m.poster_path}`} class="w-14 h-20 sm:w-16 sm:h-24 rounded-xl object-cover shadow-md bg-[#171921] shrink-0" />
+
+                          {/* Card */}
+                          <div
+                            class="glass-surface w-full p-3 rounded-[1.5rem] border hover:bg-white/5 shadow-md flex gap-4"
+                            style="border-color: var(--border); transition: background 200ms ease-out, border-color 200ms ease-out"
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--p) 30%, transparent)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; }}
+                          >
+                            <Show when={m.poster_path} fallback={
+                              <div class="w-14 h-20 sm:w-16 sm:h-24 bg-[#171921] rounded-xl flex items-center justify-center shrink-0 border border-white/5">
+                                <Icon name="movie" class="text-gray-600"/>
+                              </div>
+                            }>
+                              <img
+                                src={`https://image.tmdb.org/t/p/w200${m.poster_path}`}
+                                class="w-14 h-20 sm:w-16 sm:h-24 rounded-xl object-cover shadow-md bg-[#171921] shrink-0"
+                                style="opacity: 0; transition: opacity 350ms ease-out"
+                                onLoad={e => { e.target.style.opacity = '1'; }}
+                              />
                             </Show>
+
                             <div class="flex-1 flex flex-col justify-center py-1 min-w-0 pr-2">
-                              <p class="font-bold text-sm sm:text-base text-gray-100 group-hover:text-white transition-colors truncate">{m.title || m.name}</p>
+                              <p class="type-metadata font-bold text-gray-100 group-hover:text-white truncate">
+                                {m.title || m.name}
+                              </p>
+                              {/* gap-2 = 8px; mt-1.5 = 6px */}
                               <div class="flex items-center gap-2 mt-1.5">
-                                  <span class="text-[8px] bg-white/10 text-gray-300 px-2 py-0.5 rounded font-black uppercase tracking-widest border border-white/5 shrink-0">{m.media_type === 'tv' ? 'Series' : 'Movie'}</span>
-                                  <Show when={m.status}><span class="text-[8px] px-2 py-0.5 rounded font-black uppercase tracking-widest shrink-0" style="color: var(--p); background: var(--p-dim); border: 1px solid var(--p)">{m.status === 'Plan to Watch' ? 'Planned' : m.status}</span></Show>
+                                <span class="type-caption bg-white/10 text-gray-300 px-2 py-0.5 rounded border border-white/5 shrink-0">
+                                  {m.media_type === 'tv' ? 'Series' : 'Movie'}
+                                </span>
+                                <Show when={m.status}>
+                                  <span class="type-caption px-2 py-0.5 rounded shrink-0" style="color: var(--p); background: var(--p-dim); border: 1px solid color-mix(in srgb, var(--p) 20%, transparent)">
+                                    {m.status === 'Plan to Watch' ? 'Planned' : m.status}
+                                  </span>
+                                </Show>
                               </div>
                               <Show when={m.rating || m.imdbRating}>
-                                 <div class="flex items-center gap-3 mt-2.5">
-                                    <Show when={m.rating}><span class="text-[10px] font-black flex items-center gap-1" style="color: var(--p)"><Icon name="star" class="text-[12px]"/> {m.rating}/10</span></Show>
-                                    <Show when={m.imdbRating}><span class="text-[10px] font-black flex items-center gap-1 text-[#f5c518]"><span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">IMDb</span> {m.imdbRating}</span></Show>
-                                 </div>
+                                <div class="flex items-center gap-3 mt-2.5">
+                                  <Show when={m.rating}>
+                                    <span class="type-metadata font-black flex items-center gap-1" style="color: var(--p)">
+                                      <Icon name="star" class="text-[12px]"/> {m.rating}/10
+                                    </span>
+                                  </Show>
+                                  <Show when={m.imdbRating}>
+                                    <span class="type-metadata font-black flex items-center gap-1 text-[#f5c518]">
+                                      <span class="type-caption font-bold text-gray-500">IMDb</span> {m.imdbRating}
+                                    </span>
+                                  </Show>
+                                </div>
                               </Show>
                             </div>
-                            <div class="hidden sm:flex self-center pr-4 opacity-0 group-hover:opacity-100 transition-opacity"><Icon name="chevron_right" class="text-2xl" style="color: var(--p)"/></div>
+
+                            <div class="hidden sm:flex self-center pr-4 opacity-0 group-hover:opacity-100" style="transition: opacity 200ms ease-out">
+                              <Icon name="chevron_right" class="text-2xl" style="color: var(--p)"/>
+                            </div>
                           </div>
                         </div>
-                      )
+                      );
                     }}
                   </For>
                 </div>
@@ -264,19 +337,22 @@ export function Vault(props) {
         </div>
       </Show>
 
+      {/* Empty timeline */}
       <Show when={viewMode() === 'timeline' && filtered().length > 0 && timelineItems().length === 0}>
-        <div class="text-center p-12" style="color: var(--muted)">
+        <div class="text-center p-12 animate-fade-in" style="color: var(--muted)">
           <Icon name="event_busy" class="text-5xl mb-3" />
-          <p class="font-semibold text-sm">Timeline only shows completed titles with a Watch Date or Season Date.</p>
+          <p class="type-metadata font-semibold">Timeline only shows completed titles with a Watch Date or Season Date.</p>
         </div>
       </Show>
 
+      {/* Infinite scroll indicator */}
       <Show when={viewMode() === 'grid' && filtered().length > displayLimit()}>
-        <div class="flex items-center justify-center gap-2 py-8 text-[10px] font-black uppercase tracking-widest" style="color: var(--p)">
+        <div class="flex items-center justify-center gap-2 py-8 type-caption" style="color: var(--p)">
           <Icon name="progress_activity" class="animate-spin text-sm" /> Loading more titles...
         </div>
       </Show>
 
+      {/* Filter modal */}
       <Show when={showFilter()}>
         <FilterModal
           filters={filters()}
@@ -298,29 +374,61 @@ function FilterModal(props) {
   onCleanup(() => document.body.style.overflow = '');
 
   return (
-    <div class="fixed inset-0 flex items-end sm:items-center justify-center sm:p-4 z-[999999] animate-fade-in" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(8px)" onClick={props.onClose}>
-      <div class="glass-surface w-full max-w-sm rounded-t-[2rem] sm:rounded-[2rem] p-6 pb-32 sm:p-8 shadow-2xl animate-slide-up sm:animate-pop-in" style="border-color: var(--border-active); background: rgba(9,11,16,0.97)" onClick={e => e.stopPropagation()}>
+    <div
+      class="fixed inset-0 flex items-end sm:items-center justify-center sm:p-4 z-[999999] animate-fade-in"
+      style="background: rgba(0,0,0,0.7); backdrop-filter: blur(8px)"
+      onClick={props.onClose}
+    >
+      {/* p-6 = 24px; pb-32 = 128px for mobile safe area; sm:p-8 = 32px */}
+      <div
+        class="glass-surface w-full max-w-sm rounded-t-[2rem] sm:rounded-[2rem] p-6 pb-32 sm:p-8 shadow-2xl modal-sheet-enter"
+        style="border-color: var(--border-active); background: rgba(9,11,16,0.97)"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Drag handle */}
         <div class="w-12 h-1.5 rounded-full mx-auto mb-6 sm:hidden" style="background: var(--border-active)" />
+
+        {/* Header — pb-4 = 16px; mb-5 = 20px */}
         <div class="flex justify-between items-center border-b pb-4 mb-5" style="border-color: var(--border)">
-          <h3 class="font-bold text-xl text-white flex items-center gap-2"><Icon name="tune" style="color: var(--p)" /> Filters</h3>
-          <button onClick={props.onClose} class="p-2 rounded-full hover:bg-white/5" style="color: var(--muted)"><Icon name="close" /></button>
+          <h3 class="type-modal-title text-white flex items-center gap-2" style="font-size: 20px">
+            <Icon name="tune" style="color: var(--p)" /> Filters
+          </h3>
+          <button onClick={props.onClose} class="p-2 rounded-full hover:bg-white/5 active:scale-95" style="color: var(--muted)">
+            <Icon name="close" />
+          </button>
         </div>
+
+        {/* Filter list — space-y-4 = 16px; max-h pr-1 */}
         <div class="space-y-4 max-h-[50vh] overflow-y-auto pr-1 hide-scrollbar">
-          <FilterSel label="Status" val={props.filters.status} set={(v) => { props.setFilters({ ...props.filters, status: v }); props.onFilterChange && props.onFilterChange(v); }} opts={[{ l: 'All', v: 'all' }, { l: 'Planned', v: 'Planned' }, { l: 'Watching', v: 'Watching' }, { l: 'Completed', v: 'Completed' }]} />
-          <FilterSel label="Tags" val={props.filters.tag} set={(v) => props.setFilters({ ...props.filters, tag: v })} opts={[{ l: 'All Tags', v: 'all' }, ...props.uniqueTags.map(t => ({ l: t, v: t }))]} />
-          <FilterSel label="Type" val={props.filters.type} set={(v) => props.setFilters({ ...props.filters, type: v })} opts={[{ l: 'All', v: 'all' }, { l: 'Movies', v: 'movie' }, { l: 'Series', v: 'tv' }]} />
-          <FilterSel label="Region" val={props.filters.region} set={(v) => props.setFilters({ ...props.filters, region: v })} opts={[{ l: 'All', v: 'all' }, { l: 'Indian', v: 'Indian' }, { l: 'International', v: 'International' }]} />
+          <FilterSel label="Status"  val={props.filters.status}   set={(v) => { props.setFilters({ ...props.filters, status: v });   props.onFilterChange && props.onFilterChange(v); }} opts={[{ l: 'All', v: 'all' }, { l: 'Planned', v: 'Planned' }, { l: 'Watching', v: 'Watching' }, { l: 'Completed', v: 'Completed' }]} />
+          <FilterSel label="Tags"    val={props.filters.tag}      set={(v) => props.setFilters({ ...props.filters, tag: v })}      opts={[{ l: 'All Tags', v: 'all' }, ...props.uniqueTags.map(t => ({ l: t, v: t }))]} />
+          <FilterSel label="Type"    val={props.filters.type}     set={(v) => props.setFilters({ ...props.filters, type: v })}     opts={[{ l: 'All', v: 'all' }, { l: 'Movies', v: 'movie' }, { l: 'Series', v: 'tv' }]} />
+          <FilterSel label="Region"  val={props.filters.region}   set={(v) => props.setFilters({ ...props.filters, region: v })}   opts={[{ l: 'All', v: 'all' }, { l: 'Indian', v: 'Indian' }, { l: 'International', v: 'International' }]} />
           <FilterSel label="Platform" val={props.filters.platform} set={(v) => props.setFilters({ ...props.filters, platform: v })} opts={[{ l: 'All Platforms', v: 'all' }, ...props.uniquePlatforms.map(p => ({ l: p, v: p }))]} />
-          <FilterSel label="Genre" val={props.filters.genre} set={(v) => props.setFilters({ ...props.filters, genre: v })} opts={[{ l: 'All Genres', v: 'all' }, ...props.uniqueGenres.map(g => ({ l: g, v: g }))]} />
-          <RangeFilter label="IMDb" min={props.filters.imdbMin} max={props.filters.imdbMax} setMin={(v) => props.setFilters({ ...props.filters, imdbMin: v })} setMax={(v) => props.setFilters({ ...props.filters, imdbMax: v })} minPlaceholder="0" maxPlaceholder="10" />
-          <RangeFilter label="RT %" min={props.filters.rtMin} max={props.filters.rtMax} setMin={(v) => props.setFilters({ ...props.filters, rtMin: v })} setMax={(v) => props.setFilters({ ...props.filters, rtMax: v })} minPlaceholder="0" maxPlaceholder="100" />
-          <RangeFilter label="Year" min={props.filters.yearMin} max={props.filters.yearMax} setMin={(v) => props.setFilters({ ...props.filters, yearMin: v })} setMax={(v) => props.setFilters({ ...props.filters, yearMax: v })} minPlaceholder="1990" maxPlaceholder="2026" />
-          <RangeFilter label="Runtime" min={props.filters.runtimeMin} max={props.filters.runtimeMax} setMin={(v) => props.setFilters({ ...props.filters, runtimeMin: v })} setMax={(v) => props.setFilters({ ...props.filters, runtimeMax: v })} minPlaceholder="Min" maxPlaceholder="Max" />
+          <FilterSel label="Genre"   val={props.filters.genre}    set={(v) => props.setFilters({ ...props.filters, genre: v })}    opts={[{ l: 'All Genres', v: 'all' }, ...props.uniqueGenres.map(g => ({ l: g, v: g }))]} />
+          <RangeFilter label="IMDb"    min={props.filters.imdbMin}    max={props.filters.imdbMax}    setMin={v => props.setFilters({ ...props.filters, imdbMin: v })}    setMax={v => props.setFilters({ ...props.filters, imdbMax: v })}    minPlaceholder="0"    maxPlaceholder="10" />
+          <RangeFilter label="RT %"    min={props.filters.rtMin}      max={props.filters.rtMax}      setMin={v => props.setFilters({ ...props.filters, rtMin: v })}      setMax={v => props.setFilters({ ...props.filters, rtMax: v })}      minPlaceholder="0"    maxPlaceholder="100" />
+          <RangeFilter label="Year"    min={props.filters.yearMin}    max={props.filters.yearMax}    setMin={v => props.setFilters({ ...props.filters, yearMin: v })}    setMax={v => props.setFilters({ ...props.filters, yearMax: v })}    minPlaceholder="1990" maxPlaceholder="2026" />
+          <RangeFilter label="Runtime" min={props.filters.runtimeMin} max={props.filters.runtimeMax} setMin={v => props.setFilters({ ...props.filters, runtimeMin: v })} setMax={v => props.setFilters({ ...props.filters, runtimeMax: v })} minPlaceholder="Min"  maxPlaceholder="Max" />
           <FilterSel label="Sort By" val={props.filters.sort} set={(v) => props.setFilters({ ...props.filters, sort: v })} opts={[{ l: 'Recently Added', v: 'recent' }, { l: 'Watch Date (Newest)', v: 'watch_desc' }, { l: 'Watch Date (Oldest)', v: 'watch_asc' }, { l: 'Release Year (Newest)', v: 'year_desc' }, { l: 'Rating (High-Low)', v: 'rating_desc' }, { l: 'Title (A-Z)', v: 'title_asc' }]} />
         </div>
+
+        {/* Actions — gap-2 = 8px; mt-6 = 24px */}
         <div class="grid grid-cols-2 gap-2 mt-6">
-          <button onClick={props.onClear} class="w-full font-bold py-4 rounded-xl text-xs uppercase tracking-widest" style="background: var(--raised); color: var(--muted); border: 1px solid var(--border)">Clear All</button>
-          <button onClick={props.onClose} class="w-full font-bold py-4 rounded-xl text-xs uppercase tracking-widest text-[#0c0e14]" style="background: var(--p); box-shadow: 0 0 20px var(--p-glow)">Apply Filters</button>
+          <button
+            onClick={props.onClear}
+            class="w-full type-button py-4 rounded-xl"
+            style="background: var(--raised); color: var(--muted); border: 1px solid var(--border)"
+          >
+            Clear All
+          </button>
+          <button
+            onClick={props.onClose}
+            class="w-full type-button py-4 rounded-xl text-[#0c0e14]"
+            style="background: var(--p); box-shadow: 0 0 20px var(--p-glow)"
+          >
+            Apply
+          </button>
         </div>
       </div>
     </div>
@@ -329,18 +437,18 @@ function FilterModal(props) {
 
 const RangeFilter = (props) => (
   <div class="grid grid-cols-[90px_1fr] items-center gap-2">
-    <span class="label-mono">{props.label}</span>
+    <span class="type-label">{props.label}</span>
     <div class="grid grid-cols-2 gap-2">
-      <input value={props.min} onInput={e => props.setMin(e.target.value)} type="number" placeholder={props.minPlaceholder || 'Min'} class="w-full bg-[#0c0e14] border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[var(--p)]" />
-      <input value={props.max} onInput={e => props.setMax(e.target.value)} type="number" placeholder={props.maxPlaceholder || 'Max'} class="w-full bg-[#0c0e14] border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[var(--p)]" />
+      <input value={props.min} onInput={e => props.setMin(e.target.value)} type="number" placeholder={props.minPlaceholder || 'Min'} class="w-full bg-[#0c0e14] border border-white/10 rounded-xl px-3 py-2 type-metadata text-white outline-none focus:border-[var(--p)]" />
+      <input value={props.max} onInput={e => props.setMax(e.target.value)} type="number" placeholder={props.maxPlaceholder || 'Max'} class="w-full bg-[#0c0e14] border border-white/10 rounded-xl px-3 py-2 type-metadata text-white outline-none focus:border-[var(--p)]" />
     </div>
   </div>
 );
 
 const FilterSel = (props) => (
   <div class="grid grid-cols-[90px_1fr] items-center gap-2">
-    <span class="label-mono">{props.label}</span>
-    <select value={props.val} onChange={e => props.set(e.target.value)} class="w-full text-white font-medium cursor-pointer">
+    <span class="type-label">{props.label}</span>
+    <select value={props.val} onChange={e => props.set(e.target.value)} class="w-full type-metadata text-white font-medium cursor-pointer">
       <For each={props.opts}>{(o) => <option value={o.v || o} class="bg-[#0c0e14]">{o.l || o}</option>}</For>
     </select>
   </div>
