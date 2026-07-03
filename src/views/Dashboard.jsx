@@ -65,7 +65,6 @@ export function Dashboard(props) {
 
           return (
             <div class="featured-hero">
-              {/* Backdrop image — fades in, cinematic brightness */}
               <Show when={bgImg()}>
                 <img
                   src={bgImg()}
@@ -75,7 +74,6 @@ export function Dashboard(props) {
                 />
               </Show>
 
-              {/* Cinematic gradient overlay */}
               <div class="backdrop-gradient" />
 
               {/* Random pick badge */}
@@ -87,8 +85,8 @@ export function Dashboard(props) {
                 </div>
               </Show>
 
-              {/* Hero content — above gradient */}
-              <div class="absolute bottom-0 left-0 w-full p-4 lg:p-6 flex flex-col gap-2 z-10">
+              {/* Hero content — overflow-hidden prevents long titles from reaching the badge */}
+              <div class="absolute bottom-0 left-0 w-full p-4 lg:p-6 flex flex-col gap-2 z-10 overflow-hidden">
                 <h2 class="font-headline text-3xl lg:text-5xl text-white leading-none"
                   style="text-shadow: 0 2px 24px rgba(0,0,0,0.9), 0 1px 4px rgba(0,0,0,1)">
                   {item().title || item().name}
@@ -128,7 +126,6 @@ export function Dashboard(props) {
       <Show when={props.isGuest}>
         <div class="p-6 rounded-3xl border relative overflow-hidden animate-fade-up"
           style="background: linear-gradient(145deg, #181818, #111); border-color: rgba(255,255,255,0.08); box-shadow: var(--shadow-raised)">
-          {/* Ambient glow */}
           <div style="position: absolute; top: -40px; right: -40px; width: 180px; height: 180px; border-radius: 50%; background: radial-gradient(circle, var(--p-glow) 0%, transparent 70%); pointer-events: none" />
           <h3 class="font-headline text-3xl text-white mb-2 relative z-10">Welcome to Cinelog</h3>
           <p class="type-metadata text-gray-400 mb-5 max-w-sm relative z-10">
@@ -206,7 +203,6 @@ export function Dashboard(props) {
                     onClick={() => props.openMovie('RESUME_' + m.id)}
                     class="continue-card relative w-64 h-36 shrink-0 cursor-pointer group"
                   >
-                    {/* Backdrop image */}
                     <Show when={bgImg} fallback={
                       <div class="w-full h-full flex items-center justify-center skeleton-bg">
                         <Icon name="movie" class="text-4xl text-gray-700" />
@@ -220,10 +216,8 @@ export function Dashboard(props) {
                       />
                     </Show>
 
-                    {/* Cinematic gradient */}
                     <div class="continue-card-gradient" />
 
-                    {/* Play overlay — appears on hover */}
                     <div class="absolute inset-0 flex items-center justify-center z-10"
                       style="opacity: 0; transition: opacity 200ms ease-out"
                       ref={el => {
@@ -239,10 +233,8 @@ export function Dashboard(props) {
                       </div>
                     </div>
 
-                    {/* Info — bottom */}
                     <div class="absolute bottom-0 left-0 w-full p-3.5 z-10">
                       <h4 class="type-card-title truncate mb-2">{m.title || m.name}</h4>
-                      {/* Progress bar */}
                       <div class="w-full h-1 rounded-full overflow-hidden mb-2"
                         style="background: rgba(255,255,255,0.12)">
                         <div
