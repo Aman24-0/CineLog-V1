@@ -471,6 +471,10 @@ select option { background: var(--raised); }
 .stagger > *:nth-child(6) { animation-delay: 250ms; }
 .stagger > *:nth-child(7) { animation-delay: 300ms; }
 .stagger > *:nth-child(8) { animation-delay: 350ms; }
+.stagger > *:nth-child(9) { animation-delay: 400ms; }
+.stagger > *:nth-child(10) { animation-delay: 450ms; }
+.stagger > *:nth-child(11) { animation-delay: 500ms; }
+.stagger > *:nth-child(12) { animation-delay: 550ms; }
 
 .timeline-stagger > *:nth-child(1) { animation-delay: 0ms; }
 .timeline-stagger > *:nth-child(2) { animation-delay: 60ms; }
@@ -931,6 +935,97 @@ button:active { transform: scale(0.95); transition-duration: var(--dur-fast); }
   transform: translateY(-3px) scale(1.01);
 }
 .franchise-card:active { transform: scale(0.97); transition-duration: var(--dur-fast); }
+
+/* ═══════════════════════════════════════════════════════════
+   SEARCH MODAL — Enhanced UX Components
+   ═══════════════════════════════════════════════════════════ */
+
+/* Keyboard navigation highlight */
+.search-highlight {
+  background: rgba(255,255,255,0.04) !important;
+  border-color: color-mix(in srgb, var(--p) 30%, transparent) !important;
+  border-left: 2px solid var(--p) !important;
+  padding-left: 10px !important;
+}
+
+/* Group section header — sticky within results scroll area */
+.search-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 6px;
+  margin-top: 4px;
+  position: sticky;
+  top: 0;
+  background: #111111;
+  z-index: 10;
+}
+
+/* Group label text */
+.search-group-label {
+  font-family: 'Azeret Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Group count badge */
+.search-group-count {
+  font-family: 'Azeret Mono', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--muted);
+  background: rgba(255,255,255,0.06);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+/* Recent / Suggestion chip */
+.recent-chip {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: var(--raised);
+  color: var(--text);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform 120ms var(--ease-spring);
+}
+.recent-chip:hover {
+  background: color-mix(in srgb, var(--p) 15%, transparent);
+  border-color: color-mix(in srgb, var(--p) 30%, transparent);
+  color: var(--p);
+}
+.recent-chip:active {
+  transform: scale(0.95);
+}
+
+/* Skeleton row during loading */
+.search-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  border-radius: var(--radius-lg);
+}
+
+/* Hover color for search item titles */
+.search-item-title {
+  transition: color 150ms ease-out;
+}
 
 /* ── CINEMATIC THEME EXTRAS ── */
 body.theme-cinematic::before {
