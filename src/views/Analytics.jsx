@@ -107,7 +107,7 @@ function MonthlyTrend(props) {
   const points = createMemo(() => {
     const pts = [];
     for (let i = 0; i < props.items.length; i++) {
-      const x = padX + (i * (chartW / (props.items.length - 1));
+      const x = padX + (i * (chartW / (props.items.length - 1)));
       const y = padTop + chartH - (props.items[i].value / max()) * chartH;
       pts.push(`${x},${y}`);
     }
