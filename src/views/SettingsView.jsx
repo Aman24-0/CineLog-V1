@@ -1,7 +1,6 @@
 import { For, Show, createMemo } from 'solid-js';
 import { Icon, getSafeGenres } from '../utils';
 
-/* ── Achievement Badge Component ── */
 const AchievementBadge = (props) => (
   <div
     class="flex flex-col items-center gap-2 w-[76px] shrink-0"
@@ -44,28 +43,11 @@ const AchievementBadge = (props) => (
 );
 
 export function SettingsView(props) {
-  /* ═══════════════════════════════════════════════════════════
-     COMPUTED STATS — derived from watchlist, no backend changes
-     ═══════════════════════════════════════════════════════════ */
   const list = () => props.watchlist?.() || [];
 
   const completed = createMemo(() => list().filter(m => m.status === 'Completed'));
   const watching = createMemo(() => list().filter(m => m.status === 'Watching'));
   const planned = createMemo(() => list().filter(m => m.status === 'Planned' || m.status === 'Plan to Watch'));
-
-  const totalHours = createMemo(() => {
-    const mins = completed().reduce((sum, m) => {
-      const runtime = Number(m.runtime) || 0;
-      return sum + runtime * (m.media_type === 'tv' ? Math.max(1, Number(m.episode) || 1) : 1);
-    }, 0);
-    return Math.round(mins / 60);
-  });
-
-  const ratedItems = createMemo(() => completed().filter(m => Number(m.rating) > 0));
-  const avgRating = createMemo(() => {
-    const ratings = ratedItems().map(m => Number(m.rating));
-    return ratings.length ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : '-';
-  });
 
   const completionPct = createMemo(() => {
     const total = list().length;
@@ -130,7 +112,7 @@ export function SettingsView(props) {
   const achievements = createMemo(() => {
     const total = list().length;
     const comp = completed().length;
-    const rated = ratedItems().length;
+    const rated = completed().filter(m => Number(m.rating) > 0).length;
     const genres = uniqueGenreCount();
     const tvComp = tvCompleted();
     return [
@@ -176,27 +158,22 @@ export function SettingsView(props) {
       </div>
 
       {/* ═══════════════════════════════════════════════════════
-         PROFILE CARD — Banner + Avatar + Identity
+         PROFILE CARD
          ═══════════════════════════════════════════════════════ */}
       <div class="relative rounded-3xl overflow-hidden mb-8 border animate-fade-up"
         style="background: var(--surface); border-color: var(--border)"
       >
-        {/* Gradient banner strip */}
         <div
           class="h-28 sm:h-32"
           style="background: linear-gradient(135deg, var(--p) 0%, var(--p2) 60%, var(--p) 100%); opacity: 0.18"
         />
-
-        {/* Subtle grid pattern on banner */}
         <div
           class="absolute top-0 left-0 right-0 h-28 sm:h-32 pointer-events-none"
           style="background-image: linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px); background-size: 40px 40px"
         />
 
-        {/* Content overlapping banner */}
         <div class="px-5 sm:px-6 -mt-12 pb-6 relative z-10">
           <div class="flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-5">
-            {/* Avatar */}
             <Show when={props.user} fallback={
               <div
                 class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl flex items-center justify-center shrink-0 relative"
@@ -214,7 +191,6 @@ export function SettingsView(props) {
               />
             </Show>
 
-            {/* Name + Meta */}
             <div class="flex-1 min-w-0 text-center sm:text-left">
               <h2 class="font-black text-xl sm:text-2xl text-white leading-tight truncate">
                 {props.user?.displayName || 'Guest'}
@@ -235,15 +211,6 @@ export function SettingsView(props) {
                     {memberSinceText()}
                   </span>
                 </Show>
-                <Show when={totalHours() > 0}>
-                  <span
-                    class="type-caption flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
-                    style="background: rgba(255,255,255,0.04); color: var(--muted); border: 1px solid var(--border)"
-                  >
-                    <Icon name="schedule" style="font-size: 11px" />
-                    {totalHours()}h watched
-                  </span>
-                </Show>
               </div>
             </div>
           </div>
@@ -251,81 +218,13 @@ export function SettingsView(props) {
       </div>
 
       {/* ═══════════════════════════════════════════════════════
-         STATS + COMPLETION — Logged-in only
+         ACHIEVEMENTS — Logged-in only
          ═══════════════════════════════════════════════════════ */}
       <Show when={props.user}>
-        <div class="animate-fade-up mb-8">
-          <p class="section-title">Statistics</p>
-
-          {/* 6-stat grid */}
-          <div class="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-5 stagger">
-            <div class="stat-card p-4 flex flex-col items-center justify-center cursor-pointer group animate-fade-up" onClick={() => { props.setActiveVaultStatus('all'); props.setView('watchlist'); }}>
-              <Icon name="inventory_2" class="text-gray-600 group-hover:text-white mb-2 text-lg" style="transition: color 220ms ease-out" />
-              <span class="type-stat text-white" style="font-size: 1.75rem">{list().length}</span>
-              <span class="type-caption text-gray-500">Vault</span>
-            </div>
-            <div class="stat-card p-4 flex flex-col items-center justify-center cursor-pointer group animate-fade-up" onClick={() => { props.setActiveVaultStatus('Completed'); props.setView('watchlist'); }}>
-              <Icon name="task_alt" class="text-gray-600 group-hover:text-white mb-2 text-lg" style="transition: color 220ms ease-out" />
-              <span class="type-stat text-white" style="font-size: 1.75rem">{completed().length}</span>
-              <span class="type-caption text-gray-500">Done</span>
-            </div>
-            <div class="stat-card p-4 flex flex-col items-center justify-center cursor-pointer group animate-fade-up" onClick={() => { props.setActiveVaultStatus('Watching'); props.setView('watchlist'); }}>
-              <Icon name="play_circle" class="text-gray-600 group-hover:text-white mb-2 text-lg" style="transition: color 220ms ease-out" />
-              <span class="type-stat text-white" style="font-size: 1.75rem">{watching().length}</span>
-              <span class="type-caption text-gray-500">Watching</span>
-            </div>
-            <div class="stat-card p-4 flex flex-col items-center justify-center cursor-pointer group animate-fade-up" onClick={() => { props.setActiveVaultStatus('Planned'); props.setView('watchlist'); }}>
-              <Icon name="bookmark" class="text-gray-600 group-hover:text-[color:var(--p)] mb-2 text-lg" style="transition: color 220ms ease-out" />
-              <span class="type-stat" style="font-size: 1.75rem; color: var(--p)">{planned().length}</span>
-              <span class="type-caption text-gray-500">Planned</span>
-            </div>
-            <div class="stat-card p-4 flex flex-col items-center justify-center group animate-fade-up">
-              <Icon name="schedule" class="text-gray-600 group-hover:text-white mb-2 text-lg" style="transition: color 220ms ease-out" />
-              <span class="type-stat text-white" style="font-size: 1.75rem">{totalHours()}</span>
-              <span class="type-caption text-gray-500">Hours</span>
-            </div>
-            <div class="stat-card p-4 flex flex-col items-center justify-center group animate-fade-up">
-              <Icon name="star" class="text-gray-600 group-hover:text-[#f5c518] mb-2 text-lg" style="transition: color 220ms ease-out" />
-              <span class="type-stat text-white" style="font-size: 1.75rem">{avgRating()}</span>
-              <span class="type-caption text-gray-500">Avg</span>
-            </div>
-          </div>
-
-          {/* Completion progress bar */}
-          <div class="glass-surface rounded-2xl p-5 border border-white/5 animate-fade-up">
-            <div class="flex justify-between items-center mb-3">
-              <span class="type-label flex items-center gap-2">
-                <Icon name="trending_up" style="font-size: 13px; color: var(--p)" /> Vault Completion
-              </span>
-              <span class="type-stat" style="color: var(--p); font-size: 1.75rem">{completionPct()}<span style="font-size: 0.9rem; color: var(--muted)">%</span></span>
-            </div>
-            <div class="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-              <div
-                class="h-full rounded-full"
-                style={{
-                  width: `${completionPct()}%`,
-                  background: 'var(--p)',
-                  'box-shadow': '0 0 10px var(--p-glow)',
-                  transition: 'width 800ms var(--ease-smooth)'
-                }}
-              />
-            </div>
-            <p class="type-caption mt-2.5" style="color: var(--muted)">
-              {completed().length} of {list().length} titles completed
-            </p>
-          </div>
-        </div>
-
-        {/* ═══════════════════════════════════════════════════════
-           ACHIEVEMENTS — Milestone badges from vault data
-           ═══════════════════════════════════════════════════════ */}
         <div class="mb-8 animate-fade-up">
           <div class="flex justify-between items-end mb-4">
             <p class="section-title !mb-0">Achievements</p>
-            <span
-              class="type-caption"
-              style="color: var(--p)"
-            >
+            <span class="type-caption" style="color: var(--p)">
               {unlockedCount()} / {achievements().length} Unlocked
             </span>
           </div>
@@ -337,10 +236,9 @@ export function SettingsView(props) {
         </div>
 
         {/* ═══════════════════════════════════════════════════════
-           FAVORITES — Genre + Actor from completed titles
+           FAVORITES — Genre + Actor
            ═══════════════════════════════════════════════════════ */}
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8 animate-fade-up">
-          {/* Favorite Genre */}
           <div class="glass-surface rounded-2xl p-5 border border-white/5">
             <span class="type-label mb-3 flex items-center gap-1.5">
               <Icon name="genre" style="font-size: 13px; color: var(--p)" /> Favorite Genre
@@ -363,7 +261,6 @@ export function SettingsView(props) {
             </Show>
           </div>
 
-          {/* Favorite Actor */}
           <div class="glass-surface rounded-2xl p-5 border border-white/5">
             <span class="type-label mb-3 flex items-center gap-1.5">
               <Icon name="person" style="font-size: 13px; color: var(--p2)" /> Favorite Actor
@@ -388,7 +285,7 @@ export function SettingsView(props) {
         </div>
 
         {/* ═══════════════════════════════════════════════════════
-           ACTIVITY SUMMARY — Recent watching patterns
+           ACTIVITY SUMMARY — No hours
            ═══════════════════════════════════════════════════════ */}
         <div class="glass-surface rounded-2xl p-5 border border-white/5 mb-8 animate-fade-up">
           <span class="type-label mb-4 flex items-center gap-1.5">
@@ -414,7 +311,7 @@ export function SettingsView(props) {
       </Show>
 
       {/* ═══════════════════════════════════════════════════════
-         DIVIDER — separates profile stats from settings
+         DIVIDER
          ═══════════════════════════════════════════════════════ */}
       <Show when={props.user}>
         <div class="flex items-center gap-4 my-8">
@@ -425,7 +322,7 @@ export function SettingsView(props) {
       </Show>
 
       {/* ═══════════════════════════════════════════════════════
-         APPEARANCE — Theme picker (EXISTING — UNCHANGED)
+         APPEARANCE
          ═══════════════════════════════════════════════════════ */}
       <p class="section-title">Appearance</p>
       <div class="flex gap-4 overflow-x-auto hide-scrollbar py-2 mb-6 stagger animate-fade-up">
@@ -446,7 +343,7 @@ export function SettingsView(props) {
       </div>
 
       {/* ═══════════════════════════════════════════════════════
-         GENERAL — Settings rows (EXISTING — UNCHANGED)
+         GENERAL
          ═══════════════════════════════════════════════════════ */}
       <p class="section-title">General</p>
       <div class="flex flex-col gap-2 mb-6 stagger animate-fade-up">
@@ -468,7 +365,7 @@ export function SettingsView(props) {
       </div>
 
       {/* ═══════════════════════════════════════════════════════
-         DANGER ZONE (EXISTING — UNCHANGED)
+         DANGER ZONE
          ═══════════════════════════════════════════════════════ */}
       <Show when={props.user}>
         <p class="section-title" style="color: #ff2d55">Danger Zone</p>
