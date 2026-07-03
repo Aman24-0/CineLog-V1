@@ -130,16 +130,13 @@ export function Vault(props) {
     <div class="animate-fade-in pb-10">
 
       {/* ── Sticky toolbar ── */}
-      {/* pt-4 = 16px; pb-5 = 20px; -mx-5 px-5 for edge bleed; mb-6 = 24px */}
       <div class="sticky top-0 z-40 pt-4 pb-5 -mx-5 px-5 border-b mb-6"
         style="background: rgba(5,6,10,0.88); backdrop-filter: blur(24px); border-color: var(--border)">
 
         <div class="flex justify-between items-center mb-4">
-          {/* Page title: Bebas Neue 36px */}
           <h2 class="type-page-title text-white">VAULT</h2>
 
           <div class="flex items-center gap-3">
-            {/* View toggle */}
             <div class="flex p-1 rounded-full border shadow-sm" style="background: var(--surface); border-color: var(--border-active)">
               <button
                 onClick={() => setViewMode('grid')}
@@ -159,7 +156,6 @@ export function Vault(props) {
               </button>
             </div>
 
-            {/* Filter button */}
             <button
               onClick={() => setShowFilter(true)}
               class="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full type-caption border active:scale-95"
@@ -176,7 +172,6 @@ export function Vault(props) {
           </div>
         </div>
 
-        {/* Search bar — px-4 = 16px; py-3 = 12px; gap-3 = 12px */}
         <div
           class="flex items-center gap-3 rounded-xl px-4 py-3 border"
           style="background: var(--surface); border-color: var(--border)"
@@ -212,239 +207,4 @@ export function Vault(props) {
           </div>
         }>
           <div class="text-center p-12 animate-fade-in border rounded-[2rem] glass-surface" style="border-color: var(--border-active)">
-            <Icon name="video_library" class="text-6xl mb-4 opacity-50" style="color: var(--p)" />
-            <h3 class="font-headline text-3xl text-white mb-2">Your Vault is Empty</h3>
-            <p class="type-metadata text-gray-400 mb-6 max-w-sm mx-auto">Sign in to start tracking movies and series, add custom tags, and build your collection.</p>
-            <button
-              onClick={props.onLogin}
-              class="type-button px-8 py-3 rounded-full text-black shadow-lg active:scale-95"
-              style="background: var(--p); box-shadow: 0 0 16px var(--p-glow)"
-            >
-              Sign In Now
-            </button>
-          </div>
-        </Show>
-      </Show>
-
-      {/* ── Grid view ── */}
-      {/* gap-3 = 12px */}
-      <Show when={viewMode() === 'grid' && filtered().length > 0}>
-        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 animate-fade-in">
-          <For each={filtered().slice(0, displayLimit())}>
-            {(m) => <MovieCard movie={m} onClick={() => props.openMovie(m.id)} />}
-          </For>
-        </div>
-      </Show>
-
-      {/* ── Timeline view ── */}
-      <Show when={viewMode() === 'timeline' && timelineItems().length > 0}>
-        {/* Timeline left-line — space-y-10 = 40px = 5×8; pb-10 = 40px */}
-        <div class="relative before:absolute before:inset-0 before:ml-[1.25rem] before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-white/10 before:to-transparent space-y-10 animate-fade-in pb-10">
-          <For each={groupedTimeline()}>
-            {(group) => (
-              <div class="relative">
-                {/* Month label — sticky top-[150px]; ml-10 = 40px; mb-5 = 20px */}
-                <div
-                  class="sticky top-[150px] z-30 inline-flex items-center gap-2 type-caption text-[#0c0e14] px-4 py-2 rounded-full ml-10 mb-5 shadow-[0_0_15px_var(--p-glow)]"
-                  style="background: var(--p)"
-                >
-                  <Icon name="event" class="text-[14px]"/> {group.label}
-                </div>
-
-                {/* Items — space-y-4 = 16px = 2×8 */}
-                <div class="space-y-4 timeline-stagger">
-                  <For each={group.items}>
-                    {(m) => {
-                      const dateObj = resolveTimelineDate(m);
-                      const day     = dateObj ? dateObj.getDate() : '--';
-                      return (
-                        <div
-                          class="relative flex items-center group cursor-pointer pl-10 pr-2 animate-timeline-in"
-                          onClick={() => props.openMovie(m.id)}
-                        >
-                          {/* Day circle */}
-                          <div class="absolute left-[1.25rem] -translate-x-1/2 w-8 h-8 rounded-full bg-[#08090b] border-2 flex items-center justify-center shadow-lg z-10"
-                            style="border-color: var(--p); transition: transform 200ms cubic-bezier(0.34,1.56,0.64,1)"
-                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(-50%) scale(1.15)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.transform = 'translateX(-50%) scale(1)'; }}
-                          >
-                            <span class="type-caption text-white">{day}</span>
-                          </div>
-
-                          {/* Card */}
-                          <div
-                            class="upcoming-card w-full p-3 rounded-[1.5rem] flex gap-4"
-                          >
-                            <Show when={m.poster_path} fallback={
-                              <div class="w-14 h-20 sm:w-16 sm:h-24 bg-[#171921] rounded-xl flex items-center justify-center shrink-0 border border-white/5">
-                                <Icon name="movie" class="text-gray-600"/>
-                              </div>
-                            }>
-                              <div class="w-14 h-20 sm:w-16 sm:h-24 rounded-xl overflow-hidden relative shrink-0" style="background: #141414; box-shadow: var(--shadow-raised)">
-                                <div class="poster-loading" />
-                                <img src={`https://image.tmdb.org/t/p/w200${m.poster_path}`} class="poster-img absolute inset-0 w-full h-full object-cover" onLoad={e => { e.target.classList.add('img-loaded'); e.target.previousSibling?.classList.add('hidden'); }} alt="" />
-                              </div>
-                            </Show>
-
-                            <div class="flex-1 flex flex-col justify-center py-1 min-w-0 pr-2">
-                              <p class="type-metadata font-bold text-gray-100 group-hover:text-white truncate">
-                                {m.title || m.name}
-                              </p>
-                              {/* gap-2 = 8px; mt-1.5 = 6px */}
-                              <div class="flex items-center gap-2 mt-1.5">
-                                <span class="type-caption bg-white/10 text-gray-300 px-2 py-0.5 rounded border border-white/5 shrink-0">
-                                  {m.media_type === 'tv' ? 'Series' : 'Movie'}
-                                </span>
-                                <Show when={m.status}>
-                                  <span class="type-caption px-2 py-0.5 rounded shrink-0" style="color: var(--p); background: var(--p-dim); border: 1px solid color-mix(in srgb, var(--p) 20%, transparent)">
-                                    {m.status === 'Plan to Watch' ? 'Planned' : m.status}
-                                  </span>
-                                </Show>
-                              </div>
-                              <Show when={m.rating || m.imdbRating}>
-                                <div class="flex items-center gap-3 mt-2.5">
-                                  <Show when={m.rating}>
-                                    <span class="type-metadata font-black flex items-center gap-1" style="color: var(--p)">
-                                      <Icon name="star" class="text-[12px]"/> {m.rating}/10
-                                    </span>
-                                  </Show>
-                                  <Show when={m.imdbRating}>
-                                    <span class="type-metadata font-black flex items-center gap-1 text-[#f5c518]">
-                                      <span class="type-caption font-bold text-gray-500">IMDb</span> {m.imdbRating}
-                                    </span>
-                                  </Show>
-                                </div>
-                              </Show>
-                            </div>
-
-                            <div class="hidden sm:flex self-center pr-4 opacity-0 group-hover:opacity-100" style="transition: opacity 200ms ease-out">
-                              <Icon name="chevron_right" class="text-2xl" style="color: var(--p)"/>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }}
-                  </For>
-                </div>
-              </div>
-            )}
-          </For>
-        </div>
-      </Show>
-
-      {/* Empty timeline */}
-      <Show when={viewMode() === 'timeline' && filtered().length > 0 && timelineItems().length === 0}>
-        <div class="text-center p-12 animate-fade-in" style="color: var(--muted)">
-          <Icon name="event_busy" class="text-5xl mb-3" />
-          <p class="type-metadata font-semibold">Timeline only shows completed titles with a Watch Date or Season Date.</p>
-        </div>
-      </Show>
-
-      {/* Infinite scroll indicator */}
-      <Show when={viewMode() === 'grid' && filtered().length > displayLimit()}>
-        <div class="flex items-center justify-center gap-2 py-8 type-caption" style="color: var(--p)">
-          <Icon name="progress_activity" class="animate-spin text-sm" /> Loading more titles...
-        </div>
-      </Show>
-
-      {/* Filter modal */}
-      <Show when={showFilter()}>
-        <FilterModal
-          filters={filters()}
-          setFilters={(v) => { setFilters(v); setDisplayLimit(20); }}
-          uniqueGenres={uniqueGenres()}
-          uniquePlatforms={uniquePlatforms()}
-          uniqueTags={uniqueTags()}
-          onClose={() => setShowFilter(false)}
-          onFilterChange={props.onFilterChange}
-          onClear={() => { setFilters({ ...defaultFilters, status: 'all' }); props.onFilterChange && props.onFilterChange('all'); setDisplayLimit(20); }}
-        />
-      </Show>
-    </div>
-  );
-}
-
-function FilterModal(props) {
-  onMount(() => document.body.style.overflow = 'hidden');
-  onCleanup(() => document.body.style.overflow = '');
-
-  return (
-    <div
-      class="fixed inset-0 flex items-end sm:items-center justify-center sm:p-4 z-[999999] animate-fade-in"
-      style="background: rgba(0,0,0,0.7); backdrop-filter: blur(8px)"
-      onClick={props.onClose}
-    >
-      {/* p-6 = 24px; pb-32 = 128px for mobile safe area; sm:p-8 = 32px */}
-      <div
-        class="glass-surface w-full max-w-sm rounded-t-[2rem] sm:rounded-[2rem] p-6 pb-32 sm:p-8 shadow-2xl modal-sheet-enter"
-        style="border-color: var(--border-active); background: rgba(9,11,16,0.97)"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Drag handle */}
-        <div class="w-12 h-1.5 rounded-full mx-auto mb-6 sm:hidden" style="background: var(--border-active)" />
-
-        {/* Header — pb-4 = 16px; mb-5 = 20px */}
-        <div class="flex justify-between items-center border-b pb-4 mb-5" style="border-color: var(--border)">
-          <h3 class="type-modal-title text-white flex items-center gap-2" style="font-size: 20px">
-            <Icon name="tune" style="color: var(--p)" /> Filters
-          </h3>
-          <button onClick={props.onClose} class="p-2 rounded-full hover:bg-white/5 active:scale-95" style="color: var(--muted)">
-            <Icon name="close" />
-          </button>
-        </div>
-
-        {/* Filter list — space-y-4 = 16px; max-h pr-1 */}
-        <div class="space-y-4 max-h-[50vh] overflow-y-auto pr-1 hide-scrollbar">
-          <FilterSel label="Status"  val={props.filters.status}   set={(v) => { props.setFilters({ ...props.filters, status: v });   props.onFilterChange && props.onFilterChange(v); }} opts={[{ l: 'All', v: 'all' }, { l: 'Planned', v: 'Planned' }, { l: 'Watching', v: 'Watching' }, { l: 'Completed', v: 'Completed' }]} />
-          <FilterSel label="Tags"    val={props.filters.tag}      set={(v) => props.setFilters({ ...props.filters, tag: v })}      opts={[{ l: 'All Tags', v: 'all' }, ...props.uniqueTags.map(t => ({ l: t, v: t }))]} />
-          <FilterSel label="Type"    val={props.filters.type}     set={(v) => props.setFilters({ ...props.filters, type: v })}     opts={[{ l: 'All', v: 'all' }, { l: 'Movies', v: 'movie' }, { l: 'Series', v: 'tv' }]} />
-          <FilterSel label="Region"  val={props.filters.region}   set={(v) => props.setFilters({ ...props.filters, region: v })}   opts={[{ l: 'All', v: 'all' }, { l: 'Indian', v: 'Indian' }, { l: 'International', v: 'International' }]} />
-          <FilterSel label="Platform" val={props.filters.platform} set={(v) => props.setFilters({ ...props.filters, platform: v })} opts={[{ l: 'All Platforms', v: 'all' }, ...props.uniquePlatforms.map(p => ({ l: p, v: p }))]} />
-          <FilterSel label="Genre"   val={props.filters.genre}    set={(v) => props.setFilters({ ...props.filters, genre: v })}    opts={[{ l: 'All Genres', v: 'all' }, ...props.uniqueGenres.map(g => ({ l: g, v: g }))]} />
-          <RangeFilter label="IMDb"    min={props.filters.imdbMin}    max={props.filters.imdbMax}    setMin={v => props.setFilters({ ...props.filters, imdbMin: v })}    setMax={v => props.setFilters({ ...props.filters, imdbMax: v })}    minPlaceholder="0"    maxPlaceholder="10" />
-          <RangeFilter label="RT %"    min={props.filters.rtMin}      max={props.filters.rtMax}      setMin={v => props.setFilters({ ...props.filters, rtMin: v })}      setMax={v => props.setFilters({ ...props.filters, rtMax: v })}      minPlaceholder="0"    maxPlaceholder="100" />
-          <RangeFilter label="Year"    min={props.filters.yearMin}    max={props.filters.yearMax}    setMin={v => props.setFilters({ ...props.filters, yearMin: v })}    setMax={v => props.setFilters({ ...props.filters, yearMax: v })}    minPlaceholder="1990" maxPlaceholder="2026" />
-          <RangeFilter label="Runtime" min={props.filters.runtimeMin} max={props.filters.runtimeMax} setMin={v => props.setFilters({ ...props.filters, runtimeMin: v })} setMax={v => props.setFilters({ ...props.filters, runtimeMax: v })} minPlaceholder="Min"  maxPlaceholder="Max" />
-          <FilterSel label="Sort By" val={props.filters.sort} set={(v) => props.setFilters({ ...props.filters, sort: v })} opts={[{ l: 'Recently Added', v: 'recent' }, { l: 'Watch Date (Newest)', v: 'watch_desc' }, { l: 'Watch Date (Oldest)', v: 'watch_asc' }, { l: 'Release Year (Newest)', v: 'year_desc' }, { l: 'Rating (High-Low)', v: 'rating_desc' }, { l: 'Title (A-Z)', v: 'title_asc' }]} />
-        </div>
-
-        {/* Actions — gap-2 = 8px; mt-6 = 24px */}
-        <div class="grid grid-cols-2 gap-2 mt-6">
-          <button
-            onClick={props.onClear}
-            class="w-full type-button py-4 rounded-xl"
-            style="background: var(--raised); color: var(--muted); border: 1px solid var(--border)"
-          >
-            Clear All
-          </button>
-          <button
-            onClick={props.onClose}
-            class="w-full type-button py-4 rounded-xl text-[#0c0e14]"
-            style="background: var(--p); box-shadow: 0 0 20px var(--p-glow)"
-          >
-            Apply
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const RangeFilter = (props) => (
-  <div class="grid grid-cols-[90px_1fr] items-center gap-2">
-    <span class="type-label">{props.label}</span>
-    <div class="grid grid-cols-2 gap-2">
-      <input value={props.min} onInput={e => props.setMin(e.target.value)} type="number" placeholder={props.minPlaceholder || 'Min'} class="w-full bg-[#0c0e14] border border-white/10 rounded-xl px-3 py-2 type-metadata text-white outline-none focus:border-[var(--p)]" />
-      <input value={props.max} onInput={e => props.setMax(e.target.value)} type="number" placeholder={props.maxPlaceholder || 'Max'} class="w-full bg-[#0c0e14] border border-white/10 rounded-xl px-3 py-2 type-metadata text-white outline-none focus:border-[var(--p)]" />
-    </div>
-  </div>
-);
-
-const FilterSel = (props) => (
-  <div class="grid grid-cols-[90px_1fr] items-center gap-2">
-    <span class="type-label">{props.label}</span>
-    <select value={props.val} onChange={e => props.set(e.target.value)} class="w-full type-metadata text-white font-medium cursor-pointer">
-      <For each={props.opts}>{(o) => <option value={o.v || o} class="bg-[#0c0e14]">{o.l || o}</option>}</For>
-    </select>
-  </div>
-);
+            <Icon
