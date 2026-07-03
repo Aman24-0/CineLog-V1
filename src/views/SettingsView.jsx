@@ -1,4 +1,5 @@
 import { For, Show, createMemo } from 'solid-js';
+import { Icon } from '../utils';
 
 export function SettingsView(props) {
   const list = () => props.watchlist?.() || [];
