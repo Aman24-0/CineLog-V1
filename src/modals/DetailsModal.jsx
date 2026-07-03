@@ -365,7 +365,7 @@ export function DetailsModal(props) {
 
       <Show when={movie()}>
         <div
-          class="w-full max-w-xl lg:max-w-[800px] bg-[#08090b]/80 backdrop-blur-3xl rounded-t-[2.5rem] sm:rounded-[2.5rem] overflow-hidden border border-white/10 relative max-h-[95vh] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] animate-pop-in flex flex-col"
+          class="w-full max-w-xl lg:max-w-[800px] bg-[#08090b]/80 backdrop-blur-3xl rounded-t-[2.5rem] sm:rounded-[2.5rem] overflow-hidden border border-white/10 relative max-h-[95vh] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] modal-sheet-enter flex flex-col"
           onClick={e => e.stopPropagation()}
         >
           <button
@@ -401,7 +401,7 @@ export function DetailsModal(props) {
                     />
                   </Show>
 
-                  <p class="text-gray-400 text-sm mb-6 leading-relaxed italic border-l-2 border-[var(--primary)]/30 pl-3">
+                  <p class="type-metadata text-gray-400 mb-6 leading-relaxed italic border-l-2 pl-3" style="border-color: color-mix(in srgb, var(--p) 30%, transparent)">
                     "{details().overview || (typeof movie().overview === 'string' ? movie().overview : 'No overview available.')}"
                   </p>
 
@@ -434,7 +434,7 @@ export function DetailsModal(props) {
                   <Show when={effectiveIsPreview()}>
                     <button
                       onClick={addToVaultFromPreview}
-                      class="w-full mt-6 font-black py-4 px-5 rounded-xl text-xs uppercase tracking-widest active:scale-95 transition-transform flex items-center justify-center gap-2 border"
+                      class="w-full mt-6 type-button py-4 px-5 rounded-xl active:scale-95 flex items-center justify-center gap-2 border"
                       style="background: var(--p); color: #05060a; border-color: var(--p); box-shadow: 0 0 24px var(--p-glow); min-height: 52px;"
                     >
                       <Icon name="add_circle" class="text-lg" /> Add to My Universe
@@ -452,7 +452,7 @@ export function DetailsModal(props) {
                             props.onClose();
                           }
                         }}
-                        class="text-red-500/50 hover:text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-colors mx-auto active:scale-95"
+                        class="type-caption text-red-500/50 hover:text-red-500 flex items-center gap-1 mx-auto active:scale-95"
                       >
                         <Icon name="delete" class="text-sm" /> Remove from Universe
                       </button>
