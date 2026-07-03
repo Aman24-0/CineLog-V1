@@ -68,7 +68,7 @@ function UpcomingDetailsModal(props) {
     <div class="fixed inset-0 flex items-center justify-center p-0 sm:p-4 z-[99999999] animate-fade-in" onClick={props.onClose}>
       <div class="absolute inset-0 bg-[#08090b] pointer-events-none">
         <Show when={props.movie?.backdrop_path}>
-           <img src={`https://image.tmdb.org/t/p/w500${props.movie.backdrop_path}`} class="w-full h-full object-cover opacity-40 blur-3xl scale-125" />
+           <img src={`https://image.tmdb.org/t/p/w500${props.movie.backdrop_path}`} class="backdrop-ambient" onLoad={e => e.target.classList.add('img-loaded')} alt="" />
         </Show>
         <div class="absolute inset-0 bg-black/80"></div>
       </div>
@@ -86,9 +86,9 @@ function UpcomingDetailsModal(props) {
               <Show when={details().backdrop_path} fallback={
                 <div class="w-full h-full flex items-center justify-center text-gray-700 bg-[#171921]"><Icon name="movie" class="text-6xl" /></div>
               }>
-                <img src={`https://image.tmdb.org/t/p/original${details().backdrop_path}`} class="w-full h-full object-cover opacity-60" />
+                <img src={`https://image.tmdb.org/t/p/original${details().backdrop_path}`} class="backdrop-img absolute inset-0" onLoad={e => e.target.classList.add('img-loaded')} alt="" />
               </Show>
-              <div class="absolute inset-0 bg-gradient-to-t from-[#08090b]/90 via-[#08090b]/40 to-transparent pointer-events-none" />
+              <div class="backdrop-gradient" />
               <Show when={trailerKey()} fallback={
                 <div class="absolute bottom-4 left-4 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-gray-400 border border-white/5">No Video Available</div>
               }>
@@ -147,7 +147,7 @@ function UpcomingDetailsModal(props) {
                       const d = dir();
                       return (
                         <div onClick={() => setPersonId(d.id)} class="flex flex-col items-center min-w-[70px] shrink-0 cursor-pointer group">
-                          <img src={d.profile_path ? `https://image.tmdb.org/t/p/w200${d.profile_path}` : `https://api.dicebear.com/7.x/initials/svg?seed=${d.name}&backgroundColor=171921`} class="w-16 h-16 rounded-full object-cover border-2 mb-2 bg-[#171921] group-hover:scale-105 transition-all" style="border-color: var(--p2, #fff)" />
+                          <img src={d.profile_path ? `https://image.tmdb.org/t/p/w200${d.profile_path}` : `https://api.dicebear.com/7.x/initials/svg?seed=${d.name}&backgroundColor=171921`} class="poster-img img-loaded w-16 h-16 rounded-full object-cover border-2 mb-2 bg-[#171921] group-hover:scale-105 transition-all" style="border-color: var(--p2, #fff)" onLoad={e => e.target.classList.add('img-loaded')} />
                           <p class="text-[9px] font-black text-center text-white truncate w-full group-hover:text-[var(--p)] transition-colors">{d.name}</p>
                           <p class="text-[7px] font-black text-center uppercase tracking-widest mt-0.5" style="color: var(--p2, #fff)">{details().created_by ? 'Creator' : 'Director'}</p>
                         </div>
@@ -157,7 +157,7 @@ function UpcomingDetailsModal(props) {
                   <For each={details().credits?.cast?.slice(0, 5)}>
                     {(c) => (
                       <div onClick={() => setPersonId(c.id)} class="flex flex-col items-center min-w-[70px] shrink-0 cursor-pointer group">
-                        <img src={c.profile_path ? `https://image.tmdb.org/t/p/w200${c.profile_path}` : `https://api.dicebear.com/7.x/initials/svg?seed=${c.name}&backgroundColor=171921`} class="w-16 h-16 rounded-full object-cover border border-white/10 mb-2 bg-[#171921] group-hover:border-[var(--p)] group-hover:scale-105 transition-all" />
+                        <img src={c.profile_path ? `https://image.tmdb.org/t/p/w200${c.profile_path}` : `https://api.dicebear.com/7.x/initials/svg?seed=${c.name}&backgroundColor=171921`} class="poster-img w-16 h-16 rounded-full object-cover border border-white/10 mb-2 bg-[#171921]" onLoad={e => e.target.classList.add('img-loaded')} />
                         <p class="text-[9px] font-black text-center text-white truncate w-full group-hover:text-[var(--p)] transition-colors">{c.name}</p>
                         <p class="text-[7px] text-gray-500 text-center uppercase truncate w-full mt-0.5 font-bold">{c.character}</p>
                       </div>
@@ -350,9 +350,12 @@ export function UpcomingView(props) {
                         <span class="text-[7px] font-bold uppercase" style="color: var(--p)">{month}</span>
                       </div>
                     </div>
-                    <div class="w-[calc(100%-5rem)] md:w-[calc(50%-3rem)] glass-surface p-3 rounded-[1.5rem] border border-white/5 transition-all shadow-lg flex gap-4 animate-pop-in hover:bg-white/[0.02]" style="border-color: var(--border-active)">
+                    <div class="w-[calc(100%-5rem)] md:w-[calc(50%-3rem)] upcoming-card p-3 rounded-[1.5rem] flex gap-4 animate-fade-up">
                       <Show when={m.poster_path} fallback={<div class="w-16 h-24 bg-[#171921] rounded-xl flex items-center justify-center"><Icon name="movie" class="text-gray-600" /></div>}>
-                        <img src={`https://image.tmdb.org/t/p/w200${m.poster_path}`} class="w-16 h-24 rounded-xl object-cover shadow-md bg-[#171921]" />
+                        <div class="w-16 h-24 rounded-xl overflow-hidden relative shrink-0" style="background: #141414; box-shadow: var(--shadow-card); flex-shrink: 0">
+                        <div class="poster-loading" />
+                        <img src={`https://image.tmdb.org/t/p/w200${m.poster_path}`} class="poster-img absolute inset-0 w-full h-full object-cover" onLoad={e => { e.target.classList.add('img-loaded'); e.target.previousSibling?.classList.add('hidden'); }} alt="" />
+                      </div>
                       </Show>
                       <div class="flex-1 flex flex-col justify-center py-1 min-w-0">
                         <p class="font-bold text-sm text-gray-100 line-clamp-2 transition-colors" style="group-hover:color: var(--p)">{m.title}</p>

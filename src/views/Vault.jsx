@@ -273,22 +273,17 @@ export function Vault(props) {
 
                           {/* Card */}
                           <div
-                            class="glass-surface w-full p-3 rounded-[1.5rem] border hover:bg-white/5 shadow-md flex gap-4"
-                            style="border-color: var(--border); transition: background 200ms ease-out, border-color 200ms ease-out"
-                            onMouseEnter={e => { e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--p) 30%, transparent)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; }}
+                            class="upcoming-card w-full p-3 rounded-[1.5rem] flex gap-4"
                           >
                             <Show when={m.poster_path} fallback={
                               <div class="w-14 h-20 sm:w-16 sm:h-24 bg-[#171921] rounded-xl flex items-center justify-center shrink-0 border border-white/5">
                                 <Icon name="movie" class="text-gray-600"/>
                               </div>
                             }>
-                              <img
-                                src={`https://image.tmdb.org/t/p/w200${m.poster_path}`}
-                                class="w-14 h-20 sm:w-16 sm:h-24 rounded-xl object-cover shadow-md bg-[#171921] shrink-0"
-                                style="opacity: 0; transition: opacity 350ms ease-out"
-                                onLoad={e => { e.target.style.opacity = '1'; }}
-                              />
+                              <div class="w-14 h-20 sm:w-16 sm:h-24 rounded-xl overflow-hidden relative shrink-0" style="background: #141414; box-shadow: var(--shadow-raised)">
+                                <div class="poster-loading" />
+                                <img src={`https://image.tmdb.org/t/p/w200${m.poster_path}`} class="poster-img absolute inset-0 w-full h-full object-cover" onLoad={e => { e.target.classList.add('img-loaded'); e.target.previousSibling?.classList.add('hidden'); }} alt="" />
+                              </div>
                             </Show>
 
                             <div class="flex-1 flex flex-col justify-center py-1 min-w-0 pr-2">

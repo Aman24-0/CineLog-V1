@@ -54,7 +54,7 @@ function AddToFolderModal(props) {
           <For each={shown()}>
             {(m) => (
               <div class="flex items-center gap-3 rounded-xl p-3" style="background:var(--raised)">
-                <img src={m.poster_path ? `https://image.tmdb.org/t/p/w92${m.poster_path}` : ''} class="w-10 h-14 rounded-lg object-cover bg-black/40" />
+                <img src={m.poster_path ? `https://image.tmdb.org/t/p/w92${m.poster_path}` : ''} class="poster-img w-10 h-14 rounded-lg object-cover bg-black/40" onLoad={e => e.target.classList.add('img-loaded')} />
                 <div class="flex-1 min-w-0">
                   <p class="text-white font-bold truncate">{m.title || m.name}</p>
                   <p class="text-[10px] text-gray-400">{(m.release_date || m.first_air_date || '').split('-')[0]} · {m.media_type === 'tv' ? 'Series' : 'Movie'}</p>
@@ -348,9 +348,10 @@ export function FranchisesView(props) {
     const bgImage = () => f.coverImage || (firstMovie()?.backdrop_path ? `https://image.tmdb.org/t/p/w500${firstMovie().backdrop_path}` : 'none');
     const movieCount = () => props.watchlist().filter(m => m.franchises && Object.keys(m.franchises).some(fid => folderIds().has(fid))).length;
     return (
-      <div onClick={() => setCurrentFolder(f.id)} class="relative rounded-[1.75rem] cursor-pointer group transition-all shadow-2xl flex flex-col justify-end min-h-[160px] overflow-hidden" style="border: 1px solid var(--border-active); background: var(--raised)">
+      <div onClick={() => setCurrentFolder(f.id)} class="franchise-card relative cursor-pointer group flex flex-col justify-end min-h-[160px] overflow-hidden" style="background: var(--raised)">
         <Show when={bgImage() !== 'none'}>
-          <img src={bgImage()} class="absolute inset-0 w-full h-full object-cover z-0 transition-transform duration-500 group-hover:scale-105" />
+          <img src={bgImage()} class="backdrop-img absolute inset-0 z-0 group-hover:scale-105" onLoad={e => e.target.classList.add('img-loaded')} alt="" />
+        <div class="absolute inset-0 z-10" style="background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.10) 100%); pointer-events: none" />
           <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent z-10" />
         </Show>
         <div class="relative z-20 p-6 w-full flex flex-col justify-end"><div class="label-mono mb-1" style="color: var(--p)">Collection</div><h3 class="font-headline text-3xl text-white leading-tight drop-shadow-lg">{f.name}</h3><p class="label-mono mt-1" style="color: var(--muted)">{movieCount()} titles</p></div>
@@ -420,7 +421,7 @@ export function FranchisesView(props) {
                     </Show>
 
                     <div class="flex-1 flex items-center gap-3 cursor-pointer min-w-0" onClick={() => props.openMovie(m.id)}>
-                      <img src={`https://image.tmdb.org/t/p/w200${m.poster_path}`} class="w-11 h-16 rounded-xl object-cover shadow-md shrink-0" />
+                      <img src={`https://image.tmdb.org/t/p/w200${m.poster_path}`} class="poster-img img-loaded w-11 h-16 rounded-xl object-cover shrink-0" style="box-shadow: var(--shadow-card)" onLoad={e => e.target.classList.add('img-loaded')} />
                       <div class="min-w-0">
                         <p class="font-bold text-sm text-white truncate">{m.title || m.name}</p>
                         <p class="label-mono mt-1" style="font-size: 8px; color: var(--muted)">{(m.release_date || m.first_air_date || '').split('-')[0]}</p>
@@ -435,7 +436,7 @@ export function FranchisesView(props) {
 
           <Show when={sortMode() === 'grouped'}>
             <div class="space-y-6">
-              <For each={groupedByCollection()}>{(group)=><div><h4 class="font-bold text-white mb-2">{group.name}</h4><div class="space-y-2"><For each={group.items}>{(m)=><div class="rounded-xl p-3 flex items-center gap-3" style="background:var(--surface)"><img src={`https://image.tmdb.org/t/p/w92${m.poster_path}`} class="w-10 h-14 rounded-lg object-cover"/><button class="text-left text-white font-bold truncate" onClick={()=>props.openMovie(m.id)}>{m.title || m.name}</button></div>}</For></div></div>}</For>
+              <For each={groupedByCollection()}>{(group)=><div><h4 class="font-bold text-white mb-2">{group.name}</h4><div class="space-y-2"><For each={group.items}>{(m)=><div class="rounded-xl p-3 flex items-center gap-3" style="background:var(--surface)"><img src={`https://image.tmdb.org/t/p/w92${m.poster_path}`} class="poster-img w-10 h-14 rounded-lg object-cover" onLoad={e => e.target.classList.add('img-loaded')} /><button class="text-left text-white font-bold truncate" onClick={()=>props.openMovie(m.id)}>{m.title || m.name}</button></div>}</For></div></div>}</For>
             </div>
           </Show>
         </Show>
