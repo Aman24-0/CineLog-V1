@@ -358,14 +358,14 @@ export function DetailsModal(props) {
     <div class="fixed inset-0 z-[999999] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in" onClick={props.onClose}>
       <div class="absolute inset-0 bg-[#08090b] overflow-hidden pointer-events-none">
         <Show when={movie()?.backdrop_path}>
-          <img src={`https://image.tmdb.org/t/p/w500${movie().backdrop_path}`} class="w-full h-full object-cover opacity-40 blur-3xl scale-125" />
+          <img src={`https://image.tmdb.org/t/p/w500${movie().backdrop_path}`} class="backdrop-ambient" onLoad={e => e.target.classList.add('img-loaded')} />
         </Show>
         <div class="absolute inset-0 bg-black/60"></div>
       </div>
 
       <Show when={movie()}>
         <div
-          class="w-full max-w-xl lg:max-w-[800px] bg-[#08090b]/80 backdrop-blur-3xl rounded-t-[2.5rem] sm:rounded-[2.5rem] overflow-hidden border border-white/10 relative max-h-[95vh] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] modal-sheet-enter flex flex-col"
+          class="w-full max-w-xl lg:max-w-[800px] bg-[#08090b]/80 backdrop-blur-3xl rounded-t-[2.5rem] sm:rounded-[2.5rem] overflow-hidden border relative max-h-[95vh] modal-sheet-enter flex flex-col" style="border-color: rgba(255,255,255,0.09); box-shadow: var(--shadow-float), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.04)"
           onClick={e => e.stopPropagation()}
         >
           <button

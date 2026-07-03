@@ -91,7 +91,7 @@ export function PersonModal(props) {
     >
       <div class="absolute inset-0 bg-black/80 backdrop-blur-sm pointer-events-none"></div>
       <div
-        class="w-full max-w-3xl lg:max-w-[800px] bg-[#111111] sm:rounded-[2.5rem] rounded-t-[2.5rem] border border-white/10 relative h-[90vh] shadow-2xl flex flex-col overflow-hidden animate-pop-in"        
+        class="w-full max-w-3xl lg:max-w-[800px] bg-[#111111] sm:rounded-[2.5rem] rounded-t-[2.5rem] border border-white/10 relative h-[90vh] flex flex-col overflow-hidden modal-sheet-enter" style="box-shadow: var(--shadow-float), 0 0 0 1px rgba(255,255,255,0.06)"        
         onClick={e => e.stopPropagation()}
       >
         <button
@@ -108,7 +108,7 @@ export function PersonModal(props) {
               src={person().profile_path
                 ? `https://image.tmdb.org/t/p/w300${person().profile_path}`
                 : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(person().name)}&backgroundColor=171921`}
-              class="w-28 h-40 object-cover rounded-xl shadow-lg border border-white/10 shrink-0"
+              class="poster-img img-loaded w-28 h-40 object-cover rounded-xl border border-white/10 shrink-0" style="box-shadow: var(--shadow-raised)" onLoad={e => e.target.classList.add('img-loaded')}
             />
             <div class="flex-1 overflow-hidden">
               <h2 class="text-2xl font-black text-white truncate">{person().name}</h2>

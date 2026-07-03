@@ -205,9 +205,8 @@ export function SearchModal(props) {
                       src={item.profile_path
                         ? `https://image.tmdb.org/t/p/w92${item.profile_path}`
                         : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(item.name)}&backgroundColor=171921`}
-                      class="w-12 h-12 rounded-full object-cover border border-white/10 shrink-0"
-                      style="opacity: 0; transition: opacity 300ms ease-out, border-color 150ms ease-out"
-                      onLoad={e => { e.target.style.opacity = '1'; }}
+                      class="poster-img w-12 h-12 rounded-full object-cover border border-white/10 shrink-0"
+                      onLoad={e => { e.target.classList.add('img-loaded'); }}
                       onMouseEnter={e => { e.target.style.borderColor = 'var(--p)'; }}
                       onMouseLeave={e => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; }}
                     />
@@ -241,12 +240,10 @@ export function SearchModal(props) {
                       <Icon name="movie" class="text-gray-600"/>
                     </div>
                   }>
-                    <img
-                      src={`https://image.tmdb.org/t/p/w200${item.poster_path}`}
-                      class="w-14 h-20 rounded-xl object-cover shadow-md bg-[#171921] shrink-0"
-                      style="opacity: 0; transition: opacity 300ms ease-out"
-                      onLoad={e => { e.target.style.opacity = '1'; }}
-                    />
+                    <div class="w-14 h-20 rounded-xl overflow-hidden relative shrink-0" style="background: #141414; box-shadow: var(--shadow-card)">
+                      <div class="poster-loading" />
+                      <img src={`https://image.tmdb.org/t/p/w200${item.poster_path}`} class="poster-img absolute inset-0 w-full h-full object-cover" onLoad={e => { e.target.classList.add('img-loaded'); e.target.previousSibling?.classList.add('hidden'); }} alt="" />
+                    </div>
                   </Show>
 
                   {/* Info */}
