@@ -59,7 +59,6 @@ export default function App() {
   const [splashWait, setSplashWait] = createSignal(true);
   const [activeVaultStatus, setActiveVaultStatus] = createSignal('all');
   
-  // Global Scroll-to-Top State
   const [showScrollTop, setShowScrollTop] = createSignal(false);
   
   const {
@@ -83,7 +82,6 @@ export default function App() {
   onMount(() => {
     setTimeout(() => setSplashWait(false), 3000);
     
-    // Scroll Event Listener
     const handleScroll = () => setShowScrollTop(window.scrollY > 400);
     window.addEventListener('scroll', handleScroll);
     
@@ -147,27 +145,23 @@ export default function App() {
       <div class="cinelog-root min-h-screen pb-32 lg:pb-0 lg:pl-64">
         <Show when={!loading() && !splashWait()} fallback={<LoadingScreen />}>
           
-          {/* ─ HEADER ── */}
           <header class="sticky top-0 z-[100] flex justify-between items-center px-6 py-4"
             style="background: #000; border-bottom: 1px solid rgba(255,255,255,0.08);">
             
-            {/* Logo Container */}
-<div class="flex items-center gap-3">
-  <div class="flex items-center gap-2 cursor-pointer active:scale-95 transition-transform"
-    onClick={() => window.location.reload()}>
-    <div class="w-8 h-8 rounded-xl flex items-center justify-center"
-      style="background: var(--p-dim); border: 1px solid var(--border-active)">
-      <Icon name="movie_filter" fill class="text-sm" style="color: var(--p)" />
-    </div>
-    <h2 class="font-headline text-2xl text-white leading-none">
-      CINE<span style="color: var(--p)">LOG</span>
-    </h2>
-  </div>
-</div>
-
-            {/* Header Controls */}
             <div class="flex items-center gap-3">
-              {/* Login / Profile Toggle */}
+              <div class="flex items-center gap-2 cursor-pointer active:scale-95 transition-transform"
+                onClick={() => window.location.reload()}>
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center"
+                  style="background: var(--p-dim); border: 1px solid var(--border-active)">
+                  <Icon name="movie_filter" fill class="text-sm" style="color: var(--p)" />
+                </div>
+                <h2 class="font-headline text-2xl text-white leading-none">
+                  CINE<span style="color: var(--p)">LOG</span>
+                </h2>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3">
               <Show when={user()} fallback={
                 <button
                   onClick={handleLogin}
@@ -187,7 +181,6 @@ export default function App() {
             </div>
           </header>
 
-          {/* ── MAIN ── */}
           <main class="p-5 max-w-2xl lg:max-w-none lg:px-12 mx-auto relative z-10">
             <Show when={view() === 'dashboard'}>
               <Dashboard watchlist={watchlist} openMovie={setDetailsId} setView={setView} showToast={showToast} setActiveVaultStatus={setActiveVaultStatus} isGuest={!user()} onLogin={handleLogin} uid={user()?.uid} onSearch={(term) => { setSearchInitialQuery(term || ''); setSearchModal(true); }} />
@@ -214,11 +207,10 @@ export default function App() {
               </Show>
             </Show>
             <Show when={view() === 'settings'}>
-              <SettingsView user={user()} theme={theme()} setTheme={setTheme} onLogout={() => signOut(auth)} onNuke={nukeCollection} uid={user()?.uid} showToast={showToast} setView={setView} onServerSettings={() => setServerSettingsModal(true)} />
+              <SettingsView user={user()} watchlist={watchlist} theme={theme()} setTheme={setTheme} onLogout={() => signOut(auth)} onNuke={nukeCollection} uid={user()?.uid} showToast={showToast} setView={setView} onServerSettings={() => setServerSettingsModal(true)} />
             </Show>
           </main>
 
-          {/* ── DESKTOP SIDEBAR ── */}
           <div class="hidden lg:flex fixed top-0 left-0 h-screen w-64 bg-black border-r border-white/10 z-40 flex-col pt-24 px-6 gap-2">
             <NavBtn icon="dashboard" label="Home" active={view() === 'dashboard'} onClick={() => setView('dashboard')} />
             <NavBtn icon="visibility" label="Vault" active={view() === 'watchlist'} onClick={() => setView('watchlist')} />
@@ -227,7 +219,6 @@ export default function App() {
             <NavBtn icon="calendar_month" label="Upcoming" active={view() === 'upcoming'} onClick={() => setView('upcoming')} />
           </div>
 
-          {/* ── MOBILE BOTTOM NAV ── */}
           <nav class="fixed bottom-0 left-0 w-full z-[100] flex lg:hidden bottom-nav-bar h-16">
             <NavBtn icon="dashboard" label="Home" active={view() === 'dashboard'} onClick={() => setView('dashboard')} />
             <NavBtn icon="visibility" label="Vault" active={view() === 'watchlist'} onClick={() => setView('watchlist')} />
@@ -236,7 +227,6 @@ export default function App() {
             <NavBtn icon="calendar_month" label="Upcoming" active={view() === 'upcoming'} onClick={() => setView('upcoming')} />
           </nav>
 
-          {/* ── MODALS ── */}
           <Show when={searchModal()}>
             <SearchModal
               onClose={() => { setSearchModal(false); setSearchInitialQuery(''); }}
@@ -279,7 +269,6 @@ export default function App() {
             />
           </Show>
 
-          {/* ── GLOBAL SCROLL TO TOP FAB ── */}
           <Show when={showScrollTop()}>
             <button
               onClick={scrollToTop}
@@ -291,9 +280,7 @@ export default function App() {
             </button>
           </Show>
 
-          {/* ── GLOBAL TOAST BANNER (FIXED POSITIONING) ── */}
           <Show when={toast().show}>
-            {/* Wrapper added to guarantee absolute horizontal centering independent of other fixed elements */}
             <div class="fixed inset-x-0 bottom-28 pointer-events-none flex justify-center z-[10000000]">
               <div class="glass-surface px-6 py-3 rounded-full shadow-2xl flex gap-2 items-center text-sm font-bold whitespace-nowrap animate-pop-in border"
                 style="border-color: var(--p); color: var(--text)">
