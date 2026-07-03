@@ -18,7 +18,7 @@ body.theme-netflix    { --p: #ff2d55; --p2: #ff9500; --p-glow: rgba(255,45,85,0.
 body.theme-interstellar { --p: #00c2ff; --p2: #f9a620; --p-glow: rgba(0,194,255,0.22); --p-dim: rgba(0,194,255,0.08); }
 body.theme-neonhorizon { --p: #ff2af0; --p2: #00ffe7; --p-glow: rgba(255,42,240,0.22); --p-dim: rgba(255,42,240,0.08); }
 body.theme-vibranium  { --p: #9d4edd; --p2: #06ffd4; --p-glow: rgba(157,78,221,0.22); --p-dim: rgba(157,78,221,0.08); }
-body.theme-cinematic { --p: #FFD700; --p2: #FF6B00; --p-glow: rgba(255,215,0,0.40); --p-dim: rgba(255,215,0,0.10); --void: #000; --deep: #000; --surface: #111111; --raised: #171722; --border: rgba(255,215,0,0.10); --border-active: rgba(255,215,0,0.40); --text: #F5F5F5; --muted: #8A8A9A; --dim: rgba(138,138,154,0.32); }
+body.theme-cinematic  { --p: #FFD700; --p2: #FF6B00; --p-glow: rgba(255,215,0,0.40); --p-dim: rgba(255,215,0,0.10); --void: #000; --deep: #000; --surface: #111111; --raised: #171722; --border: rgba(255,215,0,0.10); --border-active: rgba(255,215,0,0.40); --text: #F5F5F5; --muted: #8A8A9A; --dim: rgba(138,138,154,0.32); }
 
 :root {
   --void: #000000;
@@ -52,6 +52,23 @@ body.theme-cinematic { --p: #FFD700; --p2: #FF6B00; --p-glow: rgba(255,215,0,0.4
   --dur-modal:     280ms;
   --dur-page:      320ms;
   --dur-slow:      450ms;
+
+  /* ── CARD DEPTH SYSTEM ── */
+  /* Three shadow levels for visual hierarchy */
+  --shadow-card:    0 2px 8px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.4);
+  --shadow-raised:  0 4px 16px rgba(0,0,0,0.6), 0 16px 48px rgba(0,0,0,0.5);
+  --shadow-float:   0 8px 32px rgba(0,0,0,0.7), 0 24px 64px rgba(0,0,0,0.6);
+  /* Glow shadow — composited on hover */
+  --shadow-glow:    0 0 0 1px var(--p), 0 0 24px var(--p-glow), 0 12px 40px rgba(0,0,0,0.8);
+
+  /* ── CORNER RADIUS SYSTEM ── */
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-card: 16px;
+  --radius-lg:   20px;
+  --radius-xl:   24px;
+  --radius-2xl:  28px;
+  --radius-modal:32px;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -73,20 +90,14 @@ header.sticky {
   border-bottom: 1px solid rgba(255,255,255,0.1) !important;
 }
 
-/* ── AMBIENT ORBS ── */
 .cinelog-root { position: relative; isolation: isolate; }
 
 /* ═══════════════════════════════════════════════════════════
    TYPOGRAPHY SYSTEM
-   Hierarchy: Hero → PageTitle → SectionTitle → CardTitle
-              → Subtitle → Metadata → Label → Caption
    ═══════════════════════════════════════════════════════════ */
-
-/* FONTS */
 .font-headline { font-family: 'Bebas Neue', cursive; letter-spacing: 0.04em; }
 .font-mono     { font-family: 'Azeret Mono', monospace; }
 
-/* HERO — Splash screen / featured backdrop titles */
 .type-hero {
   font-family: 'Bebas Neue', cursive;
   font-size: clamp(3.5rem, 10vw, 7rem);
@@ -94,105 +105,83 @@ header.sticky {
   letter-spacing: 0.04em;
   color: #fff;
 }
-
-/* PAGE TITLE — View header titles (Vault, Dashboard) */
 .type-page-title {
   font-family: 'Bebas Neue', cursive;
-  font-size: 2.25rem;          /* 36px */
+  font-size: 2.25rem;
   line-height: 1;
   letter-spacing: 0.04em;
   color: #fff;
 }
-
-/* SECTION TITLE — "Recently Added", "Continue Watching" */
 .type-section-title {
   font-family: 'Azeret Mono', monospace;
-  font-size: 0.6875rem;        /* 11px */
+  font-size: 0.6875rem;
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--p);
 }
-
-/* MODAL TITLE — Details modal film/show name */
 .type-modal-title {
   font-family: 'Outfit', sans-serif;
-  font-size: 1.5rem;            /* 24px */
+  font-size: 1.5rem;
   font-weight: 900;
   line-height: 1.15;
   letter-spacing: -0.01em;
   color: #fff;
 }
-
-/* CARD TITLE — Poster card overlay title */
 .type-card-title {
   font-family: 'Outfit', sans-serif;
-  font-size: 0.6875rem;         /* 11px */
+  font-size: 0.6875rem;
   font-weight: 700;
   line-height: 1.3;
   color: #fff;
-  text-shadow: 0 1px 8px rgba(0,0,0,1);
+  text-shadow: 0 1px 8px rgba(0,0,0,1), 0 2px 16px rgba(0,0,0,0.8);
 }
-
-/* SUBTITLE — Year · Type · Runtime under modal title */
 .type-subtitle {
   font-family: 'Azeret Mono', monospace;
-  font-size: 0.5625rem;         /* 9px */
+  font-size: 0.5625rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: rgba(255,255,255,0.45);
 }
-
-/* METADATA — Info grid values, stats */
 .type-metadata {
   font-family: 'Outfit', sans-serif;
-  font-size: 0.8125rem;         /* 13px */
+  font-size: 0.8125rem;
   font-weight: 600;
   line-height: 1.4;
   color: #d0d4de;
 }
-
-/* LABEL — Form labels, info row keys */
 .type-label {
   font-family: 'Azeret Mono', monospace;
-  font-size: 0.5625rem;         /* 9px */
+  font-size: 0.5625rem;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--muted);
 }
-
-/* BUTTON — Primary action text */
 .type-button {
   font-family: 'Outfit', sans-serif;
-  font-size: 0.6875rem;         /* 11px */
+  font-size: 0.6875rem;
   font-weight: 900;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
-
-/* CAPTION — Smallest text: badges, chips, rating labels */
 .type-caption {
   font-family: 'Azeret Mono', monospace;
-  font-size: 0.5rem;            /* 8px */
+  font-size: 0.5rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted);
 }
-
-/* STAT NUMBER — Vault count, analytics big numbers */
 .type-stat {
   font-family: 'Bebas Neue', cursive;
-  font-size: 2rem;              /* 32px */
+  font-size: 2rem;
   line-height: 1;
   letter-spacing: 0.02em;
   color: #fff;
 }
-
-/* Legacy helper kept — maps to type-label */
 .label-mono {
   font-family: 'Azeret Mono', monospace;
   font-size: 9px; font-weight: 700;
@@ -200,66 +189,150 @@ header.sticky {
   color: var(--muted);
 }
 
-/* ── GLASS ── */
+/* ── GLASS SURFACES ── */
 .glass-surface {
   background: #111111;
   border: 1px solid rgba(255,255,255,0.08);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  box-shadow: var(--shadow-card);
+}
+
+/* ── STAT CARD ── upgraded depth vs previous shadow-sm */
+.stat-card {
+  background: #141414;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition:
+    background     var(--dur-base) var(--ease-out),
+    border-color   var(--dur-base) var(--ease-out),
+    box-shadow     var(--dur-base) var(--ease-out),
+    transform      var(--dur-base) var(--ease-spring);
+}
+.stat-card:hover {
+  background: #1a1a1a;
+  border-color: rgba(255,255,255,0.10);
+  box-shadow: var(--shadow-raised);
+  transform: translateY(-2px);
+}
+.stat-card:active {
+  transform: scale(0.96) translateY(0);
+  box-shadow: var(--shadow-card);
+  transition-duration: var(--dur-fast);
 }
 
 /* ═══════════════════════════════════════════════════════════
-   MOVIE CARD — polish: image fade, hover spring, press
+   MOVIE CARD — Premium poster frame
    ═══════════════════════════════════════════════════════════ */
 .movie-card {
   cursor: pointer;
-  /* Spring-based hover: scale goes up then settles */
   transition:
-    transform var(--dur-base) var(--ease-spring),
-    opacity   var(--dur-base) var(--ease-out);
+    transform  var(--dur-base) var(--ease-spring),
+    opacity    var(--dur-base) var(--ease-out);
 }
-.movie-card:hover  { transform: translateY(-4px) scale(1.03); }
-.movie-card:active { transform: translateY(0)    scale(0.96); transition-duration: var(--dur-fast); }
+.movie-card:hover  { transform: translateY(-5px) scale(1.035); }
+.movie-card:active { transform: translateY(0) scale(0.95); transition-duration: var(--dur-fast); }
 
 .movie-card-inner {
   aspect-ratio: 2/3;
-  border-radius: 16px;
+  border-radius: var(--radius-card);
   overflow: hidden;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+  /* Layered border: subtle inside, transparent outside for glow */
+  border: 1px solid rgba(255,255,255,0.07);
+  /* Inner edge highlight — faint top gloss */
+  box-shadow:
+    var(--shadow-raised),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  background: #141414;
+  position: relative;
   transition:
     border-color var(--dur-base) var(--ease-out),
     box-shadow   var(--dur-base) var(--ease-out);
-  position: relative;
-}
-.movie-card-inner::after {
-  content: none;
-  position: absolute; inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 40%, transparent 70%);
-  pointer-events: none;
 }
 
-/* Image fade-in on load */
-.movie-card-inner img {
-  width: 100%; height: 100%;
-  object-fit: cover;
-  filter: brightness(0.9);
-  opacity: 0;
-  transition:
-    opacity  var(--dur-slow) var(--ease-out),
-    filter   var(--dur-base) var(--ease-out),
-    transform var(--dur-slow) var(--ease-smooth);
-}
-.movie-card-inner img.loaded,
-.movie-card-inner img[src] { opacity: 1; }
-
-/* Subtle zoom on hover for the image inside */
-.movie-card:hover .movie-card-inner img { filter: brightness(1.02); }
+/* Hover: glow ring + deeper shadow — no layout-shifting border-top */
 .movie-card:hover .movie-card-inner {
-  border-color: var(--p, #a8ff78);
-  border-top: 2px solid var(--p);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 20px var(--p-glow);
+  border-color: color-mix(in srgb, var(--p) 55%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--p) 40%, transparent),
+    0 0 28px var(--p-glow),
+    0 20px 60px rgba(0,0,0,0.85),
+    inset 0 1px 0 rgba(255,255,255,0.08);
 }
+
+/* Poster image — always starts invisible, fades in on load */
+.movie-card-inner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0;
+  transform: scale(1.02); /* starts slightly zoomed — settles on load */
+  transition:
+    opacity    var(--dur-slow) var(--ease-out),
+    transform  var(--dur-slow) var(--ease-smooth),
+    filter     var(--dur-base) var(--ease-out);
+  filter: brightness(0.88) saturate(0.9);
+}
+.movie-card-inner img.img-loaded {
+  opacity: 1;
+  transform: scale(1);
+  filter: brightness(0.85) saturate(0.95);
+}
+/* Subtle image enhancement on hover */
+.movie-card:hover .movie-card-inner img {
+  filter: brightness(0.72) saturate(1.0);
+  transform: scale(1.04);
+}
+
+/* ── POSTER CINEMATIC GRADIENT OVERLAY ── */
+/* Always present — never toggled — provides text readability + depth */
+.movie-card-inner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* Three-stop cinematic gradient:
+     Heavy black at bottom (text area), mid fadeout, top vignette */
+  background:
+    linear-gradient(
+      to top,
+      rgba(0,0,0,0.97) 0%,
+      rgba(0,0,0,0.75) 28%,
+      rgba(0,0,0,0.18) 55%,
+      rgba(0,0,0,0.08) 75%,
+      transparent      100%
+    ),
+    /* top vignette for badge legibility */
+    linear-gradient(
+      to bottom,
+      rgba(0,0,0,0.45) 0%,
+      transparent 30%
+    );
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Skeleton placeholder — shows before image loads */
+.poster-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  overflow: hidden;
+  /* Subtle film-strip texture on top of shimmer */
+  background:
+    linear-gradient(
+      105deg,
+      rgba(255,255,255,0.00) 25%,
+      rgba(255,255,255,0.055) 50%,
+      rgba(255,255,255,0.00) 75%
+    ),
+    linear-gradient(to bottom, #161616, #0e0e0e);
+  background-size: 300% 100%, 100% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+.poster-loading.hidden { opacity: 0; pointer-events: none; }
 
 /* ── NAV ── */
 .nav-pill {
@@ -270,11 +343,10 @@ header.sticky {
   content: '';
   position: absolute;
   bottom: 100%; left: 0; right: 0;
-  height: 40px;
-  background: linear-gradient(to top, #000 0%, transparent 100%);
+  height: 48px;
+  background: linear-gradient(to top, rgba(0,0,0,0.98) 0%, transparent 100%);
   pointer-events: none;
 }
-
 .bottom-nav-bar {
   background: #000;
   border-top: 1px solid rgba(255,255,255,0.08);
@@ -283,26 +355,23 @@ header.sticky {
   content: '';
   position: absolute;
   bottom: 100%; left: 0; right: 0;
-  height: 40px;
-  background: linear-gradient(to top, #000 0%, transparent 100%);
+  height: 48px;
+  background: linear-gradient(to top, rgba(0,0,0,0.98) 0%, transparent 100%);
   pointer-events: none;
 }
-
-/* Active Nav Indicator */
 .bottom-nav-bar .rounded-b-full,
 .nav-pill .rounded-b-full {
   height: 3px !important;
   width: 2.5rem !important;
   box-shadow: 0 0 8px var(--p);
-  /* Smooth indicator slide */
   transition: background var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
 }
 
 /* ── TYPOGRAPHY COLOR HELPERS ── */
-.text-p   { color: var(--p, #a8ff78); }
-.text-p2  { color: var(--p2, #ff78c4); }
+.text-p    { color: var(--p, #a8ff78); }
+.text-p2   { color: var(--p2, #ff78c4); }
 .text-muted { color: var(--muted); }
-.text-dim { color: var(--dim); }
+.text-dim  { color: var(--dim); }
 
 /* ── INPUT ── */
 input, select {
@@ -312,9 +381,12 @@ input, select {
   border-radius: 12px;
   color: var(--text);
   outline: none;
-  transition: border-color var(--dur-base) var(--ease-out);
+  transition: border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
 }
-input:focus, select:focus { border-color: var(--p, #a8ff78); }
+input:focus, select:focus {
+  border-color: var(--p, #a8ff78);
+  box-shadow: 0 0 0 3px var(--p-dim);
+}
 input::placeholder { color: var(--dim); }
 select { appearance: none; padding: 10px 12px; font-size: 12px; }
 select option { background: var(--raised); }
@@ -331,24 +403,9 @@ select option { background: var(--raised); }
 .filled { font-variation-settings: 'FILL' 1; }
 
 /* ═══════════════════════════════════════════════════════════
-   SKELETON / POSTER LOADING
-   - Shimmer is tighter (1.4s) and wider sweep
-   - Dedicated poster-skeleton class for 2:3 aspect ratio
+   SKELETON / SHIMMER
    ═══════════════════════════════════════════════════════════ */
 .skeleton-bg {
-  background: linear-gradient(
-    105deg,
-    rgba(255,255,255,0.02) 25%,
-    rgba(255,255,255,0.07) 50%,
-    rgba(255,255,255,0.02) 75%
-  );
-  background-size: 300% 100%;
-  animation: shimmer 1.4s ease-in-out infinite;
-}
-
-/* Poster-specific loading state — fills card before image arrives */
-.poster-loading {
-  position: absolute; inset: 0;
   background: linear-gradient(
     105deg,
     rgba(255,255,255,0.02) 25%,
@@ -357,10 +414,7 @@ select option { background: var(--raised); }
   );
   background-size: 300% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
-  border-radius: inherit;
-  transition: opacity var(--dur-base) var(--ease-out);
 }
-.poster-loading.hidden { opacity: 0; pointer-events: none; }
 
 @keyframes shimmer {
   0%   { background-position: 200% 0; }
@@ -369,142 +423,95 @@ select option { background: var(--raised); }
 
 /* ═══════════════════════════════════════════════════════════
    ANIMATIONS
-   All durations: 150–350ms. Spring easing for entrance.
-   Separate exit class for modals.
    ═══════════════════════════════════════════════════════════ */
-
-/* Keyframes */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes popIn {
-  from { opacity: 0; transform: scale(0.94); }
-  to   { opacity: 1; transform: scale(1); }
-}
-@keyframes popInSpring {
-  0%   { opacity: 0; transform: scale(0.90); }
-  60%  { opacity: 1; transform: scale(1.02); }
-  100% {             transform: scale(1); }
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes expandIn {
-  from { opacity: 0; transform: scaleY(0.85); transform-origin: top; }
-  to   { opacity: 1; transform: scaleY(1); }
-}
-@keyframes glowPulse {
-  0%, 100% { box-shadow: 0 0 20px var(--p-glow); }
-  50%       { box-shadow: 0 0 40px var(--p-glow); }
-}
-@keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to   { opacity: 1; transform: scale(1); }
-}
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-@keyframes timelineItemIn {
-  from { opacity: 0; transform: translateX(-16px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-@keyframes barGrow {
-  from { transform: scaleX(0); transform-origin: left; }
-  to   { transform: scaleX(1); }
-}
-@keyframes progressFill {
-  from { width: 0%; }
-  to   { width: var(--target-width, 100%); }
+@keyframes fadeUp       { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes popIn        { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+@keyframes popInSpring  { 0% { opacity: 0; transform: scale(0.90); } 60% { opacity: 1; transform: scale(1.02); } 100% { transform: scale(1); } }
+@keyframes fadeIn       { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp      { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideDown    { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes expandIn     { from { opacity: 0; transform: scaleY(0.85); transform-origin: top; } to { opacity: 1; transform: scaleY(1); } }
+@keyframes glowPulse    { 0%, 100% { box-shadow: 0 0 20px var(--p-glow); } 50% { box-shadow: 0 0 40px var(--p-glow); } }
+@keyframes scaleIn      { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes spin         { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes timelineItemIn { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes barGrow      { from { transform: scaleX(0); transform-origin: left; } to { transform: scaleX(1); } }
+@keyframes progressFill { from { width: 0%; } to { width: var(--target-width, 100%); } }
+@keyframes imageReveal  {
+  0%   { opacity: 0; filter: blur(8px) brightness(0.6); }
+  60%  { filter: blur(2px) brightness(0.9); }
+  100% { opacity: 1; filter: blur(0) brightness(1); }
 }
 
-/* Animation classes */
-.animate-fade-up    { animation: fadeUp    var(--dur-page)  var(--ease-smooth) forwards; }
-.animate-pop-in     { animation: popIn     var(--dur-modal) var(--ease-smooth) forwards; }
-.animate-pop-spring { animation: popInSpring 350ms          var(--ease-out)    forwards; }
-.animate-fade-in    { animation: fadeIn    var(--dur-base)  ease-out           forwards; }
-.animate-slide-up   { animation: slideUp   var(--dur-page)  var(--ease-smooth) forwards; }
-.animate-slide-down { animation: slideDown var(--dur-base)  var(--ease-smooth) forwards; }
-.animate-expand-in  { animation: expandIn  var(--dur-base)  var(--ease-smooth) forwards; }
-.animate-scale-in   { animation: scaleIn   var(--dur-modal) ease-out           forwards; }
-.animate-glow-pulse { animation: glowPulse 2s ease-in-out infinite; }
-.animate-spin       { animation: spin      1s linear        infinite; }
-.animate-timeline-in{ animation: timelineItemIn var(--dur-base) var(--ease-smooth) both; }
-.animate-bar-grow   { animation: barGrow   500ms var(--ease-smooth) both; }
+.animate-fade-up     { animation: fadeUp      var(--dur-page)  var(--ease-smooth) forwards; }
+.animate-pop-in      { animation: popIn       var(--dur-modal) var(--ease-smooth) forwards; }
+.animate-pop-spring  { animation: popInSpring 350ms            var(--ease-out)    forwards; }
+.animate-fade-in     { animation: fadeIn      var(--dur-base)  ease-out           forwards; }
+.animate-slide-up    { animation: slideUp     var(--dur-page)  var(--ease-smooth) forwards; }
+.animate-slide-down  { animation: slideDown   var(--dur-base)  var(--ease-smooth) forwards; }
+.animate-expand-in   { animation: expandIn    var(--dur-base)  var(--ease-smooth) forwards; }
+.animate-scale-in    { animation: scaleIn     var(--dur-modal) ease-out           forwards; }
+.animate-glow-pulse  { animation: glowPulse   2s   ease-in-out infinite; }
+.animate-spin        { animation: spin        1s   linear      infinite; }
+.animate-timeline-in { animation: timelineItemIn var(--dur-base) var(--ease-smooth) both; }
+.animate-bar-grow    { animation: barGrow     500ms var(--ease-smooth) both; }
+.animate-image-reveal { animation: imageReveal var(--dur-slow) var(--ease-smooth) forwards; }
 
-/* Modal entrance — sheet slides up on mobile, pops on desktop */
-.modal-sheet-enter {
-  animation: slideUp var(--dur-modal) var(--ease-spring) forwards;
-}
+/* Modal entrance */
+.modal-sheet-enter { animation: slideUp var(--dur-modal) var(--ease-spring) forwards; }
 @media (min-width: 640px) {
-  .modal-sheet-enter {
-    animation: popInSpring var(--dur-modal) var(--ease-spring) forwards;
-  }
+  .modal-sheet-enter { animation: popInSpring var(--dur-modal) var(--ease-spring) forwards; }
 }
+.collapse-enter { animation: expandIn var(--dur-base) var(--ease-smooth) forwards; }
+.collapse-exit  { animation: expandIn var(--dur-fast) var(--ease-out) reverse forwards; }
 
-/* Expand/collapse toggle — for StreamingPanel, TvTracker sections */
-.collapse-enter  { animation: expandIn var(--dur-base) var(--ease-smooth) forwards; }
-.collapse-exit   { animation: expandIn var(--dur-fast) var(--ease-out) reverse forwards; }
+/* STAGGER */
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 50ms; }
+.stagger > *:nth-child(3) { animation-delay: 100ms; }
+.stagger > *:nth-child(4) { animation-delay: 150ms; }
+.stagger > *:nth-child(5) { animation-delay: 200ms; }
+.stagger > *:nth-child(6) { animation-delay: 250ms; }
+.stagger > *:nth-child(7) { animation-delay: 300ms; }
+.stagger > *:nth-child(8) { animation-delay: 350ms; }
 
-/* STAGGER — controlled delay cascade */
-.stagger > *:nth-child(1)  { animation-delay: 0ms;   }
-.stagger > *:nth-child(2)  { animation-delay: 50ms;  }
-.stagger > *:nth-child(3)  { animation-delay: 100ms; }
-.stagger > *:nth-child(4)  { animation-delay: 150ms; }
-.stagger > *:nth-child(5)  { animation-delay: 200ms; }
-.stagger > *:nth-child(6)  { animation-delay: 250ms; }
-.stagger > *:nth-child(7)  { animation-delay: 300ms; }
-.stagger > *:nth-child(8)  { animation-delay: 350ms; }
-
-/* Timeline stagger */
 .timeline-stagger > *:nth-child(1) { animation-delay: 0ms; }
 .timeline-stagger > *:nth-child(2) { animation-delay: 60ms; }
 .timeline-stagger > *:nth-child(3) { animation-delay: 120ms; }
 .timeline-stagger > *:nth-child(4) { animation-delay: 180ms; }
 .timeline-stagger > *:nth-child(5) { animation-delay: 240ms; }
 
-/* Disable animations for motion-sensitive users */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
 /* ── CHIPS / PILLS ── */
 .tag-chip {
-  background: var(--p-dim, rgba(168,255,120,0.07));
-  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(0,0,0,0.72);
+  border: 1px solid rgba(255,255,255,0.12);
+  backdrop-filter: blur(8px);
   padding: var(--sp-1) var(--sp-2);
   border-radius: 6px;
   font-family: 'Azeret Mono', monospace;
   font-size: 8px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.06em;
   transition: background var(--dur-fast) var(--ease-out);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
 }
 .rating-pill {
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(0,0,0,0.70);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.10);
   padding: var(--sp-1) var(--sp-2);
   border-radius: 8px;
   display: flex; align-items: center; gap: var(--sp-1);
   font-family: 'Azeret Mono', monospace;
   font-size: 9px; font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
 
 /* ── PROGRESS BARS ── */
-.progress-bar      { height: 3px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.progress-bar      { height: 3px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
 .progress-bar-fill {
   height: 100%;
   background: var(--p, #a8ff78);
@@ -513,10 +520,7 @@ select option { background: var(--raised); }
   transition: width 400ms var(--ease-smooth);
 }
 
-/* ═══════════════════════════════════════════════════════════
-   GLOBAL TRANSITION DEFAULTS
-   Scoped to interactive properties only — avoids layout thrash
-   ═══════════════════════════════════════════════════════════ */
+/* ── GLOBAL TRANSITIONS ── */
 button, a {
   transition:
     background-color var(--dur-base) var(--ease-out),
@@ -528,46 +532,40 @@ button, a {
 }
 button:active { transform: scale(0.95); transition-duration: var(--dur-fast); }
 
-/* Colour transitions for non-button elements */
 * {
   transition-property: background-color, border-color, color;
   transition-timing-function: var(--ease-out);
   transition-duration: var(--dur-base);
 }
-
-/* Suppress colour transition on animated elements */
-.animate-pop-in,
-.animate-pop-spring,
-.animate-fade-in,
-.animate-slide-up,
-.animate-scale-in,
-.animate-fade-up,
-.animate-timeline-in {
-  transition: none !important;
-}
+.animate-pop-in, .animate-pop-spring, .animate-fade-in,
+.animate-slide-up, .animate-scale-in, .animate-fade-up,
+.animate-timeline-in, .animate-image-reveal { transition: none !important; }
 
 /* ── SETTINGS ROWS ── */
 .settings-row {
   background: #141414;
-  border: 1px solid rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.06);
   border-left: 2px solid transparent;
   border-radius: 14px;
-  padding: var(--sp-4) var(--sp-4);    /* 16px 16px */
+  padding: var(--sp-4);
   display: flex; align-items: center; gap: var(--sp-3);
   cursor: pointer;
+  box-shadow: var(--shadow-card);
   transition:
-    background      var(--dur-base) var(--ease-out),
-    border-left-color var(--dur-base) var(--ease-out);
+    background        var(--dur-base) var(--ease-out),
+    border-left-color var(--dur-base) var(--ease-out),
+    box-shadow        var(--dur-base) var(--ease-out),
+    transform         var(--dur-base) var(--ease-spring);
 }
 .settings-row:hover {
   background: #1a1a1a;
   border-left-color: var(--p);
+  box-shadow: var(--shadow-raised);
+  transform: translateX(2px);
 }
+.settings-row:active { transform: scale(0.98); transition-duration: var(--dur-fast); }
 
-/* ═══════════════════════════════════════════════════════════
-   SECTION TITLE — standardised via .section-title class
-   All callers keep using this class; we standardise the values
-   ═══════════════════════════════════════════════════════════ */
+/* ── SECTION TITLE ── */
 .section-title {
   font-family: 'Azeret Mono', monospace;
   font-size: 11px;
@@ -575,11 +573,11 @@ button:active { transform: scale(0.95); transition-duration: var(--dur-fast); }
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--p);
-  margin-bottom: var(--sp-4);   /* 16px — 2×8 */
-  margin-top: var(--sp-6);      /* 24px — 3×8 */
+  margin-bottom: var(--sp-4);
+  margin-top: var(--sp-6);
   display: flex;
   align-items: center;
-  gap: var(--sp-2);             /* 8px */
+  gap: var(--sp-2);
 }
 .section-title::before {
   content: '';
@@ -591,60 +589,127 @@ button:active { transform: scale(0.95); transition-duration: var(--dur-fast); }
   box-shadow: 0 0 6px var(--p-glow);
 }
 
-/* ── FEATURED HERO ── */
+/* ═══════════════════════════════════════════════════════════
+   FEATURED HERO — cinematic backdrop
+   ═══════════════════════════════════════════════════════════ */
 .featured-hero {
-  position: relative; width: 100%;
+  position: relative;
+  width: 100%;
   height: 220px;
-  border-radius: 16px; overflow: hidden;
+  border-radius: var(--radius-card);
+  overflow: hidden;
   background: #141414;
-  box-shadow: inset 60px 0 80px rgba(0,0,0,0.4);
+  /* Inset shadow to frame the hero like a letterbox */
+  box-shadow:
+    var(--shadow-float),
+    inset 0 0 0 1px rgba(255,255,255,0.04);
 }
+
+/* Cinematic letterbox gradient — stronger than before */
 .featured-hero::after {
   content: '';
   position: absolute; inset: 0;
-  background: linear-gradient(to top, #000 0%, rgba(0,0,0,0.7) 40%, rgba(0,0,0,0.2) 70%, transparent 100%);
+  background:
+    /* heavy bottom for title legibility */
+    linear-gradient(to top,
+      rgba(0,0,0,1.00) 0%,
+      rgba(0,0,0,0.80) 25%,
+      rgba(0,0,0,0.30) 55%,
+      rgba(0,0,0,0.05) 100%
+    ),
+    /* left vignette for breadth */
+    linear-gradient(to right,
+      rgba(0,0,0,0.50) 0%,
+      transparent 50%
+    );
   pointer-events: none;
+  z-index: 1;
 }
 @media (min-width: 1024px) { .featured-hero { height: 320px; } }
 
-/* Hero image fade-in */
 .featured-hero img {
   opacity: 0;
-  transition: opacity var(--dur-slow) var(--ease-out);
+  filter: brightness(0.8) saturate(0.85);
+  transition: opacity var(--dur-slow) var(--ease-out), filter var(--dur-slow) var(--ease-out);
 }
-.featured-hero img.loaded,
-.featured-hero img[src] { opacity: 1; }
+.featured-hero img.loaded { opacity: 1; }
 
 /* ── CONTINUE WATCHING CARDS ── */
-.snap-start {
-  border-radius: 14px !important;
-  border: 1px solid rgba(255,255,255,0.06) !important;
-  transition: transform var(--dur-base) var(--ease-spring), box-shadow var(--dur-base) var(--ease-out) !important;
+/* These are landscape cards — different depth rules */
+.continue-card {
+  border-radius: var(--radius-card);
+  border: 1px solid rgba(255,255,255,0.07);
+  box-shadow:
+    var(--shadow-raised),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+  overflow: hidden;
+  background: #0e0e0e;
+  transition:
+    box-shadow var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out),
+    transform    var(--dur-base) var(--ease-spring);
 }
-.snap-start:hover {
+.continue-card:hover {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--p2) 50%, transparent),
+    0 0 20px rgba(0,0,0,0.4),
+    var(--shadow-float);
+  border-color: color-mix(in srgb, var(--p2) 45%, transparent);
   transform: translateY(-3px) scale(1.01);
-  box-shadow: 0 16px 40px rgba(0,0,0,0.6);
 }
-.snap-start:active { transform: scale(0.97) !important; }
-.snap-start .h-1\.5 {
-  height: 3px !important;
-  border-radius: 3px !important;
+.continue-card:active {
+  transform: scale(0.97);
+  transition-duration: var(--dur-fast);
 }
 
-/* Search modal */
+/* Continue card image */
+.continue-card-img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  filter: brightness(0.55) saturate(0.8);
+  transition:
+    opacity var(--dur-slow) var(--ease-out),
+    filter  var(--dur-base) var(--ease-out),
+    transform var(--dur-slow) var(--ease-smooth);
+}
+.continue-card-img.img-loaded { opacity: 1; }
+.continue-card:hover .continue-card-img {
+  filter: brightness(0.68) saturate(0.9);
+  transform: scale(1.04);
+}
+
+/* Continue card gradient — stronger cinematic bottom */
+.continue-card-gradient {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(to top,
+      rgba(0,0,0,0.97) 0%,
+      rgba(0,0,0,0.65) 35%,
+      rgba(0,0,0,0.15) 65%,
+      transparent      100%
+    );
+  pointer-events: none;
+}
+
+/* ── SNAP SCROLL — override leftover class */
+.snap-start {
+  /* Let continue-card handle styling */
+}
+
+/* ── SEARCH MODAL ── */
 .search-modal {
   animation: popInSpring 320ms var(--ease-spring);
-  backdrop-filter: blur(24px);
   border: 1px solid var(--border-active);
-  border-radius: 20px;
+  border-radius: var(--radius-xl);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.06),
-    0 20px 60px rgba(0,0,0,0.5),
+    var(--shadow-float),
     0 0 40px var(--p-glow);
 }
 .search-modal-backdrop { animation: fadeIn var(--dur-base) ease-out; }
 
-/* Premium glass morphism */
+/* ── GLASS PREMIUM ── */
 .glass-premium {
   background: rgba(14, 16, 24, 0.6);
   backdrop-filter: blur(12px);
@@ -652,13 +717,123 @@ button:active { transform: scale(0.95); transition-duration: var(--dur-fast); }
   border-radius: 1.5rem;
 }
 
-/* Gradient text */
+/* ── GRADIENT TEXT ── */
 .gradient-text {
   background: linear-gradient(135deg, var(--p), var(--p2));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   BACKDROP PRESENTATION
+   Used in: MediaHeader, UpcomingDetailsModal, DetailsModal bg
+   ═══════════════════════════════════════════════════════════ */
+
+/* Backdrop image inside a fixed-height container */
+.backdrop-img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  filter: brightness(0.70) saturate(0.85);
+  transition:
+    opacity    600ms var(--ease-out),
+    filter     400ms var(--ease-out),
+    transform  800ms var(--ease-smooth);
+  transform: scale(1.04);
+}
+.backdrop-img.img-loaded {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Cinematic backdrop gradient — used on all modal/detail backdrop areas */
+.backdrop-gradient {
+  position: absolute; inset: 0;
+  background:
+    /* Heavy bottom — title area */
+    linear-gradient(to top,
+      rgba(8,9,11,1.00)  0%,
+      rgba(8,9,11,0.88) 20%,
+      rgba(8,9,11,0.50) 45%,
+      rgba(8,9,11,0.12) 70%,
+      transparent       100%
+    ),
+    /* left edge — for title pull-left layouts */
+    linear-gradient(to right,
+      rgba(8,9,11,0.60) 0%,
+      transparent       45%
+    );
+  pointer-events: none;
+}
+
+/* Blurred poster used as ambient background (modal overlay) */
+.backdrop-ambient {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  filter: blur(32px) brightness(0.35) saturate(0.7);
+  transform: scale(1.15);
+  transition: opacity 600ms var(--ease-out);
+}
+.backdrop-ambient.img-loaded { opacity: 1; }
+
+/* ── UPCOMING VIEW CARDS ── */
+.upcoming-card {
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    var(--shadow-card),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+  transition:
+    background   var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out),
+    box-shadow   var(--dur-base) var(--ease-out),
+    transform    var(--dur-base) var(--ease-spring);
+}
+.upcoming-card:hover {
+  background: rgba(255,255,255,0.03);
+  border-color: color-mix(in srgb, var(--p) 35%, transparent);
+  box-shadow:
+    var(--shadow-raised),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+  transform: translateX(2px);
+}
+.upcoming-card:active { transform: scale(0.98); transition-duration: var(--dur-fast); }
+
+/* Poster inside any non-MovieCard context (search, timeline, lists) */
+.poster-img {
+  opacity: 0;
+  transition: opacity 350ms var(--ease-out), transform 350ms var(--ease-smooth);
+  transform: scale(1.02);
+}
+.poster-img.img-loaded {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Franchise folder card */
+.franchise-card {
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: var(--shadow-raised), inset 0 1px 0 rgba(255,255,255,0.04);
+  transition:
+    box-shadow   var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out),
+    transform    var(--dur-base) var(--ease-spring);
+}
+.franchise-card:hover {
+  border-color: color-mix(in srgb, var(--p) 45%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--p) 30%, transparent),
+    0 0 24px var(--p-glow),
+    var(--shadow-float);
+  transform: translateY(-3px) scale(1.01);
+}
+.franchise-card:active { transform: scale(0.97); transition-duration: var(--dur-fast); }
 
 /* ── CINEMATIC THEME EXTRAS ── */
 body.theme-cinematic::before {
@@ -682,8 +857,6 @@ body.theme-cinematic h3 {
   color: transparent;
   text-shadow: 0 0 18px rgba(255,215,0,0.10);
 }
-body.theme-cinematic .movie-card { transform-style: preserve-3d; perspective: 900px; }
-body.theme-cinematic .movie-card:hover { transform: translateY(-4px) scale(1.03); }
 body.theme-cinematic .movie-card:hover .movie-card-inner { border-color: rgba(255,215,0,0.82); }
 body.theme-cinematic button[style*="var(--p)"] { position: relative; overflow: hidden; }
 body.theme-cinematic button[style*="var(--p)"]::after {
@@ -700,7 +873,7 @@ body.theme-cinematic .skeleton-bg {
   background-size: 300% 100%;
 }
 
-/* ── PDF EXPORT PRINT STYLES ── */
+/* ── PDF EXPORT ── */
 @media print {
   body { background: #ffffff !important; color: #000000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .no-print, header, nav, .bottom-nav-bar, .cinelog-root > .hidden, .fixed { display: none !important; }
@@ -710,7 +883,6 @@ body.theme-cinematic .skeleton-bg {
 }
 .print-only { display: none; }
 
-/* Responsive */
 @media (max-width: 768px) {
   .search-modal { max-width: 95vw; max-height: 85vh; }
 }
