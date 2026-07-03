@@ -1,4 +1,4 @@
-import { createSignal, createEffect, For, Show, onMount, onCleanup } from 'solid-js';
+import { createSignal, createEffect, createMemo, For, Show, onMount, onCleanup } from 'solid-js';
 import { Portal } from 'solid-js/web';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -419,7 +419,7 @@ export function UpcomingView(props) {
                                 </div>
                               </Show>
                               <div class="flex-1 flex flex-col justify-center py-1 min-w-0">
-                                <p class="font-bold text-sm text-gray-100 line-clamp-2 transition-colors" style="group-hover:color: var(--p)">{m.title}</p>
+                                <p class="font-bold text-sm text-gray-100 line-clamp-2">{m.title}</p>
                                 <div class="flex items-center gap-2 mt-2 flex-wrap">
                                   <span class={pillClass}>{countdownText}</span>
                                   <Show when={m.media_type === 'tv'} fallback={
