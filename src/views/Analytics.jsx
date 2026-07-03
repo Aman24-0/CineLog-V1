@@ -3,13 +3,13 @@ import { Icon, getSafeGenres } from '../utils';
 
 /* ── SVG Donut Chart: Movies vs TV split ── */
 function DonutChart(props) {
-  const movieCount = createMemo(() => props.completed.filter(m => m.media_type !== 'tv').length);
-  const tvCount = createMemo(() => props.completed.filter(m => m.media_type === 'tv').length);
-  const total = movieCount() + tvCount();
-  const movieRatio = total > 0 ? movieCount() / total : 0.5;
+  const movieCount = createMemo(() => props.completed().filter(m => m.media_type !== 'tv').length);
+  const tvCount = createMemo(() => props.completed().filter(m => m.media_type === 'tv').length);
+  const total = createMemo(() => movieCount() + tvCount());
+  const movieRatio = createMemo(() => total() > 0 ? movieCount() / total() : 0.5);
   const circumference = 2 * Math.PI * 45;
   const dashTotal = circumference;
-  const dashOffset = circumference * (1 - movieRatio);
+  const dashOffset = createMemo(() => circumference * (1 - movieRatio()));
 
   return (
     <div class="glass-surface rounded-[1.5rem] p-5 border border-white/5 animate-fade-up">
@@ -26,11 +26,11 @@ function DonutChart(props) {
             stroke-width="12"
             stroke-linecap="round"
             class="animate-donut-fill"
-            style={`stroke-dasharray: ${dashTotal} ${dashOffset}`}
+            style={`stroke-dasharray: ${dashTotal} ${dashOffset()}`}
           />
           <text x="60" y="53" text-anchor="middle" style="fill: white; font-size: 20px; font-weight: 900; font-family: 'Bebas Neue', cursive">{movieCount()}</text>
           <text x="60" y="72" text-anchor="middle" style="fill: var(--muted); font-size: 8px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-family: 'Azeret Mono', monospace">MOVIES</text>
-          <text x="60" y="90" text-anchor="middle" style="fill: var(--muted); font-size: 16px; font-weight: 900; font-family: 'Beba Neue', cursive">{tvCount()}</text>
+          <text x="60" y="90" text-anchor="middle" style="fill: var(--muted); font-size: 16px; font-weight: 900; font-family: 'Bebas Neue', cursive">{tvCount()}</text>
           <text x="60" y="104" text-anchor="middle" style="fill: var(--muted); font-size: 7px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-family: 'Azeret Mono', monospace">SHOWS</text>
         </svg>
       </div>
@@ -90,21 +90,17 @@ function RatingDistribution(props) {
 function MonthlyTrend(props) {
   const max = createMemo(() => Math.max(1, ...props.items.map(i => i.value)));
   const chartW = 380;
-  const circumference = 2 * Math.PI * 45;
   const chartH = 105;
   const padX = 10;
   const padTop = 10;
-  const padBot = 25;
 
-  /* Pre-compute grid lines as string — avoids {expression}.map() inside SVG which breaks SolidJS SVG parsing */
+  /* Grid lines as array of y-values — <For> needs an array, not a string */
   const gridLines = createMemo(() =>
-    [25, 50, 75, 100].map(pct => {
-      const y = padTop + chartH * (1 - pct / 100);
-      return `M10,${y} L390,${y}`;
-    }).join(' ')
+    [25, 50, 75, 100].map(pct => padTop + chartH * (1 - pct / 100))
   );
 
   const points = createMemo(() => {
+    if (props.items.length <= 1) return '';
     const pts = [];
     for (let i = 0; i < props.items.length; i++) {
       const x = padX + i * (chartW / (props.items.length - 1));
@@ -118,10 +114,10 @@ function MonthlyTrend(props) {
     `${padX},${padTop + chartH} ${points()} ${padX + chartW},${padTop + chartH} ${padX + chartW},${padTop + chartH}`
   );
 
-  /* Pre-compute data points for dots — avoids inline expressions inside SVG */
+  /* Pre-compute data points for dots */
   const dataPoints = createMemo(() =>
     props.items.map((item, i) => ({
-      x: padX + i * (chartW / (props.items.length - 1)),
+      x: padX + (props.items.length > 1 ? i * (chartW / (props.items.length - 1)) : chartW / 2),
       y: padTop + chartH - (item.value / max()) * chartH,
       label: item.label,
       idx: i
@@ -145,21 +141,21 @@ function MonthlyTrend(props) {
               </linearGradient>
             </defs>
 
-            {/* Grid lines — pre-computed strings, no JS expressions in SVG */}
-            <For each={gridLines}>{(line) => (
-              <line x1={line.split(',')[0]} y1={line.split(',')[1]} x2="390" y2={line.split(',')[1]} stroke="rgba(255,255,255,0.03)" stroke-width="1" />
+            {/* Grid lines — array of y-values */}
+            <For each={gridLines()}>{(y) => (
+              <line x1="10" y1={y} x2="390" y2={y} stroke="rgba(255,255,255,0.03)" stroke-width="1" />
             )}</For>
 
             <polygon points={areaPoints()} fill="url(#trendGradient)" class="animate-fade-in" />
             <polyline points={points()} fill="none" stroke="var(--p)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-fade-in" />
 
-            {/* Data dots — pre-computed array, no inline expressions in SVG */}
-            <For each={dataPoints}>{(pt) => (
+            {/* Data dots */}
+            <For each={dataPoints()}>{(pt) => (
               <circle cx={pt.x} cy={pt.y} r="2.5" fill="var(--p)" class="animate-fade-in" style={`animation-delay: ${pt.idx * 50}ms`} />
             )}</For>
 
-            {/* Month labels — plain strings, no inline expressions in SVG */}
-            <For each={dataPoints}>{(pt) => (
+            {/* Month labels */}
+            <For each={dataPoints()}>{(pt) => (
               <text x={pt.x} y="136" text-anchor="middle" style="fill: var(--muted); font-size: 9px; font-weight: 700; font-family: 'Azeret Mono', monospace">{pt.label}</text>
             )}</For>
           </svg>
@@ -184,7 +180,7 @@ function ActorRings(props) {
       }>
         <div class="grid grid-cols-5 gap-4 sm:grid-cols-5">
           <For each={props.items}>{(item, idx) => {
-            const pct = (item.value / max) * 100;
+            const pct = (item.value / max()) * 100;
             const dashTotal = circumference;
             const dashOffset = circumference * (1 - pct / 100);
             const initials = item.label.split(' ').map(w => w[0]).join('');
@@ -368,7 +364,7 @@ export function Analytics(props) {
             <div
               class="h-full rounded-full"
               style={{
-                width: `${completionPct}%`,
+                width: `${completionPct()}%`,
                 background: 'var(--p)',
                 'box-shadow': '0 0 10px var(--p-glow)',
                 transition: 'width 800ms var(--ease-smooth)'
