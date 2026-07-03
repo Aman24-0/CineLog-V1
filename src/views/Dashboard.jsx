@@ -1,5 +1,5 @@
 import { createMemo, createSignal, createEffect, For, Show } from 'solid-js';
-import { Icon } from '../utils';
+import { Icon, formatRuntime, getSafeGenres } from '../utils';
 import { MovieCard } from '../components/MovieCard';
 
 export function Dashboard(props) {
@@ -41,6 +41,31 @@ export function Dashboard(props) {
   });
 
   const featuredItem = createMemo(() => randomItem() || (props.watchlist().length > 0 ? props.watchlist()[0] : null));
+
+  /* ── Today's Pick: daily seeded recommendation from vault ── */
+  const [skipOffset, setSkipOffset] = createSignal(0);
+
+  const todaysPick = createMemo(() => {
+    const planned = plannedList();
+    if (planned.length === 0) return null;
+
+    const d = new Date();
+    const seed = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+    let idx = (seed + skipOffset()) % planned.length;
+
+    const heroId = featuredItem()?.id;
+    let pick = planned[idx];
+    if (pick?.id === heroId && planned.length > 1) {
+      pick = planned[(idx + 1) % planned.length];
+    }
+    return pick;
+  });
+
+  const skipTodaysPick = () => setSkipOffset(c => c + 1);
+
+  const todaysPickDate = createMemo(() =>
+    new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+  );
 
   return (
     <div class="animate-fade-in pb-8 space-y-8">
@@ -85,7 +110,7 @@ export function Dashboard(props) {
                 </div>
               </Show>
 
-              {/* Hero content — overflow-hidden prevents long titles from reaching the badge */}
+              {/* Hero content */}
               <div class="absolute bottom-0 left-0 w-full p-4 lg:p-6 flex flex-col gap-2 z-10 overflow-hidden">
                 <h2 class="font-headline text-3xl lg:text-5xl text-white leading-none"
                   style="text-shadow: 0 2px 24px rgba(0,0,0,0.9), 0 1px 4px rgba(0,0,0,1)">
@@ -253,6 +278,155 @@ export function Dashboard(props) {
                 );
               }}
             </For>
+          </div>
+        </div>
+      </Show>
+
+      {/* ── TODAY'S PICK ──────────────────────────────────────── */}
+      <Show when={todaysPick() && !props.isGuest}>
+        <div class="animate-fade-up">
+          {/* Section header with date and skip */}
+          <div class="flex items-end justify-between mb-4">
+            <div>
+              <p class="section-title !mb-1">Today's Pick</p>
+              <p class="type-caption" style="color: var(--muted); letter-spacing: 0.06em">
+                {todaysPickDate()} &middot; From your vault
+              </p>
+            </div>
+            <button
+              onClick={skipTodaysPick}
+              class="type-caption flex items-center gap-1.5 hover:text-white active:scale-95 px-3 py-2 rounded-xl"
+              style="color: var(--muted); transition: color 150ms ease-out, background 150ms ease-out"
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <Icon name="skip_next" class="text-sm" /> Skip
+            </button>
+          </div>
+
+          {/* Editorial recommendation card — backdrop left, info right (desktop) / stacked (mobile) */}
+          <div
+            class="recommendation-card rounded-2xl overflow-hidden border cursor-pointer group"
+            style="background: var(--surface); border-color: var(--border)"
+            onClick={() => props.openMovie(todaysPick().id)}
+          >
+            <div class="flex flex-col sm:flex-row">
+
+              {/* Backdrop panel */}
+              <div class="relative w-full sm:w-52 md:w-60 aspect-video sm:aspect-auto sm:min-h-[220px] shrink-0 overflow-hidden">
+                <Show when={todaysPick().backdrop_path} fallback={
+                  <div class="w-full h-full flex items-center justify-center" style="background: linear-gradient(145deg, #1a1a1a, #111)">
+                    <Icon name="movie" style="color: rgba(255,255,255,0.06); font-size: 48px" />
+                  </div>
+                }>
+                  <img
+                    src={`https://image.tmdb.org/t/p/w500${todaysPick().backdrop_path}`}
+                    class="recommendation-backdrop absolute inset-0 w-full h-full object-cover"
+                    loading="lazy"
+                    onLoad={e => e.target.classList.add('img-loaded')}
+                    alt=""
+                  />
+                </Show>
+                {/* Desktop: right-edge fade into surface */}
+                <div class="absolute inset-0 hidden sm:block" style="background: linear-gradient(to right, transparent 35%, var(--surface) 100%)" />
+                {/* Mobile: bottom fade */}
+                <div class="absolute inset-0 sm:hidden" style="background: linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 50%)" />
+              </div>
+
+              {/* Info panel */}
+              <div class="flex-1 p-4 sm:p-5 md:p-6 flex flex-col justify-center gap-3 min-w-0">
+
+                {/* Type + Year row */}
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span
+                    class="type-caption px-2.5 py-0.5 rounded-md"
+                    style="background: var(--p-dim); color: var(--p); border: 1px solid color-mix(in srgb, var(--p) 20%, transparent)"
+                  >
+                    {todaysPick().media_type === 'tv' ? 'Series' : 'Movie'}
+                  </span>
+                  <span class="type-caption" style="color: var(--muted)">
+                    {(todaysPick().release_date || todaysPick().first_air_date || '').split('-')[0]}
+                    <Show when={todaysPick().runtime > 0}>
+                      {' · '}{formatRuntime(todaysPick().runtime)}
+                    </Show>
+                  </span>
+                </div>
+
+                {/* Title */}
+                <h3
+                  class="font-bold text-white text-lg sm:text-xl leading-tight"
+                  style="text-decoration: underline transparent; text-underline-offset: 3px; text-decoration-thickness: 1px; transition: text-decoration-color 200ms ease-out"
+                  onMouseEnter={e => { e.currentTarget.style.textDecorationColor = 'var(--p)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.textDecorationColor = 'transparent'; }}
+                >
+                  {todaysPick().title || todaysPick().name}
+                </h3>
+
+                {/* Genre pills */}
+                <Show when={getSafeGenres(todaysPick()).length > 0}>
+                  <div class="flex flex-wrap gap-1.5">
+                    <For each={getSafeGenres(todaysPick()).slice(0, 4)}>
+                      {(g) => (
+                        <span
+                          class="type-caption px-2 py-0.5 rounded-md"
+                          style="background: rgba(255,255,255,0.04); color: var(--muted); border: 1px solid rgba(255,255,255,0.06)"
+                        >
+                          {g}
+                        </span>
+                      )}
+                    </For>
+                  </div>
+                </Show>
+
+                {/* Ratings */}
+                <div class="flex items-center gap-2.5 flex-wrap">
+                  <Show when={todaysPick().imdbRating}>
+                    <div class="flex items-center gap-1.5 rating-pill" style="border-color: rgba(245,197,24,0.35); padding: 4px 8px">
+                      <Icon name="star" fill style="color: #f5c518; font-size: 12px" />
+                      <span style="color: #f5c518; font-size: 11px; font-weight: 700; font-family: 'Outfit', sans-serif">
+                        {todaysPick().imdbRating}
+                      </span>
+                    </div>
+                  </Show>
+                  <Show when={todaysPick().rtRating}>
+                    <div class="flex items-center gap-1.5 rating-pill" style="border-color: rgba(255,90,80,0.35); padding: 4px 8px">
+                      <span style="font-size: 10px; line-height: 1">🍅</span>
+                      <span style="color: #ff7878; font-size: 11px; font-weight: 700; font-family: 'Outfit', sans-serif">
+                        {todaysPick().rtRating}%
+                      </span>
+                    </div>
+                  </Show>
+                  <Show when={todaysPick().rating}>
+                    <div class="flex items-center gap-1.5 rating-pill" style="border-color: color-mix(in srgb, var(--p) 30%, transparent); padding: 4px 8px; background: var(--p-dim)">
+                      <Icon name="person" fill style="color: var(--p); font-size: 12px" />
+                      <span style="color: var(--p); font-size: 11px; font-weight: 700; font-family: 'Outfit', sans-serif">
+                        {todaysPick().rating}/10
+                      </span>
+                    </div>
+                  </Show>
+                </div>
+
+                {/* Actions */}
+                <div class="flex items-center gap-3 pt-1">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); props.openMovie(todaysPick().id); }}
+                    class="type-button px-5 py-2.5 rounded-full flex items-center gap-2 active:scale-95"
+                    style="background: var(--p); color: #05060a; box-shadow: 0 0 16px var(--p-glow)"
+                  >
+                    <Icon name="play_arrow" fill class="text-base" /> Watch Now
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); skipTodaysPick(); }}
+                    class="type-caption px-4 py-2.5 rounded-full active:scale-95 border"
+                    style="border-color: var(--border); color: var(--muted); transition: border-color 150ms ease-out, color 150ms ease-out"
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-active)'; e.currentTarget.style.color = 'var(--text)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--muted)'; }}
+                  >
+                    Not Today
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </Show>
