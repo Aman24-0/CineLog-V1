@@ -39,8 +39,8 @@ export function MediaHeader(props) {
 
   return (
     <>
-      {/* Backdrop / Trailer area */}
-      <div class="h-56 md:h-72 relative bg-black shrink-0">
+      {/* ── BACKDROP / TRAILER AREA ─────────────────────────────── */}
+      <div class="h-56 md:h-72 relative bg-black shrink-0 overflow-hidden">
         <Show
           when={!props.playTrailer}
           fallback={
@@ -55,41 +55,76 @@ export function MediaHeader(props) {
           <Show
             when={props.movie?.backdrop_path}
             fallback={
-              <div class="w-full h-full flex items-center justify-center text-gray-700 bg-[#171921]">
-                <Icon name="movie" class="text-6xl"/>
+              /* No backdrop — styled placeholder with poster fallback */
+              <div class="w-full h-full flex items-center justify-center"
+                style="background: linear-gradient(145deg, #181818, #0e0e0e)">
+                <Show when={props.movie?.poster_path} fallback={
+                  <Icon name="movie" style="color: rgba(255,255,255,0.06); font-size: 56px" />
+                }>
+                  {/* Blurred poster as ambient fill when no backdrop exists */}
+                  <img
+                    src={`https://image.tmdb.org/t/p/w500${props.movie.poster_path}`}
+                    class="backdrop-ambient"
+                    onLoad={e => e.target.classList.add('img-loaded')}
+                    alt=""
+                  />
+                </Show>
               </div>
             }
           >
+            {/* Backdrop image — cinematic reveal */}
             <img
               src={`https://image.tmdb.org/t/p/original${props.movie?.backdrop_path}`}
-              class="w-full h-full object-cover"
-              style="opacity: 0; transition: opacity 500ms ease-out"
-              onLoad={e => { e.target.style.opacity = '0.6'; }}
+              class="backdrop-img absolute inset-0"
+              onLoad={e => e.target.classList.add('img-loaded')}
+              alt=""
             />
           </Show>
-          <div class="absolute inset-0 bg-gradient-to-t from-[#08090b]/90 via-[#08090b]/40 to-transparent pointer-events-none" />
+
+          {/* Cinematic gradient — always rendered over image */}
+          <div class="backdrop-gradient" />
+
+          {/* Trailer play button */}
           <Show when={props.trailerKey}>
             <button
               onClick={() => props.setPlayTrailer(true)}
               class="absolute inset-0 flex items-center justify-center z-10 group"
+              style="background: transparent"
             >
-              <div class="w-16 h-16 backdrop-blur-md rounded-full flex items-center justify-center border group-hover:scale-110 active:scale-95 shadow-2xl" style="background: var(--p-dim); border-color: rgba(255,255,255,0.1); transition: transform 220ms cubic-bezier(0.34,1.56,0.64,1)">
-                <Icon name="play_arrow" fill class="text-white text-4xl"/>
+              <div
+                class="w-16 h-16 rounded-full flex items-center justify-center border active:scale-95"
+                style="
+                  background: rgba(0,0,0,0.55);
+                  backdrop-filter: blur(12px);
+                  border-color: rgba(255,255,255,0.15);
+                  box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 8px 32px rgba(0,0,0,0.6);
+                  transition: transform 220ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 220ms ease-out, border-color 220ms ease-out;
+                "
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'scale(1.12)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.35)';
+                  e.currentTarget.style.boxShadow = '0 0 0 1px rgba(255,255,255,0.12), 0 0 24px var(--p-glow), 0 12px 40px rgba(0,0,0,0.7)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                  e.currentTarget.style.boxShadow = '0 0 0 1px rgba(255,255,255,0.06), 0 8px 32px rgba(0,0,0,0.6)';
+                }}
+              >
+                <Icon name="play_arrow" fill class="text-white text-4xl" />
               </div>
             </button>
           </Show>
         </Show>
       </div>
 
-      {/* Title row — pulled up over the backdrop */}
-      {/* -mt-16 stays; px-6 md:px-8 = consistent 24px/32px horizontal rhythm */}
+      {/* ── TITLE ROW — pulled up over backdrop ─────────────────── */}
       <div class="px-6 md:px-8 -mt-16 relative z-10 flex justify-between items-start mb-3">
         <div class="pr-3 flex-1 min-w-0">
-          {/* Modal title: Outfit 900, 24px */}
-          <h2 class="type-modal-title drop-shadow-md leading-tight">
+          <h2 class="type-modal-title leading-tight"
+            style="text-shadow: 0 2px 16px rgba(0,0,0,0.9), 0 1px 4px rgba(0,0,0,1)">
             {props.movie?.title || props.movie?.name}
           </h2>
-          {/* Subtitle: Azeret Mono 9px uppercase */}
           <p class="type-subtitle mt-1.5">
             {props.movie?.release_date || props.details?.release_date || 'N/A'}
             {' · '}
@@ -100,16 +135,21 @@ export function MediaHeader(props) {
           </p>
         </div>
 
-        {/* Action buttons: 8px gap */}
-        <div class="flex items-center gap-2 shrink-0">
+        {/* Action buttons */}
+        <div class="flex items-center gap-2 shrink-0 mt-1">
+          {/* Share */}
           <button
             onClick={handleShare}
-            class="w-10 h-10 rounded-full border flex items-center justify-center text-gray-400 hover:text-white border-white/10 bg-black/40 backdrop-blur-md active:scale-95 shadow-lg hover:border-white/30"
+            class="w-10 h-10 rounded-full flex items-center justify-center active:scale-95"
+            style="background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.10); backdrop-filter: blur(8px); color: #9ca3af; box-shadow: 0 2px 8px rgba(0,0,0,0.4); transition: background 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out"
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; e.currentTarget.style.color = '#fff'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'; e.currentTarget.style.color = '#9ca3af'; }}
             title="Share"
           >
-            <Icon name="share" class="text-sm"/>
+            <Icon name="share" class="text-sm" />
           </button>
 
+          {/* Edit toggle */}
           <Show when={!props.isPreview}>
             <button
               onClick={() => {
@@ -120,12 +160,12 @@ export function MediaHeader(props) {
                 }
                 props.setIsEdit(!props.isEdit);
               }}
-              class="w-10 h-10 rounded-full border flex items-center justify-center active:scale-95 shadow-lg"
+              class="w-10 h-10 rounded-full flex items-center justify-center active:scale-95"
               style={props.isEdit
-                ? 'background: var(--p); color: #000; border-color: var(--p); box-shadow: 0 0 12px var(--p-glow)'
-                : 'background: rgba(255,255,255,0.05); color: #9ca3af; border-color: rgba(255,255,255,0.1); backdrop-filter: blur(8px)'}
+                ? 'background: var(--p); color: #000; border: 1px solid var(--p); box-shadow: 0 0 16px var(--p-glow), 0 4px 12px rgba(0,0,0,0.4)'
+                : 'background: rgba(255,255,255,0.07); color: #9ca3af; border: 1px solid rgba(255,255,255,0.10); backdrop-filter: blur(8px); box-shadow: 0 2px 8px rgba(0,0,0,0.4)'}
             >
-              <Icon name={props.isEdit ? 'check' : 'edit'} class="text-sm"/>
+              <Icon name={props.isEdit ? 'check' : 'edit'} class="text-sm" />
             </button>
           </Show>
         </div>
