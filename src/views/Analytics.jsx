@@ -1,4 +1,4 @@
-import { createMemo, For, Show, onMount } from 'solid-js';
+import { createMemo, For, Show } from 'solid-js';
 import { Icon, getSafeGenres } from '../utils';
 
 /* ── SVG Donut Chart: Movies vs TV split ── */
@@ -8,6 +8,8 @@ function DonutChart(props) {
   const total = movieCount() + tvCount();
   const movieRatio = total > 0 ? movieCount() / total : 0.5;
   const circumference = 2 * Math.PI * 45;
+  const dashTotal = circumference;
+  const dashOffset = circumference * (1 - movieRatio);
 
   return (
     <div class="glass-surface rounded-[1.5rem] p-5 border border-white/5 animate-fade-up">
@@ -23,13 +25,12 @@ function DonutChart(props) {
             stroke="var(--p)"
             stroke-width="12"
             stroke-linecap="round"
-            transform="rotate(-90 60 60)"
             class="animate-donut-fill"
-            style={`stroke-dasharray: ${circumference}; --donut-offset: ${circumference * (1 - movieRatio)}`}
+            style={`stroke-dasharray: ${dashTotal} ${dashOffset}`}
           />
           <text x="60" y="53" text-anchor="middle" style="fill: white; font-size: 20px; font-weight: 900; font-family: 'Bebas Neue', cursive">{movieCount()}</text>
           <text x="60" y="72" text-anchor="middle" style="fill: var(--muted); font-size: 8px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-family: 'Azeret Mono', monospace">MOVIES</text>
-          <text x="60" y="90" text-anchor="middle" style="fill: var(--muted); font-size: 16px; font-weight: 900; font-family: 'Bebas Neue', cursive">{tvCount()}</text>
+          <text x="60" y="90" text-anchor="middle" style="fill: var(--muted); font-size: 16px; font-weight: 900; font-family: 'Beba Neue', cursive">{tvCount()}</text>
           <text x="60" y="104" text-anchor="middle" style="fill: var(--muted); font-size: 7px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-family: 'Azeret Mono', monospace">SHOWS</text>
         </svg>
       </div>
@@ -52,7 +53,7 @@ function RatingDistribution(props) {
   const max = createMemo(() => Math.max(1, ...props.items.map(i => i.value)));
 
   return (
-    <div class="glass-surface rounded-[1.5px] p-5 border border-white/5 animate-fade-up">
+    <div class="glass-surface rounded-[1.5rem] p-5 border border-white/5 animate-fade-up">
       <h3 class="type-caption text-white mb-5 flex items-center gap-2" style="font-size: 11px; font-weight: 700">
         <Icon name="star" style="color: var(--p)" /> {props.title}
       </h3>
@@ -78,7 +79,7 @@ function RatingDistribution(props) {
                 <span class="type-caption w-6 text-right shrink-0" style="color: var(--p)">{item.value}</span>
               </div>
             );
-          }</For>
+          }}</For>
         </div>
       </Show>
     </div>
@@ -89,10 +90,19 @@ function RatingDistribution(props) {
 function MonthlyTrend(props) {
   const max = createMemo(() => Math.max(1, ...props.items.map(i => i.value)));
   const chartW = 380;
+  const circumference = 2 * Math.PI * 45;
   const chartH = 105;
   const padX = 10;
   const padTop = 10;
   const padBot = 25;
+
+  /* Pre-compute grid lines as string — avoids {expression}.map() inside SVG which breaks SolidJS SVG parsing */
+  const gridLines = createMemo(() =>
+    [25, 50, 75, 100].map(pct => {
+      const y = padTop + chartH * (1 - pct / 100);
+      return `M10,${y} L390,${y}`;
+    }).join(' ')
+  );
 
   const points = createMemo(() => {
     const pts = [];
@@ -104,7 +114,19 @@ function MonthlyTrend(props) {
     return pts.join(' ');
   });
 
-  const areaPoints = createMemo(() => `${padX},${padTop + chartH} ${points} ${padX + chartW},${padTop + chartH} ${padX + chartW},${padTop + chartH}`);
+  const areaPoints = createMemo(() =>
+    `${padX},${padTop + chartH} ${points()} ${padX + chartW},${padTop + chartH} ${padX + chartW},${padTop + chartH}`
+  );
+
+  /* Pre-compute data points for dots — avoids inline expressions inside SVG */
+  const dataPoints = createMemo(() =>
+    props.items.map((item, i) => ({
+      x: padX + (i * (chartW / (props.items.length - 1)),
+      y: padTop + chartH - (item.value / max()) * chartH,
+      label: item.label,
+      idx: i
+    }))
+  );
 
   return (
     <div class="glass-surface rounded-[1.5rem] p-5 border border-white/5 animate-fade-up">
@@ -123,28 +145,23 @@ function MonthlyTrend(props) {
               </linearGradient>
             </defs>
 
-            {[25, 50, 75, 100].map(pct => (
-              <line
-                x1="10" y1={padTop + chartH * (1 - pct / 100)} x2="390" y2={padTop + chartH * (1 - pct / 100)}
-                stroke="rgba(255,255,255,0.03)" stroke-width="1"
-              />
-            ))}
+            {/* Grid lines — pre-computed strings, no JS expressions in SVG */}
+            <For each={gridLines}>{(line) => (
+              <line x1={line.split(',')[0]} y1={line.split(',')[1]} x2="390" y2={line.split(',')[1]} stroke="rgba(255,255,255,0.03)" stroke-width="1" />
+            )}</For>
 
             <polygon points={areaPoints()} fill="url(#trendGradient)" class="animate-fade-in" />
             <polyline points={points()} fill="none" stroke="var(--p)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-fade-in" />
-            <For each={props.items}>{(item, i) => {
-              const x = padX + (i * (chartW / (props.items.length - 1));
-              const y = padTop + chartH - (item.value / max()) * chartH;
-              return (
-                <circle cx={x} cy={y} r="2.5" fill="var(--p)" class="animate-fade-in" style={`animation-delay: ${i * 50}ms}`} />
-              );
-            }}</For>
-            <For each={props.items}>{(item, i) => {
-              const x = padX + (i * (chartW / (props.items.length - 1));
-              return (
-                <text x={x} y="136" text-anchor="middle" style="fill: var(--muted); font-size: 9px; font-weight: 700; font-family: 'Azeret Mono', monospace">{item.label}</text>
-              );
-            }</For>
+
+            {/* Data dots — pre-computed array, no inline expressions in SVG */}
+            <For each={dataPoints}>{(pt) => (
+              <circle cx={pt.x} cy={pt.y} r="2.5" fill="var(--p)" class="animate-fade-in" style={`animation-delay: ${pt.idx * 50}ms`} />
+            )}</For>
+
+            {/* Month labels — plain strings, no inline expressions in SVG */}
+            <For each={dataPoints}>{(pt) => (
+              <text x={pt.x} y="136" text-anchor="middle" style="fill: var(--muted); font-size: 9px; font-weight: 700; font-family: 'Azeret Mono', monospace">{pt.label}</text>
+            )}</For>
           </svg>
         </div>
       </Show>
@@ -167,8 +184,9 @@ function ActorRings(props) {
       }>
         <div class="grid grid-cols-5 gap-4 sm:grid-cols-5">
           <For each={props.items}>{(item, idx) => {
-            const pct = (item.value / max()) * 100;
-            const offset = circumference * (1 - pct / 100);
+            const pct = (item.value / max) * 100;
+            const dashTotal = circumference;
+            const dashOffset = circumference * (1 - pct / 100);
             const initials = item.label.split(' ').map(w => w[0]).join('');
 
             return (
@@ -183,7 +201,7 @@ function ActorRings(props) {
                       stroke-width="5"
                       stroke-linecap="round"
                       class="animate-ring-fill"
-                      style={`stroke-dasharray: ${circumference}; --ring-offset: ${offset}`}
+                      style={`stroke-dasharray: ${dashTotal} ${dashOffset}`}
                     />
                     <text x="28" y="31" text-anchor="middle" style="fill: white; font-size: 12px; font-weight: 800; font-family: 'Bebas Neue', cursive">{item.value}</text>
                   </svg>
@@ -191,7 +209,7 @@ function ActorRings(props) {
                 <p class="type-caption text-gray-300 text-center truncate w-full" style="font-size: 8px">{item.label}</p>
               </div>
             );
-          }</For>
+          }}</For>
         </div>
       </Show>
     </div>
@@ -229,7 +247,7 @@ function DirectorBars(props) {
                     style={{
                       width: `${pct}%`,
                       background: 'var(--p)',
-                      'box-shadow': '0 0 8px var(--p-glow)'
+                      'box-shadow: 0 0 8px var(--p-glow)'
                     }}
                   />
                 </div>
@@ -243,7 +261,7 @@ function DirectorBars(props) {
   );
 }
 
-/* ── Metric Card (EXISTING — UNCHANGED) ── */
+/* ── Metric Card ── */
 function MetricCard(props) {
   return (
     <div class="glass-surface rounded-[1.5rem] p-5 border border-white/5 relative overflow-hidden animate-fade-up">
@@ -252,42 +270,6 @@ function MetricCard(props) {
       <div class="type-stat text-white">{props.value}</div>
       <Show when={props.sub}>
         <p class="type-caption text-gray-500 mt-1">{props.sub}</p>
-      </Show>
-    </div>
-  );
-}
-
-/* ── Bar List (kept for potential reuse) ── */
-function BarList(props) {
-  const max = createMemo(() => Math.max(1, ...props.items.map(i => i.value)));
-  return (
-    <div class="glass-surface rounded-[1.5rem] p-5 border border-white/5 animate-fade-up">
-      <h3 class="type-caption text-white mb-4 flex items-center gap-2" style="font-size: 11px; font-weight: 700">
-        <Icon name={props.icon} style="color: var(--p)" /> {props.title}
-      </h3>
-      <Show when={props.items.length > 0} fallback={
-        <p class="type-metadata text-gray-500 font-bold">No data yet.</p>
-      }>
-        <div class="space-y-3">
-          <For each={props.items}>{(item, idx) => (
-            <div class="animate-fade-up" style={`animation-delay: ${idx() * 40}ms`}>
-              <div class="flex justify-between type-caption mb-1.5">
-                <span class="text-gray-300 truncate pr-3">{item.label}</span>
-                <span style="color: var(--p)">{item.value}</span>
-              </div>
-              <div class="h-2 bg-white/5 rounded-full overflow-hidden">
-                <div
-                  class="h-full rounded-full animate-bar-grow"
-                  style={{
-                    width: `${(item.value / max()) * 100}%`,
-                    background: 'var(--p)',
-                    'box-shadow: 0 0 12px var(--p-glow)'
-                  }}
-                />
-              </div>
-            </div>
-          )}</For>
-        </div>
       </Show>
     </div>
   );
@@ -343,7 +325,7 @@ export function Analytics(props) {
       months.push({ key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, label: d.toLocaleString('en-US', { month: 'short' }), value: 0 });
     }
     const byKey = new Map(months.map(m => [m.key, m]));
-    completed().forEach(m => { const k = yearMonth(m.watchDate); if (byKey.has(k)) byKey.get(k).value += 1; });
+    completed().forEach(m => { const k = m.watchDate ? m.watchDate.slice(0, 7) : null; if (k && byKey.has(k)) byKey.get(k).value += 1; });
     return months;
   });
 
@@ -375,7 +357,7 @@ export function Analytics(props) {
 
       {/* Completion progress bar */}
       <Show when={props.watchlist().length > 0}>
-        <div class="glass-surface rounded-2xl p-5 border border-white/5 animate-fade-up">
+        <div class="glass-surface rounded-2xl p-5 border border border-white/5 animate-fade-up">
           <div class="flex justify-between items-center mb-3">
             <span class="type-label flex items-center gap-2">
               <Icon name="trending_up" style="font-size: 13px; color: var(--p)" /> Vault Completion
@@ -399,7 +381,7 @@ export function Analytics(props) {
         </div>
       </Show>
 
-      {/* Charts — 2x2 grid: 6 distinct chart types */}
+      {/* Charts — 6 distinct chart types */}
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <DonutChart completed={completed} />
         <RatingDistribution items={ratingBuckets()} title="Rating Distribution" icon="star" />
