@@ -2,7 +2,10 @@ import { For, Show, createMemo } from 'solid-js';
 import { Icon } from '../utils';
 
 export function SettingsView(props) {
-  const list = () => props.watchlist?.() || [];
+  const list = () =>
+  typeof props.watchlist === "function"
+    ? props.watchlist()
+    : props.watchlist || [];
 
   const memberSince = createMemo(() => {
     const timestamps = list()
