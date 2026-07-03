@@ -5,7 +5,6 @@ const yearMonth = (date) => date ? date.slice(0, 7) : null;
 
 function MetricCard(props) {
   return (
-    // p-5 = 20px; rounded-[1.5rem] = 24px; mb-2 = 8px
     <div class="glass-surface rounded-[1.5rem] p-5 border border-white/5 relative overflow-hidden animate-fade-up">
       <Icon name={props.icon} class="absolute -right-3 -bottom-3 text-7xl pointer-events-none" style="color: var(--p); opacity: 0.05" />
       <div class="type-label mb-2" style="color: var(--muted)">{props.label}</div>
@@ -20,7 +19,6 @@ function MetricCard(props) {
 function BarList(props) {
   const max = createMemo(() => Math.max(1, ...props.items.map(i => i.value)));
   return (
-    // p-5 = 20px; space-y-3 = 12px; mb-4 = 16px
     <div class="glass-surface rounded-[1.5rem] p-5 border border-white/5 animate-fade-up">
       <h3 class="type-caption text-white mb-4 flex items-center gap-2" style="font-size: 11px; font-weight: 700">
         <Icon name={props.icon} style="color: var(--p)" /> {props.title}
@@ -35,7 +33,6 @@ function BarList(props) {
                 <span class="text-gray-300 truncate pr-3">{item.label}</span>
                 <span style="color: var(--p)">{item.value}</span>
               </div>
-              {/* Progress bar with grow animation on mount */}
               <div class="h-2 bg-white/5 rounded-full overflow-hidden">
                 <div
                   class="h-full rounded-full animate-bar-grow"
@@ -56,6 +53,12 @@ function BarList(props) {
 
 export function Analytics(props) {
   const completed = createMemo(() => props.watchlist().filter(m => m.status === 'Completed'));
+
+  const completionPct = createMemo(() => {
+    const total = props.watchlist().length;
+    if (total === 0) return 0;
+    return Math.round((completed().length / total) * 100);
+  });
 
   const stats = createMemo(() => {
     const done     = completed();
@@ -101,7 +104,6 @@ export function Analytics(props) {
   });
 
   return (
-    // space-y-6 = 24px = 3×8; pb-10 = 40px = 5×8
     <div class="animate-fade-in pb-10 space-y-6">
 
       {/* Header */}
@@ -110,7 +112,7 @@ export function Analytics(props) {
         <h2 class="type-page-title text-white">STATS</h2>
       </div>
 
-      {/* Metric cards — gap-3 = 12px */}
+      {/* Metric cards */}
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 stagger">
         <MetricCard icon="movie"    label="Movies Watched" value={stats().movies} />
         <MetricCard icon="live_tv"  label="Shows Watched"  value={stats().shows}  />
@@ -118,7 +120,33 @@ export function Analytics(props) {
         <MetricCard icon="star"     label="Avg Rating"     value={stats().avg}    sub="Your score" />
       </div>
 
-      {/* Charts — gap-4 = 16px = 2×8 */}
+      {/* Completion progress bar */}
+      <Show when={props.watchlist().length > 0}>
+        <div class="glass-surface rounded-2xl p-5 border border-white/5 animate-fade-up">
+          <div class="flex justify-between items-center mb-3">
+            <span class="type-label flex items-center gap-2">
+              <Icon name="trending_up" style="font-size: 13px; color: var(--p)" /> Vault Completion
+            </span>
+            <span class="type-stat" style="color: var(--p); font-size: 1.75rem">{completionPct()}<span style="font-size: 0.9rem; color: var(--muted)">%</span></span>
+          </div>
+          <div class="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+            <div
+              class="h-full rounded-full"
+              style={{
+                width: `${completionPct()}%`,
+                background: 'var(--p)',
+                'box-shadow': '0 0 10px var(--p-glow)',
+                transition: 'width 800ms var(--ease-smooth)'
+              }}
+            />
+          </div>
+          <p class="type-caption mt-2.5" style="color: var(--muted)">
+            {completed().length} of {props.watchlist().length} titles completed
+          </p>
+        </div>
+      </Show>
+
+      {/* Charts */}
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <BarList title="Genre Distribution"  icon="donut_large"  items={genreBars()} />
         <BarList title="Watched Per Month"   icon="bar_chart"    items={monthly()} />
