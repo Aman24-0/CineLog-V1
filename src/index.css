@@ -692,6 +692,47 @@ button:active { transform: scale(0.95); transition-duration: var(--dur-fast); }
   pointer-events: none;
 }
 
+/* ═══════════════════════════════════════════════════════════
+   RECOMMENDATION CARD — Today's Pick editorial card
+   ═══════════════════════════════════════════════════════════ */
+.recommendation-card {
+  box-shadow: var(--shadow-raised);
+  transition:
+    border-color var(--dur-base) var(--ease-out),
+    box-shadow   var(--dur-base) var(--ease-out),
+    transform    var(--dur-base) var(--ease-spring);
+}
+.recommendation-card:hover {
+  border-color: color-mix(in srgb, var(--p) 30%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--p) 20%, transparent),
+    var(--shadow-float),
+    0 0 28px var(--p-glow);
+  transform: translateY(-2px);
+}
+.recommendation-card:active {
+  transform: scale(0.99);
+  transition-duration: var(--dur-fast);
+}
+
+.recommendation-backdrop {
+  opacity: 0;
+  filter: brightness(0.75) saturate(0.9);
+  transition:
+    opacity    600ms var(--ease-out),
+    filter     400ms var(--ease-out),
+    transform  800ms var(--ease-smooth);
+  transform: scale(1.05);
+}
+.recommendation-backdrop.img-loaded {
+  opacity: 1;
+  transform: scale(1);
+}
+.recommendation-card:hover .recommendation-backdrop {
+  filter: brightness(0.85) saturate(1.0);
+  transform: scale(1.06);
+}
+
 /* ── SNAP SCROLL — override leftover class */
 .snap-start {
   /* Let continue-card handle styling */
