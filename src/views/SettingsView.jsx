@@ -8,7 +8,9 @@ export function SettingsView(props) {
       .map(m => {
         const ts = m.addedAt;
         if (!ts) return null;
-        if (ts.seconds) return new Date(ts.seconds * 1000);
+        if (typeof ts.seconds === 'number') {
+  return new Date(ts.seconds * 1000);
+}
         if (ts instanceof Date) return ts;
         if (typeof ts === 'string') { const d = new Date(ts); return isNaN(d.getTime()) ? null : d; }
         return null;
