@@ -107,7 +107,7 @@ function MonthlyTrend(props) {
   const points = createMemo(() => {
     const pts = [];
     for (let i = 0; i < props.items.length; i++) {
-      const x = padX + (i * (chartW / (props.items.length - 1)));
+      const x = padX + i * (chartW / (props.items.length - 1));
       const y = padTop + chartH - (props.items[i].value / max()) * chartH;
       pts.push(`${x},${y}`);
     }
@@ -121,7 +121,7 @@ function MonthlyTrend(props) {
   /* Pre-compute data points for dots — avoids inline expressions inside SVG */
   const dataPoints = createMemo(() =>
     props.items.map((item, i) => ({
-      x: padX + (i * (chartW / (props.items.length - 1)),
+      x: padX + i * (chartW / (props.items.length - 1)),
       y: padTop + chartH - (item.value / max()) * chartH,
       label: item.label,
       idx: i
@@ -247,14 +247,14 @@ function DirectorBars(props) {
                     style={{
                       width: `${pct}%`,
                       background: 'var(--p)',
-                      'box-shadow: 0 0 8px var(--p-glow)'
+                      'box-shadow': '0 0 8px var(--p-glow)'
                     }}
                   />
                 </div>
                 <span class="type-caption w-6 text-right shrink-0" style="color: var(--p)">{item.value}</span>
               </div>
             );
-          </For>
+          }}</For>
         </div>
       </Show>
     </div>
@@ -385,7 +385,7 @@ export function Analytics(props) {
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <DonutChart completed={completed} />
         <RatingDistribution items={ratingBuckets()} title="Rating Distribution" icon="star" />
-        <BarList title="Genre Distribution" icon="donut_large" items={genreBars()} />
+        <RatingDistribution title="Genre Distribution" icon="donut_large" items={genreBars()} />
         <MonthlyTrend items={monthly()} title="Watched Per Month" icon="bar_chart" />
         <ActorRings items={people().actors} title="Top Actors" icon="groups" />
         <DirectorBars items={people().directors} title="Top Directors" icon="movie_edit" />
