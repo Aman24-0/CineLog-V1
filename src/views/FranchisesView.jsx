@@ -276,7 +276,6 @@ export function FranchisesView(props) {
     }
   };
 
-  // NEW DIRECT JUMP LOGIC
   const jumpToPosition = async (oldIndex, m, list = currentMovies(), folderId = currentFolder()) => {
     const input = prompt(`Move "${m.title || m.name}" to position (1 - ${list.length}):\n\nCurrent position: ${oldIndex + 1}`);
     if (!input) return;
@@ -289,7 +288,6 @@ export function FranchisesView(props) {
     const newIndex = newPos - 1;
     let arr = [...list];
     
-    // Remove from old pos and insert at new pos
     const [item] = arr.splice(oldIndex, 1);
     arr.splice(newIndex, 0, item);
 
@@ -300,7 +298,7 @@ export function FranchisesView(props) {
   };
 
   const removeFromFolder = async (m) => {
-    if (!confirm(`"${m.title || m.name}" ko folder se hatayein?`)) return;
+    if (!confirm(`Remove "${m.title || m.name}" from folder?`)) return;
     const updated = { ...m.franchises };
     delete updated[currentFolder()];
     await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(m.id)), { franchises: updated });
@@ -336,7 +334,6 @@ export function FranchisesView(props) {
     setSortMode(selectedSort);
     setShowShareModal(false);
     
-    // Give the DOM a moment to re-render the view with the new sort before popping the print dialog
     setTimeout(() => {
       window.print();
     }, 300);
@@ -344,17 +341,14 @@ export function FranchisesView(props) {
 
   const folderCard = (f) => {
     const folderIds = () => new Set(getNestedFolderIds(f.id));
-    const firstMovie = () => props.watchlist().find(m => m.franchises && Object.keys(m.franchises).some(fid => folderIds().has(fid)));
-    const bgImage = () => f.coverImage || (firstMovie()?.backdrop_path ? `https://image.tmdb.org/t/p/w500${firstMovie().backdrop_path}` : 'none');
     const movieCount = () => props.watchlist().filter(m => m.franchises && Object.keys(m.franchises).some(fid => folderIds().has(fid))).length;
     return (
       <div onClick={() => setCurrentFolder(f.id)} class="franchise-card relative cursor-pointer group flex flex-col justify-end min-h-[160px] overflow-hidden" style="background: var(--raised)">
-        <Show when={bgImage() !== 'none'}>
-          <img src={bgImage()} class="backdrop-img absolute inset-0 z-0 group-hover:scale-105" onLoad={e => e.target.classList.add('img-loaded')} alt="" />
-        <div class="absolute inset-0 z-10" style="background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.10) 100%); pointer-events: none" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent z-10" />
-        </Show>
-        <div class="relative z-20 p-6 w-full flex flex-col justify-end"><div class="label-mono mb-1" style="color: var(--p)">Collection</div><h3 class="font-headline text-3xl text-white leading-tight drop-shadow-lg">{f.name}</h3><p class="label-mono mt-1" style="color: var(--muted)">{movieCount()} titles</p></div>
+        <div class="relative z-20 p-6 w-full flex flex-col justify-end">
+          <div class="label-mono mb-1" style="color: var(--p)">Collection</div>
+          <h3 class="font-headline text-3xl text-white leading-tight drop-shadow-lg">{f.name}</h3>
+          <p class="label-mono mt-1" style="color: var(--muted)">{movieCount()} titles</p>
+        </div>
         <button onClick={(e)=>{e.stopPropagation(); setEditingFolder(f);}} class="absolute top-4 right-16 z-30 w-10 h-10 rounded-full flex items-center justify-center" style="background:rgba(0,0,0,.5);color:white"><Icon name="edit"/></button>
         <button onClick={(e) => { e.stopPropagation(); confirm('Delete folder?') && deleteDoc(doc(db, 'users', props.uid, 'franchises', f.id)); }} class="absolute top-4 right-4 z-30 w-10 h-10 flex items-center justify-center rounded-full transition-all" style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); color: white"><Icon name="delete" class="text-lg" /></button>
       </div>
@@ -363,7 +357,6 @@ export function FranchisesView(props) {
 
   return (
     <>
-      {/* ── STANDARD DARK UI ── */}
       <div class="pb-10 animate-fade-in no-print">
         <div class="flex justify-between items-center mb-6">
           <h2 class="font-headline text-4xl text-white">LISTS</h2>
@@ -408,7 +401,6 @@ export function FranchisesView(props) {
                 {(m, i) => (
                   <div class="flex items-center gap-3 rounded-2xl p-3 border transition-all" style="background: var(--surface); border-color: var(--border)">
                     
-                    {/* The new direct jump button */}
                     <Show when={sortMode() === 'order'}>
                       <button 
                         onClick={() => jumpToPosition(i(), m, flattenedMovies(), currentFolder())} 
