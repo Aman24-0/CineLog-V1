@@ -222,7 +222,18 @@ export default function App() {
               </Show>
             </Show>
             <Show when={view() === 'settings'}>
-              <SettingsView user={user()} watchlist={watchlist} theme={theme()} setTheme={setTheme} onLogout={() => signOut(auth)} onNuke={nukeCollection} uid={user()?.uid} showToast={showToast} />
+              <SettingsView
+                user={user()}
+                watchlist={watchlist}
+                theme={theme()}
+                setTheme={setTheme}
+                setView={setView}
+                onServerSettings={() => setServerSettingsModal(true)}
+                onLogout={() => signOut(auth)}
+                onNuke={nukeCollection}
+                uid={user()?.uid}
+                showToast={showToast}
+              />
             </Show>
           </main>
 
