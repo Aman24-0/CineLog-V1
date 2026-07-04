@@ -341,14 +341,17 @@ export function FranchisesView(props) {
 
   const folderCard = (f) => {
     const folderIds = () => new Set(getNestedFolderIds(f.id));
+    const firstMovie = () => props.watchlist().find(m => m.franchises && Object.keys(m.franchises).some(fid => folderIds().has(fid)));
+    const bgImage = () => f.coverImage || (firstMovie()?.backdrop_path ? `https://image.tmdb.org/t/p/w500${firstMovie().backdrop_path}` : 'none');
     const movieCount = () => props.watchlist().filter(m => m.franchises && Object.keys(m.franchises).some(fid => folderIds().has(fid))).length;
     return (
       <div onClick={() => setCurrentFolder(f.id)} class="franchise-card relative cursor-pointer group flex flex-col justify-end min-h-[160px] overflow-hidden" style="background: var(--raised)">
-        <div class="relative z-20 p-6 w-full flex flex-col justify-end">
-          <div class="label-mono mb-1" style="color: var(--p)">Collection</div>
-          <h3 class="font-headline text-3xl text-white leading-tight drop-shadow-lg">{f.name}</h3>
-          <p class="label-mono mt-1" style="color: var(--muted)">{movieCount()} titles</p>
-        </div>
+        <Show when={bgImage() !== 'none'}>
+          <img src={bgImage()} class="backdrop-img absolute inset-0 z-0 group-hover:scale-105" onLoad={e => e.target.classList.add('img-loaded')} alt="" />
+          <div class="absolute inset-0 z-10" style="background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.10) 100%); pointer-events: none" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent z-10" />
+        </Show>
+        <div class="relative z-20 p-6 w-full flex flex-col justify-end"><div class="label-mono mb-1" style="color: var(--p)">Collection</div><h3 class="font-headline text-3xl text-white leading-tight drop-shadow-lg">{f.name}</h3><p class="label-mono mt-1" style="color: var(--muted)">{movieCount()} titles</p></div>
         <button onClick={(e)=>{e.stopPropagation(); setEditingFolder(f);}} class="absolute top-4 right-16 z-30 w-10 h-10 rounded-full flex items-center justify-center" style="background:rgba(0,0,0,.5);color:white"><Icon name="edit"/></button>
         <button onClick={(e) => { e.stopPropagation(); confirm('Delete folder?') && deleteDoc(doc(db, 'users', props.uid, 'franchises', f.id)); }} class="absolute top-4 right-4 z-30 w-10 h-10 flex items-center justify-center rounded-full transition-all" style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); color: white"><Icon name="delete" class="text-lg" /></button>
       </div>
@@ -434,55 +437,55 @@ export function FranchisesView(props) {
         </Show>
       </div>
 
-      {/* ── PRINTABLE PDF UI ── */}
+      {/* ── PRINTABLE PDF UI ── HIDDEN on screen, only visible during print */}
       <Show when={currentFolder()}>
-        <div class="print-only bg-white p-8 font-sans text-black min-h-screen">
-          <h1 class="text-3xl font-black mb-1 text-black">{currentFolderData()?.name}</h1>
-          <p class="text-gray-500 text-sm mb-6 pb-4 border-b border-gray-300">
-            Cinelog Vault Data Ledger • {sortMode() === 'year' ? 'Sorted by Release Timeline' : sortMode() === 'grouped' ? 'Grouped by Sub-Collection Folders' : 'Custom Matrix Alignment Order'}
-          </p>
+        <div class="print-only" style="display:none">
+          <div style="background: white; padding: 2rem; font-family: sans-serif; color: black; min-height: 100vh">
+            <h1 style="font-size:1.875rem; font-weight:900; margin-bottom:0.25rem; color:black">{currentFolderData()?.name}</h1>
+            <p style="font-size:0.875rem; color:#6b7280; margin-bottom:1.5rem; padding-bottom:1rem; border-bottom:1px solid #d1d5db">
+              Cinelog Vault Data Ledger • {sortMode() === 'year' ? 'Sorted by Release Timeline' : sortMode() === 'grouped' ? 'Grouped by Sub-Collection Folders' : 'Custom Matrix Alignment Order'}
+            </p>
 
-          <Show when={sortMode() !== 'grouped'}>
-            <div class="flex flex-col gap-2">
-              <For each={flattenedMovies()}>{(m, i) => (
-                <div class="flex items-center gap-4 py-2 border-b border-gray-100 print-item">
-                  <span class="text-gray-400 font-mono text-sm w-6">
-                    {i() + 1}.
-                  </span>
-                  <Show when={m.poster_path} fallback={<div class="w-10 h-14 bg-gray-200 rounded" />}>
-                    <img src={`https://image.tmdb.org/t/p/w92${m.poster_path}`} class="w-10 h-14 object-cover rounded shadow-sm" />
-                  </Show>
+            <Show when={sortMode() !== 'grouped'}>
+              <div style="display:flex; flex-direction:column; gap:0.5rem">
+                <For each={flattenedMovies()}>{(m, i) => (
+                  <div style="display:flex; align-items:center; gap:1rem; padding:0.5rem 0; border-bottom:1px solid #f3f4f6">
+                    <span style="color:#9ca3af; font-family:monospace; font-size:0.875rem; width:1.5rem">{i() + 1}.</span>
+                    <Show when={m.poster_path} fallback={<div style="width:2.5rem; height:3.5rem; background:#e5e7eb; border-radius:0.25rem" />}>
+                      <img src={`https://image.tmdb.org/t/p/w92${m.poster_path}`} style="width:2.5rem; height:3.5rem; object-fit:cover; border-radius:0.25rem; box-shadow:0 1px 2px rgba(0,0,0,0.1)" />
+                    </Show>
+                    <div>
+                      <h3 style="font-weight:700; font-size:1rem; color:black; line-height:1.25; margin:0">{m.title || m.name}</h3>
+                      <p style="font-size:0.75rem; color:#6b7280; margin:0; margin-top:0.125rem">{(m.release_date || m.first_air_date || '').split('-')[0]} • {m.media_type==='tv'?'Series':'Movie'}</p>
+                    </div>
+                  </div>
+                )}</For>
+              </div>
+            </Show>
+
+            <Show when={sortMode() === 'grouped'}>
+              <div style="display:flex; flex-direction:column; gap:1.5rem">
+                <For each={groupedByCollection()}>{(group) => (
                   <div>
-                    <h3 class="font-bold text-base text-black leading-tight m-0">{m.title || m.name}</h3>
-                    <p class="text-xs text-gray-500 m-0 mt-0.5">{(m.release_date || m.first_air_date || '').split('-')[0]} • {m.media_type==='tv'?'Series':'Movie'}</p>
-                  </div>
-                </div>
-              )}</For>
-            </div>
-          </Show>
-
-          <Show when={sortMode() === 'grouped'}>
-            <div class="space-y-6">
-              <For each={groupedByCollection()}>{(group) => (
-                <div class="print-item">
-                  <h2 class="text-lg font-bold border-b border-gray-300 pb-1 mb-2 text-black">{group.name}</h2>
-                  <div class="flex flex-col gap-1">
-                    <For each={group.items}>{(m) => (
-                      <div class="flex items-center gap-3 py-1.5 print-item">
-                        <Show when={m.poster_path} fallback={<div class="w-8 h-12 bg-gray-200 rounded" />}>
-                          <img src={`https://image.tmdb.org/t/p/w92${m.poster_path}`} class="w-8 h-12 object-cover rounded shadow-sm" />
-                        </Show>
-                        <div>
-                          <h3 class="font-bold text-sm text-black leading-tight m-0">{m.title || m.name}</h3>
-                          <p class="text-[10px] text-gray-500 m-0 mt-0.5">{(m.release_date || m.first_air_date || '').split('-')[0]}</p>
+                    <h2 style="font-size:1.125rem; font-weight:700; border-bottom:1px solid #d1d5db; padding-bottom:0.25rem; margin-bottom:0.5rem; color:black">{group.name}</h2>
+                    <div style="display:flex; flex-direction:column; gap:0.25rem">
+                      <For each={group.items}>{(m) => (
+                        <div style="display:flex; align-items:center; gap:0.75rem; padding:0.375rem 0">
+                          <Show when={m.poster_path} fallback={<div style="width:2rem; height:3rem; background:#e5e7eb; border-radius:0.25rem" />}>
+                            <img src={`https://image.tmdb.org/t/p/w92${m.poster_path}`} style="width:2rem; height:3rem; object-fit:cover; border-radius:0.25rem; box-shadow:0 1px 2px rgba(0,0,0,0.1)" />
+                          </Show>
+                          <div>
+                            <h3 style="font-weight:700; font-size:0.875rem; color:black; line-height:1.25; margin:0">{m.title || m.name}</h3>
+                            <p style="font-size:0.625rem; color:#6b7280; margin:0; margin-top:0.125rem">{(m.release_date || m.first_air_date || '').split('-')[0]}</p>
+                          </div>
                         </div>
-                      </div>
-                    )}</For>
+                      )}</For>
+                    </div>
                   </div>
-                </div>
-              )}</For>
-            </div>
-          </Show>
+                )}</For>
+              </div>
+            </Show>
+          </div>
         </div>
       </Show>
 
