@@ -16,6 +16,7 @@ import { SearchModal } from './modals/SearchModal';
 import { ServerSettingsModal } from './modals/ServerSettingsModal';
 import { SettingsModal } from './modals/Modals';
 import { useModalState } from './hooks/useModalState';
+import { useMicrointeractions } from './hooks/useMicrointeractions';
 
 const NavBtn = (props) => (
   <button
@@ -66,15 +67,27 @@ export default function App() {
     detailsId, setDetailsId, previewSource, setPreviewSource,
     settingsModal, setSettingsModal, serverSettingsModal, setServerSettingsModal
   } = useModalState();
-  
-  const [toast, setToast] = createSignal({ show: false, msg: '' });
 
-  const showToast = (msg) => {
-    setToast({ show: true, msg });
-    setTimeout(() => setToast({ show: false, msg: '' }), 3000);
+  // Premium microinteractions hook
+  const {
+    toasts,
+    showToast,
+    notifyItemAdded,
+    notifySuccess,
+    notifyError,
+    animateEntrance,
+  } = useMicrointeractions();
+
+  const handleLogin = () => {
+    signInWithPopup(auth, new GoogleAuthProvider())
+      .then(() => {
+        showToast('Signed in successfully! 🎬', 'success', 2500);
+      })
+      .catch((error) => {
+        notifyError('Sign in failed. Please try again.');
+        console.error('Auth error:', error);
+      });
   };
-
-  const handleLogin = () => signInWithPopup(auth, new GoogleAuthProvider());
 
   createEffect(() => { document.body.className = `theme-${theme()}`; localStorage.setItem('cinelog_theme', theme()); });
   createEffect(() => { view(); window.scrollTo(0, 0); });
@@ -113,10 +126,10 @@ export default function App() {
     if (!user()) return;
     if (!confirm("This will permanently delete your entire Vault. Are you sure?")) return;
     if (prompt("Type DELETE to confirm") !== "DELETE") {
-      showToast("Cancelled. Vault is safe.");
+      showToast("Cancelled. Vault is safe.", 'info');
       return;
     }
-    showToast("Nuking Vault...");
+    showToast("Nuking Vault...", 'info', -1);
     const snap = await getDocs(collection(db, 'users', user().uid, 'watchlist'));
     const docs = snap.docs;
     for (let i = 0; i < docs.length; i += 500) {
@@ -124,7 +137,7 @@ export default function App() {
       docs.slice(i, i + 500).forEach(d => batch.delete(d.ref));
       await batch.commit();
     }
-    showToast("Vault wiped!");
+    showToast("Vault wiped! 💥", 'success');
   };
 
   return (
@@ -138,7 +151,9 @@ export default function App() {
           </div>
           <h2 class="font-headline text-4xl text-white mb-3">Something went wrong</h2>
           <p class="text-sm mb-8 leading-relaxed" style="color: var(--muted)">An unexpected error occurred. Please reload the app.</p>
-          <button onClick={() => window.location.reload()} class="px-8 py-3.5 rounded-full font-bold text-black text-sm uppercase tracking-widest active:scale-95 transition-all" style="background: var(--p); box-shadow: 0 0 20px var(--p-glow)">Reload App</button>
+          <button onClick={() => window.location.reload()} class="px-8 py-3.5 rounded-full font-bold text-black text-sm uppercase tracking-widest active:scale-95 transition-all" style="background: var(--p); box-shadow: 0 0 24px var(--p-glow)">
+            Reload App
+          </button>
         </div>
       </div>
     )}>
@@ -149,7 +164,7 @@ export default function App() {
             style="background: #000; border-bottom: 1px solid rgba(255,255,255,0.08);">
             
             <div class="flex items-center gap-3">
-              <div class="flex items-center gap-2 cursor-pointer active:scale-95 transition-transform"
+              <div class="flex items-center gap-2 cursor-pointer active:scale-95 transition-transform hover:scale-105"
                 onClick={() => window.location.reload()}>
                 <div class="w-8 h-8 rounded-xl flex items-center justify-center"
                   style="background: var(--p-dim); border: 1px solid var(--border-active)">
@@ -165,7 +180,7 @@ export default function App() {
               <Show when={user()} fallback={
                 <button
                   onClick={handleLogin}
-                  class="px-5 py-2 rounded-full font-bold text-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                  class="px-5 py-2 rounded-full font-bold text-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all hover:shadow-lg"
                   style="background: var(--p); box-shadow: 0 0 16px var(--p-glow)"
                 >
                   Sign In
@@ -174,7 +189,7 @@ export default function App() {
                 <img
                   src={user().photoURL}
                   onClick={() => setView('settings')}
-                  class="w-9 h-9 rounded-full cursor-pointer object-cover active:scale-95 transition-all"
+                  class="w-9 h-9 rounded-full cursor-pointer object-cover active:scale-95 transition-all hover:scale-110"
                   style="border: 2px solid var(--p);"
                 />
               </Show>
@@ -183,7 +198,7 @@ export default function App() {
 
           <main class="p-5 max-w-2xl lg:max-w-none lg:px-12 mx-auto relative z-10">
             <Show when={view() === 'dashboard'}>
-              <Dashboard watchlist={watchlist} openMovie={setDetailsId} setView={setView} showToast={showToast} setActiveVaultStatus={setActiveVaultStatus} isGuest={!user()} onLogin={handleLogin} uid={user()?.uid} onSearch={(term) => { setSearchInitialQuery(term || ''); setSearchModal(true); }} />
+              <Dashboard watchlist={watchlist} openMovie={setDetailsId} setView={setView} showToast={showToast} setActiveVaultStatus={setActiveVaultStatus} isGuest={!user()} onLogin={handleLogin} />
             </Show>
             <Show when={view() === 'watchlist'}>
               <Vault watchlist={watchlist} openMovie={setDetailsId} activeStatus={activeVaultStatus()} onFilterChange={setActiveVaultStatus} isGuest={!user()} onLogin={handleLogin} />
@@ -207,7 +222,7 @@ export default function App() {
               </Show>
             </Show>
             <Show when={view() === 'settings'}>
-              <SettingsView user={user()} watchlist={watchlist} theme={theme()} setTheme={setTheme} onLogout={() => signOut(auth)} onNuke={nukeCollection} uid={user()?.uid} showToast={showToast} setView={setView} onServerSettings={() => setServerSettingsModal(true)} />
+              <SettingsView user={user()} watchlist={watchlist} theme={theme()} setTheme={setTheme} onLogout={() => signOut(auth)} onNuke={nukeCollection} uid={user()?.uid} showToast={showToast} />
             </Show>
           </main>
 
@@ -272,7 +287,7 @@ export default function App() {
           <Show when={showScrollTop()}>
             <button
               onClick={scrollToTop}
-              class="fixed bottom-24 lg:bottom-8 right-5 lg:right-8 w-12 h-12 rounded-full flex items-center justify-center z-[80] transition-all animate-pop-in hover:scale-105 active:scale-95 no-print"
+              class="fixed bottom-24 lg:bottom-8 right-5 lg:right-8 w-12 h-12 rounded-full flex items-center justify-center z-[80] transition-all animate-pop-in hover:scale-110 active:scale-90"
               style="background: var(--p); color: #000; box-shadow: 0 0 20px var(--p-glow)"
               title="Back to top"
             >
@@ -280,12 +295,29 @@ export default function App() {
             </button>
           </Show>
 
-          <Show when={toast().show}>
-            <div class="fixed inset-x-0 bottom-28 pointer-events-none flex justify-center z-[10000000]">
-              <div class="glass-surface px-6 py-3 rounded-full shadow-2xl flex gap-2 items-center text-sm font-bold whitespace-nowrap animate-pop-in border"
-                style="border-color: var(--p); color: var(--text)">
-                <Icon name="check_circle" fill style="color: var(--p)" /> {toast().msg}
-              </div>
+          {/* Premium Toast Notifications */}
+          <Show when={toasts().length > 0}>
+            <div class="fixed inset-x-0 bottom-28 lg:bottom-8 pointer-events-none flex flex-col gap-3 px-4 z-[10000000]">
+              {toasts().map((toast) => (
+                <div 
+                  class={`glass-surface px-6 py-3 rounded-full shadow-2xl flex gap-2 items-center text-sm font-bold whitespace-nowrap toast-${toast.type} animate-pop-in border`}
+                  style={`border-color: ${toast.type === 'error' ? '#ff6b6b' : toast.type === 'action' ? 'var(--p)' : 'var(--p)'}; color: var(--text); pointer-events: auto;`}
+                >
+                  <Show when={toast.type === 'success'}>
+                    <Icon name="check_circle" fill style="color: #4ade80" />
+                  </Show>
+                  <Show when={toast.type === 'error'}>
+                    <Icon name="error" fill style="color: #ff6b6b" />
+                  </Show>
+                  <Show when={toast.type === 'info'}>
+                    <Icon name="info" fill style="color: var(--p)" />
+                  </Show>
+                  <Show when={toast.type === 'action'}>
+                    <Icon name="star" fill style="color: var(--p)" />
+                  </Show>
+                  {toast.msg}
+                </div>
+              ))}
             </div>
           </Show>
 
