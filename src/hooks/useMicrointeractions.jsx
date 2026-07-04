@@ -1,230 +1,109 @@
 import { createSignal } from 'solid-js';
 
 /**
- * Premium Microinteractions Hook
- * Provides enhanced toast notifications, haptic feedback, and animation utilities
- * Designed for CineLog's neon aesthetic
+ * useMicrointeractions
+ * Premium toast notifications + animation utilities for CineLog.
+ * Note: Button ripple effects are handled purely in CSS via button::after — no JS DOM injection needed.
  */
-
 export const useMicrointeractions = () => {
   const [toasts, setToasts] = createSignal([]);
   let toastId = 0;
 
   /**
-   * Show toast notification with premium animation
-   * @param {string} msg - Message to display
-   * @param {string} type - 'success' | 'error' | 'info' | 'action'
-   * @param {number} duration - Duration in ms (default 3000)
-   * @param {boolean} haptic - Trigger haptic feedback (default true)
+   * Show a toast notification.
+   * @param {string} msg
+   * @param {'success'|'error'|'info'|'action'} type
+   * @param {number} duration — ms; pass -1 to persist until manually dismissed
+   * @param {boolean} haptic — trigger device vibration if supported
+   * @returns {number} toastId (for manual dismiss)
    */
   const showToast = (msg, type = 'success', duration = 3000, haptic = true) => {
     const id = toastId++;
-    const newToast = { id, msg, type, show: true };
-    
-    setToasts([...toasts(), newToast]);
-    
-    // Haptic feedback on supported devices
+    setToasts(prev => [...prev, { id, msg, type }]);
+
     if (haptic && navigator.vibrate) {
-      if (type === 'error') navigator.vibrate([50, 100, 50]); // Error pattern
-      else if (type === 'success') navigator.vibrate(50); // Quick confirmation
-      else navigator.vibrate(30); // Subtle tap
+      if (type === 'error')   navigator.vibrate([50, 100, 50]);
+      else if (type === 'success') navigator.vibrate(50);
+      else                         navigator.vibrate(30);
     }
 
     if (duration > 0) {
-      setTimeout(() => {
-        setToasts(toasts().filter(t => t.id !== id));
-      }, duration);
+      setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), duration);
     }
 
     return id;
   };
 
-  /**
-   * Microinteraction: Item Added to Vault
-   */
-  const notifyItemAdded = (title, haptic = true) => {
-    showToast(`Added "${title}" to Vault! 🍿`, 'success', 3000, haptic);
-  };
+  /** Dismiss a specific toast by id (for persistent toasts) */
+  const dismissToast = (id) => setToasts(prev => prev.filter(t => t.id !== id));
 
-  /**
-   * Microinteraction: Rating Given
-   */
-  const notifyRatingGiven = (rating, haptic = true) => {
-    showToast(`Rated ${rating}/10 ⭐`, 'success', 2500, haptic);
-  };
+  /* ── Named microinteractions (wrappers around showToast) ── */
+  const notifyItemAdded    = (title, haptic = true)    => showToast(`Added "${title}" to Vault! 🍿`, 'success', 3000, haptic);
+  const notifyRatingGiven  = (rating, haptic = true)   => showToast(`Rated ${rating}/10 ⭐`, 'success', 2500, haptic);
+  const notifyEpisodeWatched = (ep, haptic = true)     => showToast(`Watched ${ep} ✓`, 'success', 2500, haptic);
+  const notifyFavorited    = (haptic = true)            => showToast('Added to favorites ❤️', 'action', 2000, haptic);
+  const notifyBookmarked   = (bookmarked, haptic = true) => showToast(bookmarked ? 'Bookmarked for later 📌' : 'Removed bookmark', 'action', 2000, haptic);
+  const notifySuccess      = (action, haptic = true)   => showToast(`${action} ✓`, 'success', 2000, haptic);
+  const notifyDeleted      = (name, haptic = true)     => showToast(`Removed "${name}" from Vault`, 'info', 2500, haptic);
+  const notifyImported     = (count, haptic = true)    => showToast(`Imported ${count} item${count !== 1 ? 's' : ''} 📥`, 'success', 3000, haptic);
+  const notifyExported     = (count, haptic = true)    => showToast(`Exported ${count} item${count !== 1 ? 's' : ''} 📤`, 'success', 3000, haptic);
+  const notifyError        = (msg, haptic = true)      => showToast(msg, 'error', 4000, haptic);
 
-  /**
-   * Microinteraction: Episode Watched
-   */
-  const notifyEpisodeWatched = (episodeName, haptic = true) => {
-    showToast(`Watched ${episodeName} ✓`, 'success', 2500, haptic);
-  };
-
-  /**
-   * Microinteraction: Favorite/Bookmarked
-   */
-  const notifyFavorited = (haptic = true) => {
-    showToast(`Added to favorites ❤️`, 'action', 2000, haptic);
-  };
-
-  /**
-   * Microinteraction: Bookmark Toggle
-   */
-  const notifyBookmarked = (bookmarked, haptic = true) => {
-    const msg = bookmarked ? `Bookmarked for later 📌` : `Removed bookmark`;
-    showToast(msg, 'action', 2000, haptic);
-  };
-
-  /**
-   * Microinteraction: Success Actions
-   */
-  const notifySuccess = (action, haptic = true) => {
-    showToast(`${action} ✓`, 'success', 2000, haptic);
-  };
-
-  /**
-   * Microinteraction: Delete Confirmation
-   */
-  const notifyDeleted = (itemName, haptic = true) => {
-    showToast(`Removed "${itemName}" from Vault`, 'info', 2500, haptic);
-  };
-
-  /**
-   * Microinteraction: Import/Export
-   */
-  const notifyImported = (count, haptic = true) => {
-    showToast(`Imported ${count} item${count !== 1 ? 's' : ''} 📥`, 'success', 3000, haptic);
-  };
-
-  const notifyExported = (count, haptic = true) => {
-    showToast(`Exported ${count} item${count !== 1 ? 's' : ''} 📤`, 'success', 3000, haptic);
-  };
-
-  /**
-   * Microinteraction: Loading State
-   */
-  const notifyLoading = (msg = 'Loading...', haptic = true) => {
+  /** Persistent loading toast — returns a dismiss fn */
+  const notifyLoading = (msg = 'Loading…', haptic = true) => {
     const id = showToast(msg, 'info', -1, haptic);
-    return () => setToasts(toasts().filter(t => t.id !== id));
+    return () => dismissToast(id);
   };
 
-  /**
-   * Microinteraction: Error Handling
-   */
-  const notifyError = (errorMsg, haptic = true) => {
-    showToast(errorMsg, 'error', 4000, haptic);
-  };
-
-  /**
-   * Microinteraction: Focus State Enhancement
-   * Adds visual feedback for keyboard navigation
-   */
+  /* ── Focus ring (keyboard nav helper) ── */
   const handleFocusRing = (element) => {
     if (!element) return;
-    element.addEventListener('keydown', (e) => {
-      if (e.key === 'Tab') {
-        element.classList.add('focus-visible');
-      }
-    });
-    element.addEventListener('mousedown', () => {
-      element.classList.remove('focus-visible');
-    });
+    element.addEventListener('keydown', (e) => { if (e.key === 'Tab') element.classList.add('focus-visible'); });
+    element.addEventListener('mousedown', () => element.classList.remove('focus-visible'));
   };
 
   /**
-   * Trigger ripple effect on button
+   * triggerRipple — CSS ripple (button::after) handles this automatically.
+   * This is kept as a no-op to avoid breaking callers.
    */
-  const triggerRipple = (element, event) => {
-    if (!element) return;
-    
-    const rect = element.getBoundingClientRect();
-    const ripple = document.createElement('span');
-    
-    ripple.style.position = 'absolute';
-    ripple.style.pointerEvents = 'none';
-    ripple.style.borderRadius = '50%';
-    ripple.style.background = 'rgba(255, 255, 255, 0.5)';
-    ripple.style.transform = 'scale(0)';
-    ripple.style.animation = 'ripple 0.6s ease-out';
-    
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    
-    ripple.style.left = x + 'px';
-    ripple.style.top = y + 'px';
-    
-    element.appendChild(ripple);
-    
-    setTimeout(() => ripple.remove(), 600);
-  };
+  const triggerRipple = (_element, _event) => { /* no-op — see index.css button::after */ };
 
-  /**
-   * Animate element entrance
-   */
+  /* ── Animation helpers ── */
   const animateEntrance = (element, type = 'pop-in') => {
     if (!element) return;
     element.classList.add(`animate-${type}`);
   };
 
-  /**
-   * Animate element exit
-   */
   const animateExit = (element, type = 'item-removed', callback) => {
     if (!element) return;
     element.classList.add(`animate-${type}`);
-    setTimeout(() => {
-      if (callback) callback();
-      element.remove();
-    }, 400);
+    setTimeout(() => { if (callback) callback(); element.remove(); }, 400);
   };
 
   /**
-   * Scale/Press feedback for buttons
+   * handleButtonPress — CSS active:scale handles this automatically.
+   * Kept as a no-op for API compatibility.
    */
-  const handleButtonPress = (element) => {
-    if (!element) return;
-    element.style.transform = 'scale(0.95)';
-    setTimeout(() => {
-      element.style.transform = 'scale(1)';
-    }, 80);
-  };
+  const handleButtonPress = (_element) => { /* no-op — see index.css button:active */ };
 
-  /**
-   * Pulse effect for badges/new items
-   */
   const addPulseEffect = (element) => {
     if (!element) return;
     element.classList.add('badge-pulse');
-    setTimeout(() => {
-      element.classList.remove('badge-pulse');
-    }, 800);
+    setTimeout(() => element.classList.remove('badge-pulse'), 800);
   };
 
-  /**
-   * Heart beat effect for favorites
-   */
   const addHeartBeat = (element) => {
     if (!element) return;
     element.classList.add('animate-heart-beat');
-    setTimeout(() => {
-      element.classList.remove('animate-heart-beat');
-    }, 600);
+    setTimeout(() => element.classList.remove('animate-heart-beat'), 600);
   };
 
-  /**
-   * Rating celebration effect
-   */
   const celebrateRating = (element) => {
     if (!element) return;
     element.classList.add('animate-rating-celebration');
-    setTimeout(() => {
-      element.classList.remove('animate-rating-celebration');
-    }, 600);
+    setTimeout(() => element.classList.remove('animate-rating-celebration'), 600);
   };
 
-  /**
-   * Progress bar fill animation
-   */
   const animateProgressFill = (element, targetWidth) => {
     if (!element) return;
     element.style.setProperty('--target-width', `${targetWidth}%`);
@@ -234,6 +113,7 @@ export const useMicrointeractions = () => {
   return {
     toasts,
     showToast,
+    dismissToast,
     notifyItemAdded,
     notifyRatingGiven,
     notifyEpisodeWatched,
