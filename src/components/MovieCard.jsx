@@ -6,8 +6,17 @@ export const MovieCard = (props) => {
   const [imgError, setImgError] = createSignal(false);
 
   const title = () => props.movie.title || props.movie.name || 'Untitled';
-  const year = () => (props.movie.release_date || props.movie.first_air_date || '').split('-')[0] || '';
-  const statusLabel = () => props.movie.status === 'Plan to Watch' ? 'Planned' : (props.movie.status || 'NEW');
+  const year  = () => (props.movie.release_date || props.movie.first_air_date || '').split('-')[0] || '';
+
+  // FIX: Full status text — no truncation, no abbreviation
+  const statusLabel = () => {
+    const s = props.movie.status;
+    if (s === 'Plan to Watch') return 'Planned';
+    if (s === 'Watching')      return 'Watching';
+    if (s === 'Completed')     return 'Completed';
+    if (s === 'Planned')       return 'Planned';
+    return s || 'New';
+  };
 
   return (
     <div
@@ -20,12 +29,11 @@ export const MovieCard = (props) => {
     >
       <div class="movie-card-inner">
 
-        {/* Shimmer placeholder while image loads */}
+        {/* Shimmer placeholder */}
         <Show when={!imgLoaded() && !imgError()}>
           <div class="poster-loading" aria-hidden="true">
             <div style="
-              position: absolute;
-              top: 50%; left: 50%;
+              position: absolute; top: 50%; left: 50%;
               transform: translate(-50%, -50%);
               display: flex; flex-direction: column; align-items: center; gap: 8px;
               opacity: 0.10;
@@ -60,22 +68,30 @@ export const MovieCard = (props) => {
               setImgLoaded(true);
               e.target.classList.add('img-loaded');
             }}
-            onError={() => {
-              setImgError(true);
-            }}
+            onError={() => setImgError(true)}
           />
         </Show>
 
-        {/* Status badge — top-left */}
+        {/* ── STATUS BADGE — top-left
+            FIX: No max-width, no text-overflow, no white-space: nowrap.
+            Width auto-fits to text content.
+        ── */}
         <div
           class="tag-chip absolute top-2 left-2"
-          style="color: var(--p); z-index: 3; max-width: 56px"
+          style="
+            color: var(--p);
+            z-index: 3;
+            max-width: none;
+            white-space: nowrap;
+            overflow: visible;
+            text-overflow: clip;
+          "
           aria-hidden="true"
         >
           {statusLabel()}
         </div>
 
-        {/* Tag / New season badge — top-right */}
+        {/* Custom / New-season badge — top-right */}
         <Show when={props.movie.newSeasonAvailable} fallback={
           <Show when={props.movie.tag}>
             <div
@@ -89,22 +105,20 @@ export const MovieCard = (props) => {
         }>
           <div
             class="tag-chip absolute top-2 right-2"
-            style="color: var(--p); border-color: color-mix(in srgb, var(--p) 55%, transparent); box-shadow: 0 0 12px var(--p-glow); z-index: 3; max-width: 72px"
+            style="color: var(--p); border-color: color-mix(in srgb, var(--p) 55%, transparent); box-shadow: 0 0 12px var(--p-glow); z-index: 3; white-space: nowrap; max-width: none"
             aria-hidden="true"
           >
             New Season
           </div>
         </Show>
 
-        {/* Bottom info area */}
+        {/* Bottom info */}
         <div class="absolute bottom-0 left-0 w-full p-2" style="z-index: 3">
 
-          {/* Title */}
           <p class="type-card-title mb-0.5 overflow-hidden text-ellipsis whitespace-nowrap">
             {title()}
           </p>
 
-          {/* Year · Type · Runtime */}
           <p class="type-subtitle mb-1.5" aria-hidden="true">
             {year()}
             {year() ? ' · ' : ''}
@@ -114,7 +128,7 @@ export const MovieCard = (props) => {
             </Show>
           </p>
 
-          {/* Compact rating pills — 3-column grid, equal width */}
+          {/* Rating pills — 3-column CSS grid, equal width, no overflow */}
           <div
             style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; width: 100%"
             aria-label={`Ratings: IMDb ${props.movie.imdbRating || 'N/A'}, RT ${props.movie.rtRating || 'N/A'}, My score ${props.movie.rating || 'N/A'}`}
@@ -132,7 +146,7 @@ export const MovieCard = (props) => {
               </span>
             </div>
 
-            {/* Rotten Tomatoes */}
+            {/* RT */}
             <div
               class="rating-pill justify-center"
               style="border-color: rgba(255,90,80,0.3); padding: 2px 3px; border-radius: 5px; gap: 2px; min-width: 0"
@@ -145,7 +159,7 @@ export const MovieCard = (props) => {
               </span>
             </div>
 
-            {/* Personal score */}
+            {/* Personal */}
             <div
               class="rating-pill justify-center"
               style="border-color: color-mix(in srgb, var(--p) 35%, transparent); padding: 2px 3px; border-radius: 5px; gap: 2px; min-width: 0"
