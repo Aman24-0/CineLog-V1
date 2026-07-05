@@ -4,8 +4,7 @@ import { MovieCard } from '../components/MovieCard';
 
 const resolveTimelineDate = (m) => {
   if (m.watchDate && typeof m.watchDate === 'string' && m.watchDate.trim()) {
-    const d = new Date(m.watchDate);
-    if (!isNaN(d.getTime())) return d;
+    const d = new Date(m.watchDate); if (!isNaN(d.getTime())) return d;
   }
   if (m.seasonDates && typeof m.seasonDates === 'object') {
     const ends = Object.values(m.seasonDates).map(s => s?.end ? new Date(s.end) : null).filter(d => d && !isNaN(d.getTime()));
@@ -47,8 +46,7 @@ export function Vault(props) {
   });
 
   const handleScroll = () => {
-    if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500)
-      setDisplayLimit(prev => prev + 20);
+    if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) setDisplayLimit(prev => prev + 20);
   };
   onMount(() => window.addEventListener('scroll', handleScroll, { passive: true }));
   onCleanup(() => window.removeEventListener('scroll', handleScroll));
@@ -136,21 +134,17 @@ export function Vault(props) {
       >
         <div class="flex justify-between items-center mb-4">
           <h2 class="type-page-title text-white">VAULT</h2>
-
           <div class="flex items-center gap-3">
-            {/* View mode toggle */}
             <div
               class="flex p-1 rounded-full border shadow-sm"
               style="background: var(--surface); border-color: var(--border-active)"
-              role="group"
-              aria-label="View mode"
+              role="group" aria-label="View mode"
             >
               <button
                 onClick={() => setViewMode('grid')}
                 class={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${viewMode() === 'grid' ? 'text-[#0c0e14] shadow-[0_0_12px_var(--p-glow)]' : 'text-gray-500 hover:text-white'}`}
                 style={viewMode() === 'grid' ? 'background: var(--p)' : ''}
-                aria-label="Grid view"
-                aria-pressed={viewMode() === 'grid'}
+                aria-label="Grid view" aria-pressed={viewMode() === 'grid'}
               >
                 <Icon name="grid_view" class="text-sm" aria-hidden="true" />
               </button>
@@ -158,14 +152,11 @@ export function Vault(props) {
                 onClick={() => setViewMode('timeline')}
                 class={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${viewMode() === 'timeline' ? 'text-[#0c0e14] shadow-[0_0_12px_var(--p-glow)]' : 'text-gray-500 hover:text-white'}`}
                 style={viewMode() === 'timeline' ? 'background: var(--p)' : ''}
-                aria-label="Timeline view"
-                aria-pressed={viewMode() === 'timeline'}
+                aria-label="Timeline view" aria-pressed={viewMode() === 'timeline'}
               >
                 <Icon name="timeline" class="text-sm" aria-hidden="true" />
               </button>
             </div>
-
-            {/* Filter button */}
             <button
               onClick={() => setShowFilter(true)}
               class="flex items-center gap-2 px-4 py-2.5 rounded-full type-caption border active:scale-95 transition-all"
@@ -175,11 +166,7 @@ export function Vault(props) {
               <Icon name="tune" class="text-sm" aria-hidden="true" />
               <span class="hidden sm:inline">Filter</span>
               {activeFilterCount() > 0 && (
-                <span
-                  class="px-2 py-0.5 rounded-full type-caption text-black"
-                  style="background: var(--p)"
-                  aria-hidden="true"
-                >
+                <span class="px-2 py-0.5 rounded-full type-caption text-black" style="background: var(--p)" aria-hidden="true">
                   {activeFilterCount()}
                 </span>
               )}
@@ -187,7 +174,6 @@ export function Vault(props) {
           </div>
         </div>
 
-        {/* Search bar */}
         <div
           class="flex items-center gap-3 rounded-xl px-4 py-3 border transition-all"
           style="background: var(--surface); border-color: var(--border)"
@@ -208,12 +194,7 @@ export function Vault(props) {
           />
           <Show when={search().length > 0 || activeFilterCount() > 0}>
             <button
-              onClick={() => {
-                setFilters({ ...defaultFilters, status: 'all' });
-                setSearch('');
-                setDisplayLimit(30);
-                props.onFilterChange && props.onFilterChange('all');
-              }}
+              onClick={() => { setFilters({ ...defaultFilters, status: 'all' }); setSearch(''); setDisplayLimit(30); props.onFilterChange && props.onFilterChange('all'); }}
               class="type-caption px-3 py-1.5 rounded-full shrink-0 active:scale-95 transition-all"
               style="background: rgba(255,45,85,0.15); border: 1px solid rgba(255,45,85,0.4); color: #ff2d55"
               aria-label="Clear search and filters"
@@ -224,7 +205,6 @@ export function Vault(props) {
         </div>
       </div>
 
-      {/* Screen-reader result count */}
       <div class="sr-only" aria-live="polite" aria-atomic="true">
         {filtered().length > 0 ? `${filtered().length} title${filtered().length !== 1 ? 's' : ''} found` : 'No titles found'}
       </div>
@@ -239,9 +219,7 @@ export function Vault(props) {
                 <Icon name="sentiment_dissatisfied" style="color: var(--muted); font-size: 36px" />
               </div>
               <p class="empty-state-title">No Matches</p>
-              <p class="empty-state-body">
-                No titles match your current filters. Try adjusting or clearing them.
-              </p>
+              <p class="empty-state-body">No titles match your current filters. Try adjusting or clearing them.</p>
               <button
                 onClick={() => { setFilters({ ...defaultFilters, status: 'all' }); setSearch(''); }}
                 class="type-button px-6 py-3 rounded-full active:scale-95 mt-2"
@@ -257,9 +235,7 @@ export function Vault(props) {
               <Icon name="video_library" fill style="color: var(--p); font-size: 36px" />
             </div>
             <p class="empty-state-title">Vault is Empty</p>
-            <p class="empty-state-body">
-              Sign in to start tracking movies and series, add custom tags, and build your collection.
-            </p>
+            <p class="empty-state-body">Sign in to start tracking movies and series.</p>
             <button
               onClick={props.onLogin}
               class="type-button px-8 py-3 rounded-full text-black shadow-lg active:scale-95 mt-2"
@@ -286,23 +262,15 @@ export function Vault(props) {
 
       {/* ── Timeline view ── */}
       <Show when={viewMode() === 'timeline' && timelineItems().length > 0}>
-        <div
-          class="relative space-y-10 animate-fade-in pb-10"
-          style="padding-left: 0"
-          role="feed"
-          aria-label="Watch history timeline"
-        >
-          {/* Vertical timeline line */}
+        <div class="relative space-y-10 animate-fade-in pb-10" role="feed" aria-label="Watch history timeline">
           <div
             class="absolute left-[1.25rem] top-5 bottom-5 w-0.5 -translate-x-px pointer-events-none"
             style="background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.08) 40px, rgba(255,255,255,0.08) calc(100% - 40px), transparent)"
             aria-hidden="true"
           />
-
           <For each={groupedTimeline()}>
             {(group) => (
               <div class="relative" role="group" aria-label={group.label}>
-                {/* Month label — explicit inline styles to prevent type-caption color override */}
                 <div
                   class="sticky z-30 inline-flex items-center gap-2 px-4 py-2 rounded-full ml-10 mb-5"
                   style="top: 150px; background: var(--p); color: #0c0e14; font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-family: 'Outfit', sans-serif; box-shadow: 0 0 15px var(--p-glow)"
@@ -310,7 +278,6 @@ export function Vault(props) {
                   <Icon name="event" style="font-size: 14px; color: #0c0e14" aria-hidden="true" />
                   {group.label}
                 </div>
-
                 <div class="space-y-4 timeline-stagger">
                   <For each={group.items}>
                     {(m) => {
@@ -325,7 +292,6 @@ export function Vault(props) {
                           tabIndex={0}
                           aria-label={`${m.title || m.name}, ${dateObj ? dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'date unknown'}`}
                         >
-                          {/* Day node */}
                           <div
                             class="absolute left-[1.25rem] -translate-x-1/2 w-8 h-8 rounded-full bg-[#08090b] border-2 flex items-center justify-center shadow-lg z-10 transition-transform duration-200"
                             style="border-color: var(--p)"
@@ -333,7 +299,6 @@ export function Vault(props) {
                           >
                             <span style="color: #fff; font-size: 11px; font-weight: 800; font-family: 'Outfit', sans-serif">{day}</span>
                           </div>
-
                           <div class="upcoming-card w-full p-3 rounded-[1.5rem] flex gap-4">
                             <Show
                               when={m.poster_path}
@@ -349,20 +314,14 @@ export function Vault(props) {
                                   src={`https://image.tmdb.org/t/p/w200${m.poster_path}`}
                                   class="poster-img absolute inset-0 w-full h-full object-cover"
                                   onLoad={e => { e.target.classList.add('img-loaded'); e.target.previousSibling?.classList.add('hidden'); }}
-                                  alt=""
-                                  aria-hidden="true"
+                                  alt="" aria-hidden="true"
                                 />
                               </div>
                             </Show>
-
                             <div class="flex-1 flex flex-col justify-center py-1 min-w-0 pr-2">
-                              <p class="type-metadata font-bold text-gray-100 group-hover:text-white truncate">
-                                {m.title || m.name}
-                              </p>
+                              <p class="type-metadata font-bold text-gray-100 group-hover:text-white truncate">{m.title || m.name}</p>
                               <div class="flex items-center gap-2 mt-1.5 flex-wrap">
-                                <span class="type-caption bg-white/10 text-gray-300 px-2 py-0.5 rounded border border-white/5 shrink-0">
-                                  {m.media_type === 'tv' ? 'Series' : 'Movie'}
-                                </span>
+                                <span class="type-caption bg-white/10 text-gray-300 px-2 py-0.5 rounded border border-white/5 shrink-0">{m.media_type === 'tv' ? 'Series' : 'Movie'}</span>
                                 <Show when={m.status}>
                                   <span class="type-caption px-2 py-0.5 rounded shrink-0" style="color: var(--p); background: var(--p-dim); border: 1px solid color-mix(in srgb, var(--p) 20%, transparent)">
                                     {m.status === 'Plan to Watch' ? 'Planned' : m.status}
@@ -376,15 +335,9 @@ export function Vault(props) {
                                       <Icon name="star" fill class="text-[12px]" aria-hidden="true" /> {m.rating}/10
                                     </span>
                                   </Show>
-                                  <Show when={m.imdbRating}>
-                                    <span class="type-metadata font-black flex items-center gap-1 text-[#f5c518]">
-                                      <span class="type-caption font-bold text-gray-500">IMDb</span> {m.imdbRating}
-                                    </span>
-                                  </Show>
                                 </div>
                               </Show>
                             </div>
-
                             <div class="hidden sm:flex self-center pr-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200" aria-hidden="true">
                               <Icon name="chevron_right" class="text-2xl" style="color: var(--p)" />
                             </div>
@@ -400,20 +353,16 @@ export function Vault(props) {
         </div>
       </Show>
 
-      {/* Timeline empty state when filter has completeds but none have dates */}
       <Show when={viewMode() === 'timeline' && filtered().length > 0 && timelineItems().length === 0}>
         <div class="empty-state py-16 animate-fade-in">
           <div class="empty-state-icon" aria-hidden="true">
             <Icon name="event_busy" style="color: var(--muted); font-size: 36px" />
           </div>
           <p class="empty-state-title">No Dates Found</p>
-          <p class="empty-state-body">
-            Timeline shows completed titles with a Watch Date or Season Date set. Add dates in the edit panel.
-          </p>
+          <p class="empty-state-body">Timeline shows completed titles with a Watch Date set. Add dates in the edit panel.</p>
         </div>
       </Show>
 
-      {/* Infinite scroll loader */}
       <Show when={viewMode() === 'grid' && filtered().length > displayLimit()}>
         <div class="flex items-center justify-center gap-2 py-8 type-caption" style="color: var(--p)">
           <Icon name="progress_activity" class="animate-spin text-sm" aria-hidden="true" />
@@ -431,11 +380,7 @@ export function Vault(props) {
           uniqueTags={uniqueTags()}
           onClose={() => setShowFilter(false)}
           onFilterChange={props.onFilterChange}
-          onClear={() => {
-            setFilters({ ...defaultFilters, status: 'all' });
-            props.onFilterChange && props.onFilterChange('all');
-            setDisplayLimit(20);
-          }}
+          onClear={() => { setFilters({ ...defaultFilters, status: 'all' }); props.onFilterChange && props.onFilterChange('all'); setDisplayLimit(20); }}
         />
       </Show>
     </div>
@@ -451,9 +396,7 @@ function FilterModal(props) {
       class="fixed inset-0 flex items-end sm:items-center justify-center sm:p-4 z-[999999] animate-fade-in"
       style="background: rgba(0,0,0,0.75); backdrop-filter: blur(8px)"
       onClick={props.onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Filter vault"
+      role="dialog" aria-modal="true" aria-label="Filter vault"
     >
       <div
         class="glass-surface w-full max-w-sm rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl modal-sheet-enter flex flex-col"
@@ -478,7 +421,7 @@ function FilterModal(props) {
           </button>
         </div>
 
-        {/* Scrollable filter fields — uses flex-1 + overflow-y-auto for proper mobile scroll */}
+        {/* Scrollable filter fields */}
         <div class="flex-1 overflow-y-auto hide-scrollbar px-6 py-4 space-y-4">
           <FilterSel label="Status"   val={props.filters.status}   set={(v) => { props.setFilters({ ...props.filters, status: v });   props.onFilterChange && props.onFilterChange(v); }} opts={[{ l: 'All', v: 'all' }, { l: 'Planned', v: 'Planned' }, { l: 'Watching', v: 'Watching' }, { l: 'Completed', v: 'Completed' }]} />
           <FilterSel label="Tags"     val={props.filters.tag}      set={(v) => props.setFilters({ ...props.filters, tag: v })}      opts={[{ l: 'All Tags', v: 'all' }, ...props.uniqueTags.map(t => ({ l: t, v: t }))]} />
@@ -493,8 +436,18 @@ function FilterModal(props) {
           <FilterSel label="Sort By"  val={props.filters.sort} set={(v) => props.setFilters({ ...props.filters, sort: v })} opts={[{ l: 'Recently Added', v: 'recent' }, { l: 'Watch Date ↓', v: 'watch_desc' }, { l: 'Watch Date ↑', v: 'watch_asc' }, { l: 'Release Year ↓', v: 'year_desc' }, { l: 'Rating ↓', v: 'rating_desc' }, { l: 'Title A–Z', v: 'title_asc' }]} />
         </div>
 
-        {/* Action buttons — flex-shrink-0 keeps them pinned at bottom */}
-        <div class="grid grid-cols-2 gap-3 px-6 py-4 border-t flex-shrink-0" style="border-color: var(--border)">
+        {/*
+          FIX: Action buttons — flex-shrink-0 keeps them pinned at bottom.
+          padding-bottom uses env(safe-area-inset-bottom) so they clear the
+          iPhone home indicator and the fixed bottom nav bar on any device.
+        */}
+        <div
+          class="grid grid-cols-2 gap-3 px-6 pt-4 flex-shrink-0"
+          style="
+            border-top: 1px solid var(--border);
+            padding-bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 80px));
+          "
+        >
           <button
             onClick={props.onClear}
             class="w-full type-button py-4 rounded-xl"
@@ -521,22 +474,8 @@ const RangeFilter = (props) => (
   <div class="grid grid-cols-[90px_1fr] items-center gap-2">
     <span class="type-label">{props.label}</span>
     <div class="grid grid-cols-2 gap-2">
-      <input
-        value={props.min}
-        onInput={e => props.setMin(e.target.value)}
-        type="number"
-        placeholder={props.minPlaceholder || 'Min'}
-        aria-label={`${props.label} minimum`}
-        class="w-full bg-[#0c0e14] border border-white/10 rounded-xl px-3 py-2 type-metadata text-white outline-none focus:border-[var(--p)]"
-      />
-      <input
-        value={props.max}
-        onInput={e => props.setMax(e.target.value)}
-        type="number"
-        placeholder={props.maxPlaceholder || 'Max'}
-        aria-label={`${props.label} maximum`}
-        class="w-full bg-[#0c0e14] border border-white/10 rounded-xl px-3 py-2 type-metadata text-white outline-none focus:border-[var(--p)]"
-      />
+      <input value={props.min} onInput={e => props.setMin(e.target.value)} type="number" placeholder={props.minPlaceholder || 'Min'} aria-label={`${props.label} minimum`} class="w-full bg-[#0c0e14] border border-white/10 rounded-xl px-3 py-2 type-metadata text-white outline-none focus:border-[var(--p)]" />
+      <input value={props.max} onInput={e => props.setMax(e.target.value)} type="number" placeholder={props.maxPlaceholder || 'Max'} aria-label={`${props.label} maximum`} class="w-full bg-[#0c0e14] border border-white/10 rounded-xl px-3 py-2 type-metadata text-white outline-none focus:border-[var(--p)]" />
     </div>
   </div>
 );
@@ -544,12 +483,7 @@ const RangeFilter = (props) => (
 const FilterSel = (props) => (
   <div class="grid grid-cols-[90px_1fr] items-center gap-2">
     <label class="type-label" for={`filter-${props.label.toLowerCase().replace(/\s/g, '-')}`}>{props.label}</label>
-    <select
-      id={`filter-${props.label.toLowerCase().replace(/\s/g, '-')}`}
-      value={props.val}
-      onChange={e => props.set(e.target.value)}
-      class="w-full type-metadata text-white font-medium cursor-pointer"
-    >
+    <select id={`filter-${props.label.toLowerCase().replace(/\s/g, '-')}`} value={props.val} onChange={e => props.set(e.target.value)} class="w-full type-metadata text-white font-medium cursor-pointer">
       <For each={props.opts}>{(o) => <option value={o.v || o} class="bg-[#0c0e14]">{o.l || o}</option>}</For>
     </select>
   </div>

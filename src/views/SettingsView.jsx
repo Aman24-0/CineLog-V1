@@ -28,11 +28,11 @@ export function SettingsView(props) {
     { id: 'pearl',        name: 'Pearl',        hex: '#ffffff' },
     { id: 'sage',         name: 'Sage',         hex: '#a8ff78' },
     { id: 'matrix',       name: 'Matrix',       hex: '#39ff14' },
-    { id: 'netflix',      name: 'Netflix',       hex: '#ff2d55' },
-    { id: 'cinematic',    name: 'Cinematic',     hex: '#FFD700' },
-    { id: 'interstellar', name: 'Interstellar',  hex: '#00c2ff' },
-    { id: 'neonhorizon',  name: 'Neon Horizon',  hex: '#ff2af0' },
-    { id: 'vibranium',    name: 'Vibranium',     hex: '#9d4edd' },
+    { id: 'netflix',      name: 'Netflix',      hex: '#ff2d55' },
+    { id: 'cinematic',    name: 'Cinematic',    hex: '#FFD700' },
+    { id: 'interstellar', name: 'Interstellar', hex: '#00c2ff' },
+    { id: 'neonhorizon',  name: 'Neon Horizon', hex: '#ff2af0' },
+    { id: 'vibranium',    name: 'Vibranium',    hex: '#9d4edd' },
   ];
 
   const totalMovies = createMemo(() => list().filter(m => m.media_type !== 'tv').length);
@@ -40,8 +40,7 @@ export function SettingsView(props) {
   const avgRating   = createMemo(() => {
     const rated = list().filter(m => m.rating > 0);
     if (rated.length === 0) return null;
-    const avg = rated.reduce((sum, m) => sum + Number(m.rating), 0) / rated.length;
-    return avg.toFixed(1);
+    return (rated.reduce((sum, m) => sum + Number(m.rating), 0) / rated.length).toFixed(1);
   });
 
   return (
@@ -60,16 +59,16 @@ export function SettingsView(props) {
         <h1 class="type-modal-title text-white">Profile &amp; Settings</h1>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════
+      {/* ═══════════════════════════════════════
          PROFILE CARD
-         ═══════════════════════════════════════════════════════ */}
+      ═══════════════════════════════════════ */}
       <div
         class="relative rounded-3xl overflow-hidden mb-6 border animate-fade-up"
         style="background: var(--surface); border-color: var(--border)"
         role="region"
         aria-label="Profile"
       >
-        {/* Banner gradient */}
+        {/* Banner */}
         <div
           class="h-28 sm:h-32"
           style="background: linear-gradient(135deg, var(--p) 0%, var(--p2) 60%, var(--p) 100%); opacity: 0.18"
@@ -83,6 +82,13 @@ export function SettingsView(props) {
 
         <div class="px-5 sm:px-6 -mt-12 pb-6 relative z-10">
           <div class="flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-5">
+
+            {/*
+              AVATAR — FIX: No duplicate circle.
+              Show renders ONLY ONE child at a time.
+              The img starts at opacity:0 and fades in via onLoad.
+              There is no wrapper div behind it — only the img itself.
+            */}
             <Show
               when={props.user?.photoURL}
               fallback={
@@ -129,7 +135,7 @@ export function SettingsView(props) {
             </div>
           </div>
 
-          {/* Vault stats row */}
+          {/* Vault stats */}
           <Show when={list().length > 0}>
             <div class="grid grid-cols-3 gap-3 mt-5" role="list" aria-label="Vault statistics">
               <div class="text-center p-3 rounded-xl" style="background: var(--raised); border: 1px solid var(--border)" role="listitem">
@@ -159,9 +165,9 @@ export function SettingsView(props) {
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════
+      {/* ═══════════════════════════════════════
          THEME SELECTOR
-         ═══════════════════════════════════════════════════════ */}
+      ═══════════════════════════════════════ */}
       <section class="mb-6 animate-fade-up" aria-labelledby="theme-heading">
         <p class="section-title" id="theme-heading">Appearance</p>
         <div class="grid grid-cols-1 gap-2" role="radiogroup" aria-labelledby="theme-heading">
@@ -195,9 +201,61 @@ export function SettingsView(props) {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════
+      {/* ═══════════════════════════════════════
+         GENERAL — RESTORED
+         Links to Streaming Servers, Data Sync, Analytics
+      ═══════════════════════════════════════ */}
+      <Show when={props.user}>
+        <section class="mb-6 animate-fade-up" aria-labelledby="general-heading">
+          <p class="section-title" id="general-heading">General</p>
+          <div class="flex flex-col gap-2">
+
+            <button
+              onClick={() => props.onServerSettings && props.onServerSettings()}
+              class="settings-row w-full text-left"
+              aria-label="Configure streaming servers"
+            >
+              <Icon name="dns" style="color: var(--muted)" aria-hidden="true" />
+              <div class="flex-1">
+                <p class="type-metadata text-white font-bold">Streaming Servers</p>
+                <p class="type-caption text-gray-500 mt-0.5">Configure custom playback servers</p>
+              </div>
+              <Icon name="chevron_right" class="text-gray-600" aria-hidden="true" />
+            </button>
+
+            <button
+              onClick={() => props.setView && props.setView('sync')}
+              class="settings-row w-full text-left"
+              aria-label="Open Data Sync"
+            >
+              <Icon name="import_export" style="color: var(--muted)" aria-hidden="true" />
+              <div class="flex-1">
+                <p class="type-metadata text-white font-bold">Data Sync</p>
+                <p class="type-caption text-gray-500 mt-0.5">Backup, restore and repair your vault</p>
+              </div>
+              <Icon name="chevron_right" class="text-gray-600" aria-hidden="true" />
+            </button>
+
+            <button
+              onClick={() => props.setView && props.setView('analytics')}
+              class="settings-row w-full text-left"
+              aria-label="Open Insights analytics"
+            >
+              <Icon name="bar_chart" style="color: var(--muted)" aria-hidden="true" />
+              <div class="flex-1">
+                <p class="type-metadata text-white font-bold">Insights</p>
+                <p class="type-caption text-gray-500 mt-0.5">Your personal watch analytics</p>
+              </div>
+              <Icon name="chevron_right" class="text-gray-600" aria-hidden="true" />
+            </button>
+
+          </div>
+        </section>
+      </Show>
+
+      {/* ═══════════════════════════════════════
          ACCOUNT ACTIONS
-         ═══════════════════════════════════════════════════════ */}
+      ═══════════════════════════════════════ */}
       <Show when={props.user}>
         <section class="animate-fade-up" aria-labelledby="account-heading">
           <p class="section-title" id="account-heading">Account</p>
