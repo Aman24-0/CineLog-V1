@@ -279,7 +279,6 @@ export default function App() {
                 uid={user()?.uid}
                 showToast={showToast}
                 setView={setView}
-                {/* FIX: onServerSettings now correctly wired — opens the ServerSettingsModal */}
                 onServerSettings={() => setServerSettingsModal(true)}
               />
             </Show>
