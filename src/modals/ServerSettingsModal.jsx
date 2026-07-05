@@ -160,13 +160,35 @@ export function ServerSettingsModal(props) {
           </div>
 
           <div class="flex items-center gap-3 shrink-0" onClick={e => e.stopPropagation()}>
-            <button 
-              onClick={() => setServers(prev => prev.map(s => s.id === server.id ? { ...s, enabled: !isEnabled() } : s))} 
-              class={`w-11 h-6 rounded-full relative transition-colors shadow-inner flex items-center px-1 border ${isEnabled() ? 'border-[var(--p)]' : 'border-white/10'}`}
-              style={{ background: isEnabled() ? "var(--p-dim)" : "#1a1a1a" }}
+            <button
+              onClick={() => setServers(prev => prev.map(s => s.id === server.id ? { ...s, enabled: !isEnabled() } : s))}
+              class="relative shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--p)] focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-full"
+              style={{
+                width: '44px', height: '24px',
+                background: isEnabled() ? 'var(--p)' : 'rgba(255,255,255,0.10)',
+                'border-radius': '9999px',
+                transition: 'background 220ms ease',
+                'box-shadow': isEnabled() ? '0 0 10px var(--p-glow)' : 'none',
+              }}
+              aria-checked={isEnabled()}
+              role="switch"
+              aria-label={`${isEnabled() ? 'Disable' : 'Enable'} ${server.name}`}
             >
-              <div class={`w-4 h-4 rounded-full transition-transform shadow-sm`} 
-                   style={{ background: isEnabled() ? "var(--p)" : "#555", transform: isEnabled() ? 'translateX(18px)' : 'translateX(0)' }} />
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '3px',
+                  left: '3px',
+                  width: '18px',
+                  height: '18px',
+                  'border-radius': '50%',
+                  background: isEnabled() ? '#05060a' : '#666',
+                  transform: isEnabled() ? 'translateX(20px)' : 'translateX(0)',
+                  transition: 'transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1), background 220ms ease',
+                  'box-shadow': '0 1px 4px rgba(0,0,0,0.5)',
+                  display: 'block',
+                }}
+              />
             </button>
             <Icon name={isExpanded() ? "expand_less" : "expand_more"} class="text-gray-500 transition-transform hidden sm:block" />
           </div>
