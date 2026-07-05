@@ -75,6 +75,7 @@ export default function App() {
   const [loading, setLoading] = createSignal(true);
   const [splashWait, setSplashWait] = createSignal(true);
   const [showScrollTop, setShowScrollTop] = createSignal(false);
+  const [activeVaultStatus, setActiveVaultStatus] = createSignal('all');
 
   const {
     searchModal, setSearchModal, searchInitialQuery, setSearchInitialQuery,
@@ -214,7 +215,7 @@ export default function App() {
                 <button
                   onClick={() => setView('settings')}
                   aria-label={`Open profile settings for ${user()?.displayName || 'account'}`}
-                  class="active:scale-95 transition-all hover:scale-110 rounded-full"
+                  class="active:scale-95 transition-all hover:scale-110 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--p)] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                   style="box-shadow: 0 0 0 2px transparent; transition: box-shadow 150ms ease-out"
                   onFocus={e => e.currentTarget.style.boxShadow = '0 0 0 2px var(--p)'}
                   onBlur={e => e.currentTarget.style.boxShadow = '0 0 0 2px transparent'}
@@ -235,14 +236,14 @@ export default function App() {
             <Show when={view() === 'dashboard'}>
               <Dashboard
                 watchlist={watchlist} openMovie={setDetailsId} setView={setView}
-                showToast={showToast} setActiveVaultStatus={() => {}}
+                showToast={showToast} setActiveVaultStatus={setActiveVaultStatus}
                 isGuest={!user()} onLogin={handleLogin}
               />
             </Show>
             <Show when={view() === 'watchlist'}>
               <Vault
                 watchlist={watchlist} openMovie={setDetailsId}
-                activeStatus="all" onFilterChange={() => {}}
+              activeStatus={activeVaultStatus()} onFilterChange={setActiveVaultStatus}
                 isGuest={!user()} onLogin={handleLogin}
               />
             </Show>
