@@ -160,11 +160,14 @@ export function ServerSettingsModal(props) {
           </div>
 
           <div class="flex items-center gap-3 shrink-0" onClick={e => e.stopPropagation()}>
+            {/* 🚀 FIX: Added min-height and min-width to force pill shape despite mobile CSS overrides */}
             <button
               onClick={() => setServers(prev => prev.map(s => s.id === server.id ? { ...s, enabled: !isEnabled() } : s))}
               class="relative shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--p)] focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-full"
               style={{
                 width: '44px', height: '24px',
+                'min-height': '24px',
+                'min-width': '44px',
                 background: isEnabled() ? 'var(--p)' : 'rgba(255,255,255,0.10)',
                 'border-radius': '9999px',
                 transition: 'background 220ms ease',
