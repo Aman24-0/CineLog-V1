@@ -71,11 +71,9 @@ export default function App() {
   const [franchises, setFranchises] = createSignal([]);
   const [view, setView] = createSignal('dashboard');
   const storedTheme = localStorage.getItem('cinelog_theme');
-  const legacyTheme = ['cyber', 'punk'].join('');
-  const [theme, setTheme] = createSignal(storedTheme === legacyTheme ? 'cinematic' : (storedTheme || 'sage'));
+  const [theme, setTheme] = createSignal(storedTheme || 'sage');
   const [loading, setLoading] = createSignal(true);
   const [splashWait, setSplashWait] = createSignal(true);
-  const [activeVaultStatus, setActiveVaultStatus] = createSignal('all');
   const [showScrollTop, setShowScrollTop] = createSignal(false);
 
   const {
@@ -84,24 +82,12 @@ export default function App() {
     settingsModal, setSettingsModal, serverSettingsModal, setServerSettingsModal
   } = useModalState();
 
-  const {
-    toasts,
-    showToast,
-    notifyItemAdded,
-    notifySuccess,
-    notifyError,
-    animateEntrance,
-  } = useMicrointeractions();
+  const { toasts, showToast, notifyError } = useMicrointeractions();
 
   const handleLogin = () => {
     signInWithPopup(auth, new GoogleAuthProvider())
-      .then(() => {
-        showToast('Signed in successfully! 🎬', 'success', 2500);
-      })
-      .catch((error) => {
-        notifyError('Sign in failed. Please try again.');
-        console.error('Auth error:', error);
-      });
+      .then(() => showToast('Signed in successfully! 🎬', 'success', 2500))
+      .catch(() => notifyError('Sign in failed. Please try again.'));
   };
 
   createEffect(() => {
@@ -131,26 +117,17 @@ export default function App() {
           setFranchises(snap.docs.map(d => ({ id: d.id, ...d.data() }))); fReady = true; if (wReady) setLoading(false);
         });
       } else {
-        setWatchlist([]);
-        setFranchises([]);
-        setLoading(false);
+        setWatchlist([]); setFranchises([]); setLoading(false);
       }
     });
 
     onCleanup(() => window.removeEventListener('scroll', handleScroll));
   });
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   const nukeCollection = async () => {
     if (!user()) return;
     if (!confirm('This will permanently delete your entire Vault. Are you sure?')) return;
-    if (prompt('Type DELETE to confirm') !== 'DELETE') {
-      showToast('Cancelled. Vault is safe.', 'info');
-      return;
-    }
+    if (prompt('Type DELETE to confirm') !== 'DELETE') { showToast('Cancelled. Vault is safe.', 'info'); return; }
     showToast('Nuking Vault...', 'info', -1);
     const snap = await getDocs(collection(db, 'users', user().uid, 'watchlist'));
     const docs = snap.docs;
@@ -170,36 +147,27 @@ export default function App() {
     return <Icon name="info" fill style="color: var(--p); flex-shrink: 0" />;
   };
 
-  /* ── Toast border color ── */
   const toastBorder = (type) => {
-    if (type === 'error')  return '#ff6b6b';
-    if (type === 'action') return 'var(--p)';
+    if (type === 'error') return '#ff6b6b';
     return 'var(--p)';
   };
 
   return (
     <ErrorBoundary fallback={() => (
       <div class="h-screen flex items-center justify-center p-10 text-center" role="alert">
-        <div
-          class="glass-surface rounded-[2rem] p-8 border max-w-md w-full"
-          style="background: var(--raised); border-color: var(--border-active); box-shadow: 0 0 40px var(--p-glow)"
-        >
-          <div
-            class="w-20 h-20 rounded-3xl flex items-center justify-center mb-6 mx-auto"
-            style="background: var(--p-dim); border: 1px solid var(--border-active)"
-            aria-hidden="true"
-          >
+        <div class="glass-surface rounded-[2rem] p-8 border max-w-md w-full"
+          style="background: var(--raised); border-color: var(--border-active); box-shadow: 0 0 40px var(--p-glow)">
+          <div class="w-20 h-20 rounded-3xl flex items-center justify-center mb-6 mx-auto"
+            style="background: var(--p-dim); border: 1px solid var(--border-active)" aria-hidden="true">
             <Icon name="warning" class="text-5xl" style="color: var(--p)" />
           </div>
           <h2 class="font-headline text-4xl text-white mb-3">Something went wrong</h2>
           <p class="text-sm mb-8 leading-relaxed" style="color: var(--muted)">
             An unexpected error occurred. Please reload the app to continue.
           </p>
-          <button
-            onClick={() => window.location.reload()}
+          <button onClick={() => window.location.reload()}
             class="px-8 py-3.5 rounded-full font-bold text-black text-sm uppercase tracking-widest active:scale-95 transition-all"
-            style="background: var(--p); box-shadow: 0 0 24px var(--p-glow)"
-          >
+            style="background: var(--p); box-shadow: 0 0 24px var(--p-glow)">
             Reload App
           </button>
         </div>
@@ -214,17 +182,13 @@ export default function App() {
             style="background: rgba(0,0,0,0.96); border-bottom: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(16px)"
           >
             <div class="flex items-center gap-3">
-              {/* Logo — reloads app */}
               <button
                 class="flex items-center gap-2 active:scale-95 transition-transform hover:scale-105"
                 onClick={() => window.location.reload()}
                 aria-label="CineLog — Reload app"
               >
-                <div
-                  class="w-8 h-8 rounded-xl flex items-center justify-center"
-                  style="background: var(--p-dim); border: 1px solid var(--border-active)"
-                  aria-hidden="true"
-                >
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center"
+                  style="background: var(--p-dim); border: 1px solid var(--border-active)" aria-hidden="true">
                   <Icon name="movie_filter" fill class="text-sm" style="color: var(--p)" />
                 </div>
                 <h2 class="font-headline text-2xl text-white leading-none" aria-hidden="true">
@@ -239,7 +203,7 @@ export default function App() {
                 fallback={
                   <button
                     onClick={handleLogin}
-                    class="px-5 py-2 rounded-full font-bold text-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all hover:shadow-lg"
+                    class="px-5 py-2 rounded-full font-bold text-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
                     style="background: var(--p); box-shadow: 0 0 16px var(--p-glow)"
                     aria-label="Sign in with Google"
                   >
@@ -250,7 +214,7 @@ export default function App() {
                 <button
                   onClick={() => setView('settings')}
                   aria-label={`Open profile settings for ${user()?.displayName || 'account'}`}
-                  class="active:scale-95 transition-all hover:scale-110 rounded-full focus-visible:outline-none"
+                  class="active:scale-95 transition-all hover:scale-110 rounded-full"
                   style="box-shadow: 0 0 0 2px transparent; transition: box-shadow 150ms ease-out"
                   onFocus={e => e.currentTarget.style.boxShadow = '0 0 0 2px var(--p)'}
                   onBlur={e => e.currentTarget.style.boxShadow = '0 0 0 2px transparent'}
@@ -270,33 +234,23 @@ export default function App() {
           <main class="p-5 max-w-2xl lg:max-w-none lg:px-12 mx-auto relative z-10" id="main-content">
             <Show when={view() === 'dashboard'}>
               <Dashboard
-                watchlist={watchlist}
-                openMovie={setDetailsId}
-                setView={setView}
-                showToast={showToast}
-                setActiveVaultStatus={setActiveVaultStatus}
-                isGuest={!user()}
-                onLogin={handleLogin}
+                watchlist={watchlist} openMovie={setDetailsId} setView={setView}
+                showToast={showToast} setActiveVaultStatus={() => {}}
+                isGuest={!user()} onLogin={handleLogin}
               />
             </Show>
             <Show when={view() === 'watchlist'}>
               <Vault
-                watchlist={watchlist}
-                openMovie={setDetailsId}
-                activeStatus={activeVaultStatus()}
-                onFilterChange={setActiveVaultStatus}
-                isGuest={!user()}
-                onLogin={handleLogin}
+                watchlist={watchlist} openMovie={setDetailsId}
+                activeStatus="all" onFilterChange={() => {}}
+                isGuest={!user()} onLogin={handleLogin}
               />
             </Show>
             <Show when={view() === 'franchises'}>
               <Show when={user()} fallback={<GuestPrompt onLogin={handleLogin} />}>
                 <FranchisesView
-                  watchlist={watchlist}
-                  franchises={franchises}
-                  uid={user().uid}
-                  openMovie={setDetailsId}
-                  showToast={showToast}
+                  watchlist={watchlist} franchises={franchises}
+                  uid={user().uid} openMovie={setDetailsId} showToast={showToast}
                 />
               </Show>
             </Show>
@@ -307,11 +261,8 @@ export default function App() {
             </Show>
             <Show when={view() === 'upcoming'}>
               <UpcomingView
-                watchlist={watchlist}
-                uid={user()?.uid}
-                showToast={showToast}
-                isGuest={!user()}
-                onLogin={handleLogin}
+                watchlist={watchlist} uid={user()?.uid}
+                showToast={showToast} isGuest={!user()} onLogin={handleLogin}
               />
             </Show>
             <Show when={view() === 'sync'}>
@@ -321,24 +272,21 @@ export default function App() {
             </Show>
             <Show when={view() === 'settings'}>
               <SettingsView
-                user={user()}
-                watchlist={watchlist}
-                theme={theme()}
-                setTheme={setTheme}
+                user={user()} watchlist={watchlist}
+                theme={theme()} setTheme={setTheme}
                 onLogout={() => signOut(auth)}
                 onNuke={nukeCollection}
                 uid={user()?.uid}
                 showToast={showToast}
                 setView={setView}
+                {/* FIX: onServerSettings now correctly wired — opens the ServerSettingsModal */}
+                onServerSettings={() => setServerSettingsModal(true)}
               />
             </Show>
           </main>
 
           {/* ── DESKTOP SIDEBAR NAV ── */}
-          <nav
-            class="hidden lg:flex fixed top-0 left-0 h-screen w-64 bg-black border-r border-white/10 z-40 flex-col pt-24 px-6 gap-2"
-            aria-label="Main navigation"
-          >
+          <nav class="hidden lg:flex fixed top-0 left-0 h-screen w-64 bg-black border-r border-white/10 z-40 flex-col pt-24 px-6 gap-2" aria-label="Main navigation">
             <NavBtn icon="dashboard"      label="Home"     active={view() === 'dashboard'}  onClick={() => setView('dashboard')} />
             <NavBtn icon="visibility"     label="Vault"    active={view() === 'watchlist'}  onClick={() => setView('watchlist')} />
             <NavBtn icon="search"         label="Search"   active={searchModal()}            onClick={() => { setSearchInitialQuery(''); setSearchModal(true); }} />
@@ -347,10 +295,7 @@ export default function App() {
           </nav>
 
           {/* ── MOBILE BOTTOM NAV ── */}
-          <nav
-            class="fixed bottom-0 left-0 w-full z-[100] flex lg:hidden bottom-nav-bar h-16"
-            aria-label="Main navigation"
-          >
+          <nav class="fixed bottom-0 left-0 w-full z-[100] flex lg:hidden bottom-nav-bar h-16" aria-label="Main navigation">
             <NavBtn icon="dashboard"      label="Home"     active={view() === 'dashboard'}  onClick={() => setView('dashboard')} />
             <NavBtn icon="visibility"     label="Vault"    active={view() === 'watchlist'}  onClick={() => setView('watchlist')} />
             <NavBtn icon="search"         label="Search"   active={searchModal()}            onClick={() => { setSearchInitialQuery(''); setSearchModal(true); }} />
@@ -362,12 +307,9 @@ export default function App() {
           <Show when={searchModal()}>
             <SearchModal
               onClose={() => { setSearchModal(false); setSearchInitialQuery(''); }}
-              uid={user()?.uid}
-              initialQuery={searchInitialQuery()}
-              showToast={showToast}
-              watchlist={watchlist()}
-              isGuest={!user()}
-              onLogin={() => { setSearchModal(false); handleLogin(); }}
+              uid={user()?.uid} initialQuery={searchInitialQuery()}
+              showToast={showToast} watchlist={watchlist()}
+              isGuest={!user()} onLogin={() => { setSearchModal(false); handleLogin(); }}
               openPreview={(item, source) => {
                 setPreviewSource(source || 'search');
                 setDetailsId(`PREVIEW_${JSON.stringify(item)}`);
@@ -377,41 +319,25 @@ export default function App() {
 
           <Show when={detailsId()}>
             <DetailsModal
-              id={detailsId()}
-              watchlist={watchlist()}
-              franchises={franchises()}
-              onClose={() => {
-                setDetailsId(null);
-                setPreviewSource(null);
-              }}
-              uid={user()?.uid}
-              showToast={showToast}
-              theme={theme}
-              isGuest={!user()}
-              onLogin={() => { setDetailsId(null); handleLogin(); }}
+              id={detailsId()} watchlist={watchlist()} franchises={franchises()}
+              onClose={() => { setDetailsId(null); setPreviewSource(null); }}
+              uid={user()?.uid} showToast={showToast} theme={theme}
+              isGuest={!user()} onLogin={() => { setDetailsId(null); handleLogin(); }}
             />
           </Show>
 
           <Show when={settingsModal()}>
-            <SettingsModal
-              currentTheme={theme()}
-              setTheme={setTheme}
-              onClose={() => setSettingsModal(false)}
-            />
+            <SettingsModal currentTheme={theme()} setTheme={setTheme} onClose={() => setSettingsModal(false)} />
           </Show>
 
           <Show when={serverSettingsModal()}>
-            <ServerSettingsModal
-              uid={user()?.uid}
-              showToast={showToast}
-              onClose={() => setServerSettingsModal(false)}
-            />
+            <ServerSettingsModal uid={user()?.uid} showToast={showToast} onClose={() => setServerSettingsModal(false)} />
           </Show>
 
           {/* ── SCROLL TO TOP ── */}
           <Show when={showScrollTop()}>
             <button
-              onClick={scrollToTop}
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
               class="fixed right-5 lg:right-8 w-11 h-11 rounded-full flex items-center justify-center z-[80] animate-pop-in hover:scale-110 active:scale-90"
               style="background: var(--p); color: #000; box-shadow: 0 0 20px var(--p-glow); bottom: calc(4rem + 24px)"
               aria-label="Scroll to top"
@@ -420,14 +346,12 @@ export default function App() {
             </button>
           </Show>
 
-          {/* ── TOAST NOTIFICATIONS ── */}
+          {/* ── TOASTS ── */}
           <Show when={toasts().length > 0}>
             <div
               class="fixed inset-x-0 pointer-events-none flex flex-col items-center gap-3 px-4 z-[10000000]"
               style="bottom: calc(4rem + 24px)"
-              role="status"
-              aria-live="polite"
-              aria-atomic="false"
+              role="status" aria-live="polite" aria-atomic="false"
             >
               {toasts().map((toast) => (
                 <div
