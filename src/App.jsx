@@ -18,7 +18,6 @@ import { SettingsModal } from './modals/Modals';
 import { useModalState } from './hooks/useModalState';
 import { useMicrointeractions } from './hooks/useMicrointeractions';
 
-/* ── Bottom nav + sidebar nav button ── */
 const NavBtn = (props) => (
   <button
     onClick={props.onClick}
@@ -41,7 +40,6 @@ const NavBtn = (props) => (
   </button>
 );
 
-/* ── Guest prompt shown when a signed-in feature is accessed ── */
 const GuestPrompt = (props) => (
   <div class="h-[60vh] flex flex-col items-center justify-center text-center p-6 animate-pop-in" role="region" aria-label="Sign in required">
     <div
@@ -140,7 +138,6 @@ export default function App() {
     showToast('Vault wiped! 💥', 'success');
   };
 
-  /* ── Toast icon map ── */
   const toastIcon = (type) => {
     if (type === 'success') return <Icon name="check_circle" fill style="color: #4ade80; flex-shrink: 0" />;
     if (type === 'error')   return <Icon name="error" fill style="color: #ff6b6b; flex-shrink: 0" />;
@@ -177,7 +174,6 @@ export default function App() {
       <div class="cinelog-root min-h-screen pb-32 lg:pb-0 lg:pl-64">
         <Show when={!loading() && !splashWait()} fallback={<LoadingScreen />}>
 
-          {/* ── STICKY HEADER ── */}
           <header
             class="sticky top-0 z-[100] flex justify-between items-center px-5 lg:px-6 py-3.5"
             style="background: rgba(0,0,0,0.96); border-bottom: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(16px)"
@@ -212,13 +208,11 @@ export default function App() {
                   </button>
                 }
               >
+                {/* 🚀 FIX: Removed hacky onFocus inline box-shadow to prevent the double-circle glitch */}
                 <button
                   onClick={() => setView('settings')}
                   aria-label={`Open profile settings for ${user()?.displayName || 'account'}`}
-                  class="active:scale-95 transition-all hover:scale-110 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--p)] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-                  style="box-shadow: 0 0 0 2px transparent; transition: box-shadow 150ms ease-out"
-                  onFocus={e => e.currentTarget.style.boxShadow = '0 0 0 2px var(--p)'}
-                  onBlur={e => e.currentTarget.style.boxShadow = '0 0 0 2px transparent'}
+                  class="flex items-center justify-center active:scale-95 transition-all hover:scale-110 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--p)] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                 >
                   <img
                     src={user().photoURL}
@@ -231,7 +225,6 @@ export default function App() {
             </div>
           </header>
 
-          {/* ── MAIN CONTENT ── */}
           <main class="p-5 max-w-2xl lg:max-w-none lg:px-12 mx-auto relative z-10" id="main-content">
             <Show when={view() === 'dashboard'}>
               <Dashboard
@@ -285,7 +278,6 @@ export default function App() {
             </Show>
           </main>
 
-          {/* ── DESKTOP SIDEBAR NAV ── */}
           <nav class="hidden lg:flex fixed top-0 left-0 h-screen w-64 bg-black border-r border-white/10 z-40 flex-col pt-24 px-6 gap-2" aria-label="Main navigation">
             <NavBtn icon="dashboard"      label="Home"     active={view() === 'dashboard'}  onClick={() => setView('dashboard')} />
             <NavBtn icon="visibility"     label="Vault"    active={view() === 'watchlist'}  onClick={() => setView('watchlist')} />
@@ -294,7 +286,6 @@ export default function App() {
             <NavBtn icon="calendar_month" label="Upcoming" active={view() === 'upcoming'}   onClick={() => setView('upcoming')} />
           </nav>
 
-          {/* ── MOBILE BOTTOM NAV ── */}
           <nav class="fixed bottom-0 left-0 w-full z-[100] flex lg:hidden bottom-nav-bar h-16" aria-label="Main navigation">
             <NavBtn icon="dashboard"      label="Home"     active={view() === 'dashboard'}  onClick={() => setView('dashboard')} />
             <NavBtn icon="visibility"     label="Vault"    active={view() === 'watchlist'}  onClick={() => setView('watchlist')} />
@@ -303,7 +294,6 @@ export default function App() {
             <NavBtn icon="calendar_month" label="Upcoming" active={view() === 'upcoming'}   onClick={() => setView('upcoming')} />
           </nav>
 
-          {/* ── MODALS ── */}
           <Show when={searchModal()}>
             <SearchModal
               onClose={() => { setSearchModal(false); setSearchInitialQuery(''); }}
@@ -334,7 +324,6 @@ export default function App() {
             <ServerSettingsModal uid={user()?.uid} showToast={showToast} onClose={() => setServerSettingsModal(false)} />
           </Show>
 
-          {/* ── SCROLL TO TOP ── */}
           <Show when={showScrollTop()}>
             <button
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
@@ -346,7 +335,6 @@ export default function App() {
             </button>
           </Show>
 
-          {/* ── TOASTS ── */}
           <Show when={toasts().length > 0}>
             <div
               class="fixed inset-x-0 pointer-events-none flex flex-col items-center gap-3 px-4 z-[10000000]"
