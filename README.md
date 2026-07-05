@@ -413,7 +413,7 @@ MIT — free to use, modify, and distribute for personal and commercial projects
 
 ---
 
-## Future Roadmap (v1.1 Ideas)
+## Future Roadmap (v2.1 Ideas)
 
 - **Watchparty mode** — sync playback position with a friend in real-time via Firestore
 - **Recommendation engine** — suggest unwatched titles based on genre and rating history
