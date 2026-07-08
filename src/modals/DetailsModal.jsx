@@ -6,6 +6,7 @@ import { Icon, cleanPlatform, getSafeGenres, getSafePlatforms } from '../utils';
 import { PersonModal } from './PersonModal';
 import { DirectPlayPlayer } from '../components/DirectPlayPlayer';
 
+// Modular UI Components
 import { MediaHeader } from '../components/details/MediaHeader';
 import { RatingsPanel } from '../components/details/RatingsPanel';
 import { StreamingPanel } from '../components/details/StreamingPanel';
@@ -14,6 +15,7 @@ import { CastCrewList } from '../components/details/CastCrewList';
 import { InfoGrid } from '../components/details/InfoGrid';
 import { EditForm } from '../components/details/EditForm';
 
+// Hooks
 import { useWatchProgress } from '../hooks/useWatchProgress';
 import { useTmdbDetails } from '../hooks/useTmdbDetails';
 import { useOmdbRatings } from '../hooks/useOmdbRatings';
@@ -56,6 +58,11 @@ export function DetailsModal(props) {
   const [directPlayUrl,       setDirectPlayUrl]       = createSignal('');
   const [isEditingDirectUrl,  setIsEditingDirectUrl]  = createSignal(false);
 
+  // ── NEW: holds the fully-resolved Direct Play URL after IMDb/TMDB lookup.
+  // Set by StreamingPanel via onDirectPlayResolved right before playback starts.
+  // Reset whenever the movie or direct play template changes.
+  const [resolvedDirectPlayUrl, setResolvedDirectPlayUrl] = createSignal('');
+
   const [form, setForm] = createSignal({
     status: '', rating: '', watchDate: '', notes: '',
     region: '', season: 1, episode: 1, tag: '',
@@ -72,7 +79,11 @@ export function DetailsModal(props) {
   let inferDurationSeconds = () => 0;
 
   const { details, trailerKey, richPlatforms, similarItems } = useTmdbDetails(movie, {
-    uid: props.uid, isGuest: props.isGuest, isPreview, setForm, setContentDuration,
+    uid:             props.uid,
+    isGuest:         props.isGuest,
+    isPreview,
+    setForm,
+    setContentDuration,
   });
 
   inferDurationSeconds = () => {
@@ -87,6 +98,7 @@ export function DetailsModal(props) {
 
   const currentSeasonNumber  = createMemo(() => parseInt(form().season  || movie()?.season  || 1) || 1);
   const currentEpisodeNumber = createMemo(() => parseInt(form().episode || movie()?.episode || 1) || 1);
+
   const isCompleted = createMemo(() => !isPreview() && (form().status || movie()?.status) === 'Completed');
 
   const {
@@ -120,8 +132,12 @@ export function DetailsModal(props) {
   const availableServers = createMemo(() => {
     const custom = customServers();
     return Object.keys(custom).filter(key => custom[key].enabled !== false).map(key => ({
-      id: key, name: custom[key].name || 'Custom Server', type: custom[key].type || 'multi',
-      movieUrl: custom[key].movieUrl || '', tvUrl: custom[key].tvUrl || '', icon: 'dns'
+      id: key,
+      name: custom[key].name || 'Custom Server',
+      type: custom[key].type || 'multi',
+      movieUrl: custom[key].movieUrl || '',
+      tvUrl: custom[key].tvUrl || '',
+      icon: 'dns'
     }));
   });
 
@@ -141,7 +157,10 @@ export function DetailsModal(props) {
       } else {
         setActiveServer('DIRECT_PLAY');
       }
-      setTimeout(() => { primePlaybackProgress(); setShowPlayer(true); }, 200);
+      setTimeout(() => {
+        primePlaybackProgress();
+        setShowPlayer(true);
+      }, 200);
     }
   });
 
@@ -177,6 +196,8 @@ export function DetailsModal(props) {
     const m = movie();
     if (!m?.id) return;
     setDirectPlayUrl(m.directPlayUrl || localStorage.getItem(`cinelog_direct_url_${m.id}`) || '');
+    // Reset resolved URL whenever the title or template changes
+    setResolvedDirectPlayUrl('');
   });
 
   onMount(() => {
@@ -230,19 +251,24 @@ export function DetailsModal(props) {
   };
 
   const saveChanges = async () => {
-    if (props.isGuest) { props.showToast('Sign in to save changes! 🔒'); if (props.onLogin) props.onLogin(); return; }
+    if (props.isGuest) { props.showToast("Sign in to save changes! 🔒"); if (props.onLogin) props.onLogin(); return; }
     const nextSeason   = parseInt(form().season)   || 1;
     const nextEpisode  = parseInt(form().episode)  || 1;
     const prevSeason   = parseInt(movie().season)  || 1;
     const prevEpisode  = parseInt(movie().episode) || 1;
     const episodeChanged = movie().media_type === 'tv' && (nextSeason !== prevSeason || nextEpisode !== prevEpisode);
     const updates = {
-      status: form().status, rating: parseFloat(form().rating) || 0,
-      watchDate: form().watchDate, seasonDates: form().seasonDates,
-      notes: form().notes, region: form().region,
-      season: nextSeason, episode: nextEpisode, tag: form().tag,
-      genresList:    form().genres.split(',').map(s => s.trim()).filter(Boolean),
-      platformsList: form().platforms.split(',').map(s => cleanPlatform(s.trim())).filter(Boolean),
+      status:       form().status,
+      rating:       parseFloat(form().rating) || 0,
+      watchDate:    form().watchDate,
+      seasonDates:  form().seasonDates,
+      notes:        form().notes,
+      region:       form().region,
+      season:       nextSeason,
+      episode:      nextEpisode,
+      tag:          form().tag,
+      genresList:   form().genres.split(',').map(s => s.trim()).filter(Boolean),
+      platformsList:form().platforms.split(',').map(s => cleanPlatform(s.trim())).filter(Boolean),
     };
     if (episodeChanged) {
       const inferred = inferDurationSeconds();
@@ -251,15 +277,15 @@ export function DetailsModal(props) {
       setPlayerStartProgress(0);
     }
     await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), updates);
-    if (props.showToast) props.showToast('Saved ✓', 'success');
+    if (props.showToast) props.showToast("Saved");
     setIsEdit(false);
   };
 
   const addToVaultFromPreview = async () => {
-    if (props.isGuest) { if (props.showToast) props.showToast('Sign in to add to Vault! 🔒'); if (props.onLogin) props.onLogin(); return; }
+    if (props.isGuest) { if (props.showToast) props.showToast("Sign in to add to Vault! 🔒"); if (props.onLogin) props.onLogin(); return; }
     const item = movie();
-    if ((props.watchlist || []).some(w => String(w.id) === String(item.id))) { if (props.showToast) props.showToast('Already in Vault! 🍿'); return; }
-    if (props.showToast) props.showToast('Adding to Vault...');
+    if ((props.watchlist || []).some(w => String(w.id) === String(item.id))) { if (props.showToast) props.showToast("Already in Vault! 🍿"); return; }
+    if (props.showToast) props.showToast("Adding to Vault...");
     try {
       const castNames = details().credits?.cast?.slice(0, 5).map(c => c.name) || [];
       const director  = details().credits?.crew?.find(c => c.job === 'Director')?.name || '';
@@ -270,28 +296,40 @@ export function DetailsModal(props) {
         release_date: item.release_date || item.first_air_date || '',
         status: 'Planned', addedAt: new Date(), castList,
       });
-      if (props.showToast) props.showToast('Added to Vault! 🍿', 'success');
+      if (props.showToast) props.showToast("Added to Vault! 🍿");
       props.onClose();
-    } catch { if (props.showToast) props.showToast('Error adding to vault.', 'error'); }
+    } catch { if (props.showToast) props.showToast("Error adding to vault."); }
   };
 
+  // ✅ FIX: Smart Similar Click — Vault check karo pehle
   const handleSimilarClick = (item) => {
-    const normalizedItem = { ...item, media_type: item.media_type || (movie().media_type === 'tv' ? 'tv' : 'movie') };
+    const normalizedItem = {
+      ...item,
+      media_type: item.media_type || (movie().media_type === 'tv' ? 'tv' : 'movie')
+    };
+
     const inVault = (props.watchlist || []).some(w => String(w.id) === String(item.id));
+
     if (inVault) {
       const vaultItem = props.watchlist.find(w => String(w.id) === String(item.id));
       setOverrideItem(vaultItem);
     } else {
       setOverrideItem({ ...normalizedItem, _isPreviewOverride: true });
     }
+
     document.querySelector('.overflow-y-auto.hide-scrollbar.w-full')?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // ✅ FIX: overrideItem ke liye bhi isPreview correctly work kare
   const isPreviewOverride = createMemo(() => !!overrideItem()?._isPreviewOverride);
   const effectiveIsPreview = createMemo(() => isPreview() || isPreviewOverride());
 
   const getStreamUrl = (serverId) => {
-    if (serverId === 'DIRECT_PLAY') return directPlayUrl();
+    if (serverId === 'DIRECT_PLAY') {
+      // Use the resolved URL if IMDb/TMDB resolution has already run (Watch Now was pressed).
+      // Fall back to the raw template for display purposes only (e.g. player header).
+      return resolvedDirectPlayUrl() || directPlayUrl();
+    }
     if (!serverId) return '';
     const id   = movie().id;
     const s    = movie().media_type === 'tv' ? currentSeasonNumber() : (movie().season  || 1);
@@ -303,7 +341,8 @@ export function DetailsModal(props) {
     if (!urlTemplate) return '';
     let timeParam = '';
     const canResume =
-      movie().watchProgress && movie().watchProgress.server === serverId &&
+      movie().watchProgress &&
+      movie().watchProgress.server === serverId &&
       movie().watchProgress.currentTime > 0 &&
       (movie().media_type !== 'tv' || (
         parseInt(movie().watchProgress.season  || 1) === parseInt(movie().season  || 1) &&
@@ -320,36 +359,25 @@ export function DetailsModal(props) {
       + timeParam;
   };
 
-  const titleText = () => movie()?.title || movie()?.name || 'Details';
-
   return (
-    <div
-      class="fixed inset-0 z-[999999] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
-      onClick={props.onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={titleText()}
-    >
+    <div class="fixed inset-0 z-[999999] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in" onClick={props.onClose}>
       <div class="absolute inset-0 bg-[#08090b] overflow-hidden pointer-events-none">
         <Show when={movie()?.backdrop_path}>
-          <img src={`https://image.tmdb.org/t/p/w500${movie().backdrop_path}`} class="backdrop-ambient" onLoad={e => e.target.classList.add('img-loaded')} alt="" aria-hidden="true" />
+          <img src={`https://image.tmdb.org/t/p/w500${movie().backdrop_path}`} class="backdrop-ambient" onLoad={e => e.target.classList.add('img-loaded')} />
         </Show>
-        <div class="absolute inset-0 bg-black/60" aria-hidden="true" />
+        <div class="absolute inset-0 bg-black/60"></div>
       </div>
 
       <Show when={movie()}>
         <div
-          class="w-full max-w-xl lg:max-w-[800px] bg-[#08090b]/80 backdrop-blur-3xl rounded-t-[2.5rem] sm:rounded-[2.5rem] overflow-hidden border relative max-h-[95vh] modal-sheet-enter flex flex-col"
-          style="border-color: rgba(255,255,255,0.09); box-shadow: var(--shadow-float), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.04)"
+          class="w-full max-w-xl lg:max-w-[800px] bg-[#08090b]/80 backdrop-blur-3xl rounded-t-[2.5rem] sm:rounded-[2.5rem] overflow-hidden border relative max-h-[95vh] modal-sheet-enter flex flex-col" style="border-color: rgba(255,255,255,0.09); box-shadow: var(--shadow-float), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.04)"
           onClick={e => e.stopPropagation()}
         >
-          {/* FIX: Added aria-label to close button */}
           <button
             onClick={props.onClose}
             class="absolute top-4 right-4 z-[100] bg-black/50 backdrop-blur-md border border-white/10 p-2.5 rounded-full hover:bg-black/80 active:scale-95 transition-all"
-            aria-label={`Close ${titleText()}`}
           >
-            <Icon name="close" class="text-sm text-white" aria-hidden="true" />
+            <Icon name="close" class="text-sm text-white" />
           </button>
 
           <div class="overflow-y-auto hide-scrollbar w-full">
@@ -364,6 +392,7 @@ export function DetailsModal(props) {
 
               <Show when={isEdit()} fallback={
                 <div class="animate-fade-in">
+                  {/* Streaming panel — sirf real Vault items ke liye */}
                   <Show when={!effectiveIsPreview()}>
                     <StreamingPanel
                       availableServers={availableServers()} activeServer={activeServer()} setActiveServer={setActiveServer}
@@ -372,7 +401,9 @@ export function DetailsModal(props) {
                       movie={movie()} inferDurationSeconds={inferDurationSeconds} setContentDuration={setContentDuration}
                       setWatchProgress={setWatchProgress} setPlayerStartProgress={setPlayerStartProgress}
                       setReceivedRealProgress={setReceivedRealProgress} setPlayerSessionStart={setPlayerSessionStart}
-                      setShowPlayer={setShowPlayer} uid={props.uid}
+                      setShowPlayer={setShowPlayer}
+                      uid={props.uid}
+                      onDirectPlayResolved={setResolvedDirectPlayUrl}
                     />
                   </Show>
 
@@ -380,6 +411,7 @@ export function DetailsModal(props) {
                     "{details().overview || (typeof movie().overview === 'string' ? movie().overview : 'No overview available.')}"
                   </p>
 
+                  {/* ✅ FIX: TV tracker — preview mein bhi dikhao (read-only mode), sirf non-preview mein full tracking */}
                   <Show when={movie().media_type === 'tv'}>
                     <TvTracker
                       movie={movie()} tvSeasons={tvSeasons()} selectedSeason={selectedSeason()} setSelectedSeason={setSelectedSeason}
@@ -387,7 +419,8 @@ export function DetailsModal(props) {
                       episodeDocId={episodeDocId} watchedEpisodes={watchedEpisodes()} expandedEpisodes={expandedEpisodes()}
                       setExpandedEpisodes={setExpandedEpisodes} toggleEpisodeWatched={toggleEpisodeWatched}
                       isCompleted={isCompleted()} currentSeasonNumber={currentSeasonNumber()} currentEpisodeNumber={currentEpisodeNumber()}
-                      progressPct={progressPct()} getCurrentEpisode={getCurrentEpisode} checkIfWatched={checkIfWatched}
+                      progressPct={progressPct()} getCurrentEpisode={getCurrentEpisode}
+                      checkIfWatched={checkIfWatched}
                       isPreviewMode={effectiveIsPreview()}
                     />
                   </Show>
@@ -395,20 +428,22 @@ export function DetailsModal(props) {
                   <CastCrewList credits={details().credits} setPersonId={setPersonId} />
 
                   <InfoGrid
-                    movie={movie()} isPreview={effectiveIsPreview()} details={details()}
-                    genresText={details().genres ? details().genres.map(g => g.name).join(', ') : (getSafeGenres(movie()).join(', ') || 'N/A')}
-                    richPlatforms={richPlatforms()} movieFranchises={movieFranchises()} similarItems={similarItems()}
-                    onSimilarClick={handleSimilarClick} calculateDays={calculateDays}
-                  />
+  movie={movie()} isPreview={effectiveIsPreview()}
+  details={details()}
+  genresText={details().genres ? details().genres.map(g => g.name).join(', ') : (getSafeGenres(movie()).join(', ') || 'N/A')}
+  richPlatforms={richPlatforms()} movieFranchises={movieFranchises()} similarItems={similarItems()}
+  onSimilarClick={handleSimilarClick}
+  calculateDays={calculateDays}
+/>
 
+                  {/* Add to Vault button — preview mode mein dikhao */}
                   <Show when={effectiveIsPreview()}>
                     <button
                       onClick={addToVaultFromPreview}
                       class="w-full mt-6 type-button py-4 px-5 rounded-xl active:scale-95 flex items-center justify-center gap-2 border"
-                      style="background: var(--p); color: #05060a; border-color: var(--p); box-shadow: 0 0 24px var(--p-glow); min-height: 52px"
-                      aria-label="Add to My Universe"
+                      style="background: var(--p); color: #05060a; border-color: var(--p); box-shadow: 0 0 24px var(--p-glow); min-height: 52px;"
                     >
-                      <Icon name="add_circle" class="text-lg" aria-hidden="true" /> Add to My Universe
+                      <Icon name="add_circle" class="text-lg" /> Add to My Universe
                     </button>
                   </Show>
 
@@ -416,17 +451,16 @@ export function DetailsModal(props) {
                     <div class="mt-8 flex justify-end">
                       <button
                         onClick={async () => {
-                          if (props.isGuest) { if (props.showToast) props.showToast('Sign in to edit vault! 🔒'); if (props.onLogin) props.onLogin(); return; }
-                          if (confirm('Permanently delete?')) {
+                          if (props.isGuest) { if (props.showToast) props.showToast("Sign in to edit vault! 🔒"); if (props.onLogin) props.onLogin(); return; }
+                          if (confirm("Permanently delete?")) {
                             await deleteDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)));
-                            if (props.showToast) props.showToast('Deleted');
+                            if (props.showToast) props.showToast("Deleted");
                             props.onClose();
                           }
                         }}
                         class="type-caption text-red-500/50 hover:text-red-500 flex items-center gap-1 mx-auto active:scale-95"
-                        aria-label={`Remove ${titleText()} from Universe`}
                       >
-                        <Icon name="delete" class="text-sm" aria-hidden="true" /> Remove from Universe
+                        <Icon name="delete" class="text-sm" /> Remove from Universe
                       </button>
                     </div>
                   </Show>
@@ -442,12 +476,11 @@ export function DetailsModal(props) {
         </div>
       </Show>
 
-      {/* Fullscreen Player */}
+      {/* Fullscreen Player Modal */}
       <Show when={showPlayer()}>
-        <div class="fixed inset-0 bg-black z-[10000000] flex flex-col animate-fade-in" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Video player">
+        <div class="fixed inset-0 bg-black z-[10000000] flex flex-col animate-fade-in" onClick={e => e.stopPropagation()}>
           <div class="p-4 flex justify-between items-center bg-[#0c0e14] border-b border-white/5 shadow-xl">
             <div class="flex items-center gap-3 overflow-hidden pr-2 flex-1">
-              {/* FIX: Added aria-label to player back button */}
               <button
                 type="button"
                 onClick={(e) => {
@@ -459,29 +492,25 @@ export function DetailsModal(props) {
                   setShowPlayer(false);
                 }}
                 class="p-2 bg-white/5 hover:bg-white/10 rounded-full active:scale-95 transition-all shrink-0"
-                aria-label="Exit player and save progress"
               >
-                <Icon name="arrow_back" class="text-sm" aria-hidden="true" />
+                <Icon name="arrow_back" class="text-sm" />
               </button>
               <h3 class="font-bold text-sm text-white truncate max-w-[150px]">{movie().title || movie().name}</h3>
             </div>
             <div class="flex gap-2 shrink-0">
               <div class="relative bg-white/5 border border-white/10 rounded-xl px-2 py-1.5 flex items-center gap-1 hover:bg-white/10 transition-colors">
-                <Icon name="router" class="text-gray-400 text-[14px]" aria-hidden="true" />
-                {/* FIX: var(--primary) → var(--p) */}
+                <Icon name="router" class="text-gray-400 text-[14px]" />
                 <select
                   value={activeServer()}
                   onChange={(e) => { e.stopPropagation(); setActiveServer(e.target.value); }}
-                  class="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none appearance-none cursor-pointer pr-4 pl-1"
-                  style="color: var(--p)"
-                  aria-label="Select streaming server"
+                  class="bg-transparent text-[10px] font-black uppercase tracking-widest text-[var(--primary)] outline-none appearance-none cursor-pointer pr-4 pl-1"
                 >
                   <For each={availableServers()}>
                     {(srv) => <option value={srv.id} class="bg-[#0c0e14] text-white">{srv.name}</option>}
                   </For>
                   <option value="DIRECT_PLAY" class="bg-[#0c0e14] text-[#3b82f6]">DIRECT PLAY</option>
                 </select>
-                <Icon name="expand_more" class="text-gray-400 text-[14px] absolute right-1 pointer-events-none" aria-hidden="true" />
+                <Icon name="expand_more" class="text-gray-400 text-[14px] absolute right-1 pointer-events-none" />
               </div>
             </div>
           </div>
@@ -489,10 +518,11 @@ export function DetailsModal(props) {
           <div class="flex-1 bg-black w-full h-full relative">
             <Show
               when={activeServer() === 'DIRECT_PLAY'}
-              fallback={<iframe src={getStreamUrl(activeServer())} class="w-full h-full border-none relative z-10" allowfullscreen title={`${movie().title || movie().name} — Stream`} />}
+              fallback={<iframe src={getStreamUrl(activeServer())} class="w-full h-full border-none relative z-10" allowfullscreen></iframe>}
             >
               <DirectPlayPlayer
-                src={getStreamUrl(activeServer())} title={movie().title || movie().name}
+                src={getStreamUrl(activeServer())}
+                title={movie().title || movie().name}
                 poster={`https://image.tmdb.org/t/p/original${movie().backdrop_path}`}
                 startTime={movie().watchProgress?.currentTime || 0}
                 onProgress={(prog) => { setReceivedRealProgress(true); setWatchProgress(prog); }}
@@ -504,12 +534,19 @@ export function DetailsModal(props) {
 
       <Show when={personId()}>
         <PersonModal
-          id={personId()} uid={props.uid} watchlist={props.watchlist}
-          showToast={props.showToast} onClose={() => setPersonId(null)}
+          id={personId()}
+          uid={props.uid}
+          watchlist={props.watchlist}
+          showToast={props.showToast}
+          onClose={() => setPersonId(null)}
           openPreview={(item) => {
             setPersonId(null);
-            if (props.openPreview) props.openPreview(item, 'fromPerson');
-            else { props.onClose(); if (props.showToast) props.showToast(`Search for ${item.title || item.name} to view details!`); }
+            if (props.openPreview) {
+              props.openPreview(item, 'fromPerson');
+            } else {
+              props.onClose();
+              if (props.showToast) props.showToast(`Search for ${item.title || item.name} to view details!`);
+            }
           }}
         />
       </Show>
