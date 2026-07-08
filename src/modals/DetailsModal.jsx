@@ -4,18 +4,15 @@ import { db } from '../firebase';
 import { Icon, cleanPlatform, getSafeGenres, getSafePlatforms } from '../utils';
 
 import { PersonModal } from './PersonModal';
-import { DirectPlayPlayer } from '../components/DirectPlayPlayer';
 
-// Modular UI Components
 import { MediaHeader } from '../components/details/MediaHeader';
 import { RatingsPanel } from '../components/details/RatingsPanel';
-import { StreamingPanel } from '../components/details/StreamingPanel';
+import { StreamingPanel, resolveStreamingUrl } from '../components/details/StreamingPanel';
 import { TvTracker } from '../components/details/TvTracker';
 import { CastCrewList } from '../components/details/CastCrewList';
 import { InfoGrid } from '../components/details/InfoGrid';
 import { EditForm } from '../components/details/EditForm';
 
-// Hooks
 import { useWatchProgress } from '../hooks/useWatchProgress';
 import { useTmdbDetails } from '../hooks/useTmdbDetails';
 import { useOmdbRatings } from '../hooks/useOmdbRatings';
@@ -56,8 +53,11 @@ export function DetailsModal(props) {
   const [omdbData,            setOmdbData]            = createSignal({ imdb: '-', rt: '-' });
   const [customServers,       setCustomServers]       = createSignal({});
 
-  // ── NEW: holds the fully-resolved playback URL after IMDb/TMDB lookup.
+  // IMDb-aware streaming: holds the fully-resolved playback URL after IMDb/TMDB
+  // lookup. Set by StreamingPanel (on Watch Now) and re-set when the user
+  // switches servers from inside the fullscreen player.
   const [resolvedUrl, setResolvedUrl] = createSignal('');
+  const [resolving, setResolving]     = createSignal(false);
 
   const [form, setForm] = createSignal({
     status: '', rating: '', watchDate: '', notes: '',
@@ -75,11 +75,7 @@ export function DetailsModal(props) {
   let inferDurationSeconds = () => 0;
 
   const { details, trailerKey, richPlatforms, similarItems } = useTmdbDetails(movie, {
-    uid:             props.uid,
-    isGuest:         props.isGuest,
-    isPreview,
-    setForm,
-    setContentDuration,
+    uid: props.uid, isGuest: props.isGuest, isPreview, setForm, setContentDuration,
   });
 
   inferDurationSeconds = () => {
@@ -94,7 +90,6 @@ export function DetailsModal(props) {
 
   const currentSeasonNumber  = createMemo(() => parseInt(form().season  || movie()?.season  || 1) || 1);
   const currentEpisodeNumber = createMemo(() => parseInt(form().episode || movie()?.episode || 1) || 1);
-
   const isCompleted = createMemo(() => !isPreview() && (form().status || movie()?.status) === 'Completed');
 
   const {
@@ -128,13 +123,9 @@ export function DetailsModal(props) {
   const availableServers = createMemo(() => {
     const custom = customServers();
     return Object.keys(custom).filter(key => custom[key].enabled !== false).map(key => ({
-      id: key,
-      name: custom[key].name || 'Custom Server',
-      type: custom[key].type || 'multi',
+      id: key, name: custom[key].name || 'Custom Server', type: custom[key].type || 'multi',
       idMode: custom[key].idMode || 'TMDB',
-      movieUrl: custom[key].movieUrl || '',
-      tvUrl: custom[key].tvUrl || '',
-      icon: 'dns'
+      movieUrl: custom[key].movieUrl || '', tvUrl: custom[key].tvUrl || '', icon: 'dns'
     }));
   });
 
@@ -154,10 +145,7 @@ export function DetailsModal(props) {
       } else if (availableServers().length > 0) {
         setActiveServer(availableServers()[0].id);
       }
-      setTimeout(() => {
-        primePlaybackProgress();
-        setShowPlayer(true);
-      }, 200);
+      setTimeout(() => { primePlaybackProgress(); setShowPlayer(true); }, 200);
     }
   });
 
@@ -189,12 +177,25 @@ export function DetailsModal(props) {
     if (m?.media_type === 'tv' && !isPreview()) loadWatchedEpisodes();
   });
 
-  createEffect(() => {
-    const m = movie();
-    if (!m?.id) return;
-    // Reset resolved URL whenever the title changes
-    setResolvedUrl('');
-  });
+  // IMDb-aware: when the active server changes inside the fullscreen player,
+  // re-resolve the playback URL (TMDB servers are sync; IMDb servers fetch
+  // the external_ids endpoint first).
+  const handlePlayerServerChange = async (serverId) => {
+    setActiveServer(serverId);
+    const server = availableServers().find(s => s.id === serverId);
+    if (!server) { setResolvedUrl(''); return; }
+    setResolving(true);
+    try {
+      const url = await resolveStreamingUrl(server, movie(), props.showToast, {
+        season: currentSeasonNumber(),
+        episode: currentEpisodeNumber(),
+        watchProgress: movie()?.watchProgress,
+      });
+      setResolvedUrl(url);
+    } finally {
+      setResolving(false);
+    }
+  };
 
   onMount(() => {
     document.body.style.overflow = 'hidden';
@@ -247,24 +248,19 @@ export function DetailsModal(props) {
   };
 
   const saveChanges = async () => {
-    if (props.isGuest) { props.showToast("Sign in to save changes! 🔒"); if (props.onLogin) props.onLogin(); return; }
+    if (props.isGuest) { props.showToast('Sign in to save changes! 🔒'); if (props.onLogin) props.onLogin(); return; }
     const nextSeason   = parseInt(form().season)   || 1;
     const nextEpisode  = parseInt(form().episode)  || 1;
     const prevSeason   = parseInt(movie().season)  || 1;
     const prevEpisode  = parseInt(movie().episode) || 1;
     const episodeChanged = movie().media_type === 'tv' && (nextSeason !== prevSeason || nextEpisode !== prevEpisode);
     const updates = {
-      status:       form().status,
-      rating:       parseFloat(form().rating) || 0,
-      watchDate:    form().watchDate,
-      seasonDates:  form().seasonDates,
-      notes:        form().notes,
-      region:       form().region,
-      season:       nextSeason,
-      episode:      nextEpisode,
-      tag:          form().tag,
-      genresList:   form().genres.split(',').map(s => s.trim()).filter(Boolean),
-      platformsList:form().platforms.split(',').map(s => cleanPlatform(s.trim())).filter(Boolean),
+      status: form().status, rating: parseFloat(form().rating) || 0,
+      watchDate: form().watchDate, seasonDates: form().seasonDates,
+      notes: form().notes, region: form().region,
+      season: nextSeason, episode: nextEpisode, tag: form().tag,
+      genresList:    form().genres.split(',').map(s => s.trim()).filter(Boolean),
+      platformsList: form().platforms.split(',').map(s => cleanPlatform(s.trim())).filter(Boolean),
     };
     if (episodeChanged) {
       const inferred = inferDurationSeconds();
@@ -273,15 +269,15 @@ export function DetailsModal(props) {
       setPlayerStartProgress(0);
     }
     await updateDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)), updates);
-    if (props.showToast) props.showToast("Saved");
+    if (props.showToast) props.showToast('Saved ✓', 'success');
     setIsEdit(false);
   };
 
   const addToVaultFromPreview = async () => {
-    if (props.isGuest) { if (props.showToast) props.showToast("Sign in to add to Vault! 🔒"); if (props.onLogin) props.onLogin(); return; }
+    if (props.isGuest) { if (props.showToast) props.showToast('Sign in to add to Vault! 🔒'); if (props.onLogin) props.onLogin(); return; }
     const item = movie();
-    if ((props.watchlist || []).some(w => String(w.id) === String(item.id))) { if (props.showToast) props.showToast("Already in Vault! 🍿"); return; }
-    if (props.showToast) props.showToast("Adding to Vault...");
+    if ((props.watchlist || []).some(w => String(w.id) === String(item.id))) { if (props.showToast) props.showToast('Already in Vault! 🍿'); return; }
+    if (props.showToast) props.showToast('Adding to Vault...');
     try {
       const castNames = details().credits?.cast?.slice(0, 5).map(c => c.name) || [];
       const director  = details().credits?.crew?.find(c => c.job === 'Director')?.name || '';
@@ -292,186 +288,222 @@ export function DetailsModal(props) {
         release_date: item.release_date || item.first_air_date || '',
         status: 'Planned', addedAt: new Date(), castList,
       });
-      if (props.showToast) props.showToast("Added to Vault! 🍿");
+      if (props.showToast) props.showToast('Added to Vault! 🍿', 'success');
       props.onClose();
-    } catch { if (props.showToast) props.showToast("Error adding to vault."); }
+    } catch { if (props.showToast) props.showToast('Error adding to vault.', 'error'); }
   };
 
   const handleSimilarClick = (item) => {
-    const normalizedItem = {
-      ...item,
-      media_type: item.media_type || (movie().media_type === 'tv' ? 'tv' : 'movie')
-    };
-
+    const normalizedItem = { ...item, media_type: item.media_type || (movie().media_type === 'tv' ? 'tv' : 'movie') };
     const inVault = (props.watchlist || []).some(w => String(w.id) === String(item.id));
-
     if (inVault) {
       const vaultItem = props.watchlist.find(w => String(w.id) === String(item.id));
       setOverrideItem(vaultItem);
     } else {
       setOverrideItem({ ...normalizedItem, _isPreviewOverride: true });
     }
-
     document.querySelector('.overflow-y-auto.hide-scrollbar.w-full')?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const isPreviewOverride = createMemo(() => !!overrideItem()?._isPreviewOverride);
   const effectiveIsPreview = createMemo(() => isPreview() || isPreviewOverride());
 
-  const getStreamUrl = (serverId) => {
-    if (!serverId) return '';
-    return resolvedUrl();
-  };
+  const titleText = () => movie()?.title || movie()?.name || 'Details';
 
   return (
-    <div class="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-4 animate-fade-in overflow-hidden"
-      style="background: rgba(0,0,0,0.85); backdrop-filter: blur(20px)"
-      onClick={props.onClose}>
-      
-      <div class="relative w-full h-full sm:h-auto sm:max-h-[95vh] sm:max-w-5xl bg-[#05060a] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border border-white/5 animate-pop-in"
-        onClick={e => e.stopPropagation()}>
-
-        <Show when={showPlayer()}>
-          <DirectPlayPlayer
-            url={getStreamUrl(activeServer())}
-            title={movie()?.title || movie()?.name}
-            onClose={() => {
-              setShowPlayer(false);
-              hydrateSessionProgressFromElapsed();
-              saveProgressToDb();
-            }}
-            watchProgress={watchProgress()}
-            setWatchProgress={setWatchProgress}
-            mediaType={movie()?.media_type}
-            season={currentSeasonNumber()}
-            episode={currentEpisodeNumber()}
-          />
+    <div
+      class="fixed inset-0 z-[999999] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
+      onClick={props.onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={titleText()}
+    >
+      <div class="absolute inset-0 bg-[#08090b] overflow-hidden pointer-events-none">
+        <Show when={movie()?.backdrop_path}>
+          <img src={`https://image.tmdb.org/t/p/w500${movie().backdrop_path}`} class="backdrop-ambient" onLoad={e => e.target.classList.add('img-loaded')} alt="" aria-hidden="true" />
         </Show>
+        <div class="absolute inset-0 bg-black/60" aria-hidden="true" />
+      </div>
 
-        <div class="overflow-y-auto hide-scrollbar w-full flex-1">
-          <MediaHeader 
-            movie={movie()} 
-            details={details()} 
-            trailerKey={trailerKey()} 
-            onClose={props.onClose} 
-            playTrailer={playTrailer()}
-            setPlayTrailer={setPlayTrailer}
-            effectiveIsPreview={effectiveIsPreview()}
-            addToVaultFromPreview={addToVaultFromPreview}
-          />
+      <Show when={movie()}>
+        <div
+          class="w-full max-w-xl lg:max-w-[800px] bg-[#08090b]/80 backdrop-blur-3xl rounded-t-[2.5rem] sm:rounded-[2.5rem] overflow-hidden border relative max-h-[95vh] modal-sheet-enter flex flex-col"
+          style="border-color: rgba(255,255,255,0.09); box-shadow: var(--shadow-float), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.04)"
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Close button */}
+          <button
+            onClick={props.onClose}
+            class="absolute top-4 right-4 z-[100] bg-black/50 backdrop-blur-md border border-white/10 p-2.5 rounded-full hover:bg-black/80 active:scale-95 transition-all"
+            aria-label={`Close ${titleText()}`}
+          >
+            <Icon name="close" class="text-sm text-white" aria-hidden="true" />
+          </button>
 
-          <div class="px-5 sm:px-10 pb-12 -mt-12 relative z-10">
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              
-              <div class="lg:col-span-8 space-y-8">
-                <Show when={!isEdit()}>
-                  <RatingsPanel movie={movie()} omdbData={omdbData()} />
-                  
-                  <Show when={movie()?.media_type === 'tv' && !effectiveIsPreview()}>
-                    <TvTracker 
-                      movie={movie()}
-                      form={form()}
-                      setForm={setForm}
-                      progressPct={progressPct()}
-                      tvSeasons={tvSeasons()}
-                      selectedSeason={selectedSeason()}
-                      setSelectedSeason={setSelectedSeason}
-                      seasonsLoading={seasonsLoading()}
-                      selectedSeasonEpisodes={selectedSeasonEpisodes()}
-                      expandedEpisodes={expandedEpisodes()}
-                      setExpandedEpisodes={setExpandedEpisodes}
-                      checkIfWatched={checkIfWatched}
-                      toggleEpisodeWatched={toggleEpisodeWatched}
+          <div class="overflow-y-auto hide-scrollbar w-full">
+            <MediaHeader
+              movie={movie()} details={details()} playTrailer={playTrailer()} setPlayTrailer={setPlayTrailer}
+              trailerKey={trailerKey()} isPreview={effectiveIsPreview()} isGuest={props.isGuest}
+              isEdit={isEdit()} setIsEdit={setIsEdit} showToast={props.showToast} onLogin={props.onLogin}
+            />
+
+            <div class="px-6 md:px-8 pb-28 relative z-10">
+              <RatingsPanel omdbData={omdbData()} movie={movie()} />
+
+              <Show when={isEdit()} fallback={
+                <div class="animate-fade-in">
+                  <Show when={!effectiveIsPreview()}>
+                    <StreamingPanel
+                      availableServers={availableServers()} activeServer={activeServer()} setActiveServer={setActiveServer}
+                      showToast={props.showToast}
+                      movie={movie()} inferDurationSeconds={inferDurationSeconds} setContentDuration={setContentDuration}
+                      setWatchProgress={setWatchProgress} setPlayerStartProgress={setPlayerStartProgress}
+                      setReceivedRealProgress={setReceivedRealProgress} setPlayerSessionStart={setPlayerSessionStart}
+                      setShowPlayer={setShowPlayer}
+                      onServerResolved={setResolvedUrl}
+                      onResolvingChange={setResolving}
+                      currentSeasonNumber={currentSeasonNumber()}
+                      currentEpisodeNumber={currentEpisodeNumber()}
                     />
                   </Show>
 
-                  <div class="space-y-4">
-                    <h4 class="type-caption text-gray-400 flex items-center gap-2">
-                      <Icon name="notes" class="text-[14px]" style="color: var(--p)" /> Storyline
-                    </h4>
-                    <p class="text-gray-300 leading-relaxed text-sm sm:text-base font-medium opacity-80">
-                      {details()?.overview || movie()?.overview || 'No overview available.'}
-                    </p>
-                  </div>
+                  <p class="type-metadata text-gray-400 mb-6 leading-relaxed italic border-l-2 pl-3" style="border-color: color-mix(in srgb, var(--p) 30%, transparent)">
+                    "{details().overview || (typeof movie().overview === 'string' ? movie().overview : 'No overview available.')}"
+                  </p>
 
-                  <CastCrewList details={details()} setPersonId={setPersonId} />
-                </Show>
+                  <Show when={movie().media_type === 'tv'}>
+                    <TvTracker
+                      movie={movie()} tvSeasons={tvSeasons()} selectedSeason={selectedSeason()} setSelectedSeason={setSelectedSeason}
+                      seasonsLoading={seasonsLoading()} selectedSeasonEpisodes={selectedSeasonEpisodes()}
+                      episodeDocId={episodeDocId} watchedEpisodes={watchedEpisodes()} expandedEpisodes={expandedEpisodes()}
+                      setExpandedEpisodes={setExpandedEpisodes} toggleEpisodeWatched={toggleEpisodeWatched}
+                      isCompleted={isCompleted()} currentSeasonNumber={currentSeasonNumber()} currentEpisodeNumber={currentEpisodeNumber()}
+                      progressPct={progressPct()} getCurrentEpisode={getCurrentEpisode} checkIfWatched={checkIfWatched}
+                      isPreviewMode={effectiveIsPreview()}
+                    />
+                  </Show>
 
-                <Show when={isEdit()}>
-                  <EditForm 
-                    form={form()} 
-                    setForm={setForm} 
-                    movie={movie()} 
-                    allAvailablePlatforms={allAvailablePlatforms()}
-                    togglePlatform={togglePlatform}
-                    saveChanges={saveChanges}
-                    setIsEdit={setIsEdit}
-                    onDelete={() => {
-                      if(confirm("Delete from Vault?")) {
-                        deleteDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)));
-                        props.onClose();
-                      }
-                    }}
+                  <CastCrewList credits={details().credits} setPersonId={setPersonId} />
+
+                  <InfoGrid
+                    movie={movie()} isPreview={effectiveIsPreview()} details={details()}
+                    genresText={details().genres ? details().genres.map(g => g.name).join(', ') : (getSafeGenres(movie()).join(', ') || 'N/A')}
+                    richPlatforms={richPlatforms()} movieFranchises={movieFranchises()} similarItems={similarItems()}
+                    onSimilarClick={handleSimilarClick} calculateDays={calculateDays}
                   />
-                </Show>
-              </div>
 
-              <div class="lg:col-span-4 space-y-6">
-                <StreamingPanel 
-                  movie={movie()}
-                  availableServers={availableServers()}
-                  activeServer={activeServer()}
-                  setActiveServer={setActiveServer}
-                  showToast={props.showToast}
-                  onServerResolved={(url) => setResolvedUrl(url)}
-                  setShowPlayer={setShowPlayer}
-                  inferDurationSeconds={inferDurationSeconds}
-                  setContentDuration={setContentDuration}
-                  setWatchProgress={setWatchProgress}
-                  setPlayerStartProgress={setPlayerStartProgress}
-                  setReceivedRealProgress={setReceivedRealProgress}
-                  setPlayerSessionStart={setPlayerSessionStart}
-                />
+                  <Show when={effectiveIsPreview()}>
+                    <button
+                      onClick={addToVaultFromPreview}
+                      class="w-full mt-6 type-button py-4 px-5 rounded-xl active:scale-95 flex items-center justify-center gap-2 border"
+                      style="background: var(--p); color: #05060a; border-color: var(--p); box-shadow: 0 0 24px var(--p-glow); min-height: 52px"
+                      aria-label="Add to My Universe"
+                    >
+                      <Icon name="add_circle" class="text-lg" aria-hidden="true" /> Add to My Universe
+                    </button>
+                  </Show>
 
-                <InfoGrid 
-                  movie={movie()} 
-                  details={details()} 
-                  effectiveIsPreview={effectiveIsPreview()}
-                  movieFranchises={movieFranchises()}
-                  setIsEdit={setIsEdit}
-                />
-
-                <Show when={similarItems().length > 0}>
-                  <div class="pt-4 border-t border-white/5">
-                    <h4 class="type-caption text-gray-400 mb-4">Similar Titles</h4>
-                    <div class="grid grid-cols-3 gap-3">
-                      <For each={similarItems().slice(0, 6)}>{(item) => (
-                        <button 
-                          onClick={() => handleSimilarClick(item)}
-                          class="aspect-[2/3] rounded-lg overflow-hidden border border-white/5 hover:border-[var(--p)] transition-all active:scale-95 group relative"
-                        >
-                          <img 
-                            src={`https://image.tmdb.org/t/p/w185${item.poster_path}`} 
-                            class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-                            alt=""
-                          />
-                          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                            <p class="text-[8px] font-bold text-white truncate">{item.title || item.name}</p>
-                          </div>
-                        </button>
-                      )}</For>
+                  <Show when={!effectiveIsPreview()}>
+                    <div class="mt-8 flex justify-end">
+                      <button
+                        onClick={async () => {
+                          if (props.isGuest) { if (props.showToast) props.showToast('Sign in to edit vault! 🔒'); if (props.onLogin) props.onLogin(); return; }
+                          if (confirm('Permanently delete?')) {
+                            await deleteDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)));
+                            if (props.showToast) props.showToast('Deleted');
+                            props.onClose();
+                          }
+                        }}
+                        class="type-caption text-red-500/50 hover:text-red-500 flex items-center gap-1 mx-auto active:scale-95"
+                        aria-label={`Remove ${titleText()} from Universe`}
+                      >
+                        <Icon name="delete" class="text-sm" aria-hidden="true" /> Remove from Universe
+                      </button>
                     </div>
-                  </div>
-                </Show>
-              </div>
-
+                  </Show>
+                </div>
+              }>
+                <EditForm
+                  form={form()} setForm={setForm} movie={movie()}
+                  allAvailablePlatforms={allAvailablePlatforms} togglePlatform={togglePlatform} saveChanges={saveChanges}
+                />
+              </Show>
             </div>
           </div>
         </div>
-      </div>
+      </Show>
+
+      {/* Fullscreen Player */}
+      <Show when={showPlayer()}>
+        <div class="fixed inset-0 bg-black z-[10000000] flex flex-col animate-fade-in" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Video player">
+          <div class="p-4 flex justify-between items-center bg-[#0c0e14] border-b border-white/5 shadow-xl">
+            <div class="flex items-center gap-3 overflow-hidden pr-2 flex-1">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  hydrateSessionProgressFromElapsed();
+                  saveProgressToDb();
+                  setPlayerSessionStart(null);
+                  setPlayerStartProgress(0);
+                  setShowPlayer(false);
+                }}
+                class="p-2 bg-white/5 hover:bg-white/10 rounded-full active:scale-95 transition-all shrink-0"
+                aria-label="Exit player and save progress"
+              >
+                <Icon name="arrow_back" class="text-sm" aria-hidden="true" />
+              </button>
+              <h3 class="font-bold text-sm text-white truncate max-w-[150px]">{movie().title || movie().name}</h3>
+            </div>
+            <div class="flex gap-2 shrink-0">
+              <Show when={availableServers().length > 1}>
+                <div class="relative bg-white/5 border border-white/10 rounded-xl px-2 py-1.5 flex items-center gap-1 hover:bg-white/10 transition-colors">
+                  <Icon name="router" class="text-gray-400 text-[14px]" aria-hidden="true" />
+                  <select
+                    value={activeServer()}
+                    onChange={(e) => { e.stopPropagation(); handlePlayerServerChange(e.target.value); }}
+                    class="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none appearance-none cursor-pointer pr-4 pl-1"
+                    style="color: var(--p)"
+                    aria-label="Select streaming server"
+                  >
+                    <For each={availableServers()}>
+                      {(srv) => <option value={srv.id} class="bg-[#0c0e14] text-white">{srv.name}</option>}
+                    </For>
+                  </select>
+                  <Icon name="expand_more" class="text-gray-400 text-[14px] absolute right-1 pointer-events-none" aria-hidden="true" />
+                </div>
+              </Show>
+            </div>
+          </div>
+
+          <div class="flex-1 bg-black w-full h-full relative">
+            <Show
+              when={resolvedUrl() && !resolving()}
+              fallback={
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <div class="flex flex-col items-center gap-3">
+                    <div class="w-10 h-10 border-2 border-[var(--p)] border-t-transparent rounded-full animate-spin" />
+                    <p class="type-caption text-gray-400">Resolving Node…</p>
+                  </div>
+                </div>
+              }
+            >
+              <iframe src={resolvedUrl()} class="w-full h-full border-none relative z-10" allowfullscreen title={`${movie().title || movie().name} — Stream`} />
+            </Show>
+          </div>
+        </div>
+      </Show>
 
       <Show when={personId()}>
-        <PersonModal id={personId()} onClose={() => setPersonId(null)} />
+        <PersonModal
+          id={personId()} uid={props.uid} watchlist={props.watchlist}
+          showToast={props.showToast} onClose={() => setPersonId(null)}
+          openPreview={(item) => {
+            setPersonId(null);
+            if (props.openPreview) props.openPreview(item, 'fromPerson');
+            else { props.onClose(); if (props.showToast) props.showToast(`Search for ${item.title || item.name} to view details!`); }
+          }}
+        />
       </Show>
     </div>
   );

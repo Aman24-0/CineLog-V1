@@ -1,29 +1,43 @@
 import { createSignal, Show, For } from 'solid-js';
-import { Icon } from '../../utils';
-import { TMDB_KEY } from '../../utils';
+import { Icon, TMDB_KEY } from '../../utils';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // resolveStreamingUrl
-// Determines which ID the template needs, fetches IMDb ID from TMDB only when
-// required, and returns the final playback URL.
+//
+// Determines which ID the server template needs, fetches the IMDb ID from TMDB
+// /external_ids only when the server is in IMDb mode, applies season/episode
+// placeholders for TV shows, and appends a resume-time parameter when the user
+// has prior watch progress on the same server+episode.
+//
+// Returns the final playback URL, or '' on failure (with a toast already shown).
 // ─────────────────────────────────────────────────────────────────────────────
-async function resolveStreamingUrl(server, movie, showToast) {
+export async function resolveStreamingUrl(server, movie, showToast, ctx = {}) {
   if (!server) return '';
-  
+
   const mediaType = movie?.media_type === 'tv' ? 'tv' : 'movie';
-  let template = mediaType === 'tv' ? server.tvUrl : server.movieUrl;
+  const template  = mediaType === 'tv' ? server.tvUrl : server.movieUrl;
   if (!template) return '';
 
   const tmdbId = movie?.id;
   const idMode = server.idMode || 'TMDB';
+  const season  = ctx.season  ?? (mediaType === 'tv' ? (movie?.season  || 1) : 1);
+  const episode = ctx.episode ?? (mediaType === 'tv' ? (movie?.episode || 1) : 1);
 
-  // Case 1: ID Mode is TMDB
-  if (idMode === 'TMDB') {
-    return template.replace(/\{tmdb_id\}|\{id\}|\[TMDB_ID\]/gi, tmdbId);
+  let url = template;
+
+  // 1) Always replace the TMDB id placeholders (TMDB-mode servers stop here).
+  url = url.replace(/\{tmdb_id\}|\{id\}|\[TMDB_ID\]/gi, tmdbId);
+
+  // 2) TV season/episode placeholders.
+  if (mediaType === 'tv') {
+    url = url.replace(/\{season\}|\[SEASON\]/gi, season)
+             .replace(/\{episode\}|\[EPISODE\]/gi, episode);
   }
 
-  // Case 2: ID Mode is IMDb → fetch from TMDB external_ids
-  if (idMode === 'IMDb') {
+  // 3) IMDb-mode servers: fetch the IMDb id from TMDB /external_ids, then
+  //    substitute {imdb_id}. If the template doesn't reference {imdb_id} we
+  //    skip the network call entirely.
+  if (idMode === 'IMDb' && /\{imdb_id\}/i.test(url)) {
     try {
       const res = await fetch(
         `https://api.themoviedb.org/3/${mediaType}/${tmdbId}/external_ids?api_key=${TMDB_KEY}`
@@ -35,7 +49,7 @@ async function resolveStreamingUrl(server, movie, showToast) {
         if (showToast) showToast('IMDb ID not found for this title on TMDB.', 'error');
         return '';
       }
-      return template.replace(/\{imdb_id\}/gi, imdbId);
+      url = url.replace(/\{imdb_id\}/gi, imdbId);
     } catch (err) {
       console.error('[StreamingPanel] IMDb ID fetch failed:', err);
       if (showToast) showToast('Failed to fetch IMDb ID. Check your connection.', 'error');
@@ -43,7 +57,21 @@ async function resolveStreamingUrl(server, movie, showToast) {
     }
   }
 
-  return template;
+  // 4) Resume-time parameter — preserved from the original getStreamUrl logic
+  //    so TMDB-mode servers keep working exactly as before.
+  const wp = ctx.watchProgress || movie?.watchProgress;
+  const canResume = wp && wp.server === server.id && wp.currentTime > 0 && (
+    mediaType !== 'tv' || (
+      parseInt(wp.season  || 1) === parseInt(season)  &&
+      parseInt(wp.episode || 1) === parseInt(episode)
+    )
+  );
+  if (canResume) {
+    const t = Math.floor(wp.currentTime);
+    url += url.includes('?') ? `&t=${t}&start=${t}&time=${t}` : `?t=${t}&start=${t}&time=${t}`;
+  }
+
+  return url;
 }
 
 export function StreamingPanel(props) {
@@ -51,7 +79,7 @@ export function StreamingPanel(props) {
   const [resolving, setResolving] = createSignal(false);
 
   const multiList = () => props.availableServers.filter(s => s.type === 'multi');
-  const orgList = () => props.availableServers.filter(s => s.type === 'org');
+  const orgList   = () => props.availableServers.filter(s => s.type === 'org');
   const hasServerSelected = () => !!props.activeServer;
 
   const Chip = (srv) => (
@@ -94,10 +122,7 @@ export function StreamingPanel(props) {
     e.preventDefault();
     e.stopPropagation();
 
-    if (!expanded()) {
-      setExpanded(true);
-      return;
-    }
+    if (!expanded()) { setExpanded(true); return; }
 
     if (!hasServerSelected()) {
       if (props.showToast) props.showToast('Select a server first');
@@ -105,24 +130,37 @@ export function StreamingPanel(props) {
     }
 
     const selectedServer = props.availableServers.find(s => s.id === props.activeServer);
-    if (selectedServer) {
-      setResolving(true);
-      const resolvedUrl = await resolveStreamingUrl(selectedServer, props.movie, props.showToast);
-      setResolving(false);
-      
-      if (!resolvedUrl) {
+    if (!selectedServer) return;
+
+    // IMDb-aware: resolve the final URL (this fetches the IMDb id from TMDB
+    // /external_ids when the server is in IMDb mode). TMDB-mode servers are
+    // resolved synchronously inside the same function.
+    setResolving(true);
+    if (props.onResolvingChange) props.onResolvingChange(true);
+    try {
+      const url = await resolveStreamingUrl(selectedServer, props.movie, props.showToast, {
+        season: props.currentSeasonNumber,
+        episode: props.currentEpisodeNumber,
+        watchProgress: props.movie?.watchProgress,
+      });
+
+      if (!url) {
         if (props.showToast) props.showToast('Could not resolve playback URL');
         return;
       }
-      
-      props.onServerResolved(resolvedUrl);
+
+      if (props.onServerResolved) props.onServerResolved(url);
       startPlayback();
       setExpanded(false);
+    } finally {
+      setResolving(false);
+      if (props.onResolvingChange) props.onResolvingChange(false);
     }
   };
 
   return (
     <div class="mb-6 bg-black/40 backdrop-blur-md p-4 rounded-[1.5rem] border border-white/5 shadow-inner">
+      {/* Header row */}
       <div class="flex justify-between items-center mb-3 px-1">
         <span class="type-caption text-gray-400 flex items-center gap-1.5">
           <Icon name="router" class="text-[12px]" style="color: var(--p)" /> Streaming Node
@@ -137,6 +175,7 @@ export function StreamingPanel(props) {
         </button>
       </div>
 
+      {/* Collapsible server list */}
       <Show when={expanded()}>
         <div class="pb-1 collapse-enter">
           <Show when={multiList().length > 0}>
@@ -159,6 +198,7 @@ export function StreamingPanel(props) {
         </div>
       </Show>
 
+      {/* Primary action button */}
       <button
         type="button"
         onClick={handleMainButtonClick}

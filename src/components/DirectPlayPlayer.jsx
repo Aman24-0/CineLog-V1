@@ -1,5 +1,5 @@
 // src/components/DirectPlayPlayer.jsx
-import { onMount, onCleanup, createSignal, Show } from "solid-js";
+import { onMount, onCleanup, createSignal } from "solid-js";
 
 export function DirectPlayPlayer(props) {
   let videoRef;
@@ -79,7 +79,7 @@ export function DirectPlayPlayer(props) {
     <div class="w-full h-full bg-black flex items-center justify-center relative">
       <video
         ref={videoRef}
-        src={props.url}
+        src={props.src}
         poster={props.poster}
         controls
         autoPlay
@@ -97,7 +97,7 @@ export function DirectPlayPlayer(props) {
           <span class="material-symbols-outlined text-6xl text-red-500 mb-4 drop-shadow-[0_0_20px_rgba(239,68,68,0.6)]">error</span>
           <h3 class="text-white font-black text-xl mb-2 uppercase tracking-widest">Stream Error</h3>
           <p class="text-gray-400 text-xs max-w-xs mb-8 font-bold leading-relaxed">
-            This stream is currently unavailable. Please try a different streaming node or try again later.
+            This link is unavailable or expired. Close the player, edit the Direct Play URL and paste a fresh link.
           </p>
         </div>
       </Show>
