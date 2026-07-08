@@ -55,13 +55,9 @@ export function DetailsModal(props) {
   const [personId,            setPersonId]            = createSignal(null);
   const [omdbData,            setOmdbData]            = createSignal({ imdb: '-', rt: '-' });
   const [customServers,       setCustomServers]       = createSignal({});
-  const [directPlayUrl,       setDirectPlayUrl]       = createSignal('');
-  const [isEditingDirectUrl,  setIsEditingDirectUrl]  = createSignal(false);
 
-  // ── NEW: holds the fully-resolved Direct Play URL after IMDb/TMDB lookup.
-  // Set by StreamingPanel via onDirectPlayResolved right before playback starts.
-  // Reset whenever the movie or direct play template changes.
-  const [resolvedDirectPlayUrl, setResolvedDirectPlayUrl] = createSignal('');
+  // ── NEW: holds the fully-resolved playback URL after IMDb/TMDB lookup.
+  const [resolvedUrl, setResolvedUrl] = createSignal('');
 
   const [form, setForm] = createSignal({
     status: '', rating: '', watchDate: '', notes: '',
@@ -135,6 +131,7 @@ export function DetailsModal(props) {
       id: key,
       name: custom[key].name || 'Custom Server',
       type: custom[key].type || 'multi',
+      idMode: custom[key].idMode || 'TMDB',
       movieUrl: custom[key].movieUrl || '',
       tvUrl: custom[key].tvUrl || '',
       icon: 'dns'
@@ -143,7 +140,7 @@ export function DetailsModal(props) {
 
   createEffect(() => {
     const list = availableServers();
-    if (list.length > 0 && !list.find(s => s.id === activeServer()) && activeServer() !== 'DIRECT_PLAY') {
+    if (list.length > 0 && !list.find(s => s.id === activeServer())) {
       setActiveServer(list[0].id);
     }
   });
@@ -152,10 +149,10 @@ export function DetailsModal(props) {
     if (isResume() && movie() && !autoPlayTriggered) {
       autoPlayTriggered = true;
       const savedServer = movie().watchProgress?.server;
-      if (savedServer && (availableServers().find(s => s.id === savedServer) || savedServer === 'DIRECT_PLAY')) {
+      if (savedServer && availableServers().find(s => s.id === savedServer)) {
         setActiveServer(savedServer);
-      } else {
-        setActiveServer('DIRECT_PLAY');
+      } else if (availableServers().length > 0) {
+        setActiveServer(availableServers()[0].id);
       }
       setTimeout(() => {
         primePlaybackProgress();
@@ -195,9 +192,8 @@ export function DetailsModal(props) {
   createEffect(() => {
     const m = movie();
     if (!m?.id) return;
-    setDirectPlayUrl(m.directPlayUrl || localStorage.getItem(`cinelog_direct_url_${m.id}`) || '');
-    // Reset resolved URL whenever the title or template changes
-    setResolvedDirectPlayUrl('');
+    // Reset resolved URL whenever the title changes
+    setResolvedUrl('');
   });
 
   onMount(() => {
@@ -301,7 +297,6 @@ export function DetailsModal(props) {
     } catch { if (props.showToast) props.showToast("Error adding to vault."); }
   };
 
-  // ✅ FIX: Smart Similar Click — Vault check karo pehle
   const handleSimilarClick = (item) => {
     const normalizedItem = {
       ...item,
@@ -320,235 +315,163 @@ export function DetailsModal(props) {
     document.querySelector('.overflow-y-auto.hide-scrollbar.w-full')?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // ✅ FIX: overrideItem ke liye bhi isPreview correctly work kare
   const isPreviewOverride = createMemo(() => !!overrideItem()?._isPreviewOverride);
   const effectiveIsPreview = createMemo(() => isPreview() || isPreviewOverride());
 
   const getStreamUrl = (serverId) => {
-    if (serverId === 'DIRECT_PLAY') {
-      // Use the resolved URL if IMDb/TMDB resolution has already run (Watch Now was pressed).
-      // Fall back to the raw template for display purposes only (e.g. player header).
-      return resolvedDirectPlayUrl() || directPlayUrl();
-    }
     if (!serverId) return '';
-    const id   = movie().id;
-    const s    = movie().media_type === 'tv' ? currentSeasonNumber() : (movie().season  || 1);
-    const e    = movie().media_type === 'tv' ? currentEpisodeNumber(): (movie().episode || 1);
-    const type = movie().media_type === 'tv' ? 'tv' : 'movie';
-    const serverConfig = availableServers().find(srv => srv.id === serverId);
-    if (!serverConfig) return '';
-    const urlTemplate = type === 'tv' ? serverConfig.tvUrl : serverConfig.movieUrl;
-    if (!urlTemplate) return '';
-    let timeParam = '';
-    const canResume =
-      movie().watchProgress &&
-      movie().watchProgress.server === serverId &&
-      movie().watchProgress.currentTime > 0 &&
-      (movie().media_type !== 'tv' || (
-        parseInt(movie().watchProgress.season  || 1) === parseInt(movie().season  || 1) &&
-        parseInt(movie().watchProgress.episode || 1) === parseInt(movie().episode || 1)
-      ));
-    if (canResume) {
-      const t = Math.floor(movie().watchProgress.currentTime);
-      timeParam = urlTemplate.includes('?') ? `&t=${t}&start=${t}&time=${t}` : `?t=${t}&start=${t}&time=${t}`;
-    }
-    return urlTemplate
-      .replace(/\{id\}|\[TMDB_ID\]/gi, id)
-      .replace(/\{season\}|\[SEASON\]/gi, s)
-      .replace(/\{episode\}|\[EPISODE\]/gi, e)
-      + timeParam;
+    return resolvedUrl();
   };
 
   return (
-    <div class="fixed inset-0 z-[999999] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in" onClick={props.onClose}>
-      <div class="absolute inset-0 bg-[#08090b] overflow-hidden pointer-events-none">
-        <Show when={movie()?.backdrop_path}>
-          <img src={`https://image.tmdb.org/t/p/w500${movie().backdrop_path}`} class="backdrop-ambient" onLoad={e => e.target.classList.add('img-loaded')} />
+    <div class="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-4 animate-fade-in overflow-hidden"
+      style="background: rgba(0,0,0,0.85); backdrop-filter: blur(20px)"
+      onClick={props.onClose}>
+      
+      <div class="relative w-full h-full sm:h-auto sm:max-h-[95vh] sm:max-w-5xl bg-[#05060a] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border border-white/5 animate-pop-in"
+        onClick={e => e.stopPropagation()}>
+
+        <Show when={showPlayer()}>
+          <DirectPlayPlayer
+            url={getStreamUrl(activeServer())}
+            title={movie()?.title || movie()?.name}
+            onClose={() => {
+              setShowPlayer(false);
+              hydrateSessionProgressFromElapsed();
+              saveProgressToDb();
+            }}
+            watchProgress={watchProgress()}
+            setWatchProgress={setWatchProgress}
+            mediaType={movie()?.media_type}
+            season={currentSeasonNumber()}
+            episode={currentEpisodeNumber()}
+          />
         </Show>
-        <div class="absolute inset-0 bg-black/60"></div>
+
+        <div class="overflow-y-auto hide-scrollbar w-full flex-1">
+          <MediaHeader 
+            movie={movie()} 
+            details={details()} 
+            trailerKey={trailerKey()} 
+            onClose={props.onClose} 
+            playTrailer={playTrailer()}
+            setPlayTrailer={setPlayTrailer}
+            effectiveIsPreview={effectiveIsPreview()}
+            addToVaultFromPreview={addToVaultFromPreview}
+          />
+
+          <div class="px-5 sm:px-10 pb-12 -mt-12 relative z-10">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              
+              <div class="lg:col-span-8 space-y-8">
+                <Show when={!isEdit()}>
+                  <RatingsPanel movie={movie()} omdbData={omdbData()} />
+                  
+                  <Show when={movie()?.media_type === 'tv' && !effectiveIsPreview()}>
+                    <TvTracker 
+                      movie={movie()}
+                      form={form()}
+                      setForm={setForm}
+                      progressPct={progressPct()}
+                      tvSeasons={tvSeasons()}
+                      selectedSeason={selectedSeason()}
+                      setSelectedSeason={setSelectedSeason}
+                      seasonsLoading={seasonsLoading()}
+                      selectedSeasonEpisodes={selectedSeasonEpisodes()}
+                      expandedEpisodes={expandedEpisodes()}
+                      setExpandedEpisodes={setExpandedEpisodes}
+                      checkIfWatched={checkIfWatched}
+                      toggleEpisodeWatched={toggleEpisodeWatched}
+                    />
+                  </Show>
+
+                  <div class="space-y-4">
+                    <h4 class="type-caption text-gray-400 flex items-center gap-2">
+                      <Icon name="notes" class="text-[14px]" style="color: var(--p)" /> Storyline
+                    </h4>
+                    <p class="text-gray-300 leading-relaxed text-sm sm:text-base font-medium opacity-80">
+                      {details()?.overview || movie()?.overview || 'No overview available.'}
+                    </p>
+                  </div>
+
+                  <CastCrewList details={details()} setPersonId={setPersonId} />
+                </Show>
+
+                <Show when={isEdit()}>
+                  <EditForm 
+                    form={form()} 
+                    setForm={setForm} 
+                    movie={movie()} 
+                    allAvailablePlatforms={allAvailablePlatforms()}
+                    togglePlatform={togglePlatform}
+                    saveChanges={saveChanges}
+                    setIsEdit={setIsEdit}
+                    onDelete={() => {
+                      if(confirm("Delete from Vault?")) {
+                        deleteDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)));
+                        props.onClose();
+                      }
+                    }}
+                  />
+                </Show>
+              </div>
+
+              <div class="lg:col-span-4 space-y-6">
+                <StreamingPanel 
+                  movie={movie()}
+                  availableServers={availableServers()}
+                  activeServer={activeServer()}
+                  setActiveServer={setActiveServer}
+                  showToast={props.showToast}
+                  onServerResolved={(url) => setResolvedUrl(url)}
+                  setShowPlayer={setShowPlayer}
+                  inferDurationSeconds={inferDurationSeconds}
+                  setContentDuration={setContentDuration}
+                  setWatchProgress={setWatchProgress}
+                  setPlayerStartProgress={setPlayerStartProgress}
+                  setReceivedRealProgress={setReceivedRealProgress}
+                  setPlayerSessionStart={setPlayerSessionStart}
+                />
+
+                <InfoGrid 
+                  movie={movie()} 
+                  details={details()} 
+                  effectiveIsPreview={effectiveIsPreview()}
+                  movieFranchises={movieFranchises()}
+                  setIsEdit={setIsEdit}
+                />
+
+                <Show when={similarItems().length > 0}>
+                  <div class="pt-4 border-t border-white/5">
+                    <h4 class="type-caption text-gray-400 mb-4">Similar Titles</h4>
+                    <div class="grid grid-cols-3 gap-3">
+                      <For each={similarItems().slice(0, 6)}>{(item) => (
+                        <button 
+                          onClick={() => handleSimilarClick(item)}
+                          class="aspect-[2/3] rounded-lg overflow-hidden border border-white/5 hover:border-[var(--p)] transition-all active:scale-95 group relative"
+                        >
+                          <img 
+                            src={`https://image.tmdb.org/t/p/w185${item.poster_path}`} 
+                            class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                            alt=""
+                          />
+                          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                            <p class="text-[8px] font-bold text-white truncate">{item.title || item.name}</p>
+                          </div>
+                        </button>
+                      )}</For>
+                    </div>
+                  </div>
+                </Show>
+              </div>
+
+            </div>
+          </div>
+        </div>
       </div>
 
-      <Show when={movie()}>
-        <div
-          class="w-full max-w-xl lg:max-w-[800px] bg-[#08090b]/80 backdrop-blur-3xl rounded-t-[2.5rem] sm:rounded-[2.5rem] overflow-hidden border relative max-h-[95vh] modal-sheet-enter flex flex-col" style="border-color: rgba(255,255,255,0.09); box-shadow: var(--shadow-float), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.04)"
-          onClick={e => e.stopPropagation()}
-        >
-          <button
-            onClick={props.onClose}
-            class="absolute top-4 right-4 z-[100] bg-black/50 backdrop-blur-md border border-white/10 p-2.5 rounded-full hover:bg-black/80 active:scale-95 transition-all"
-          >
-            <Icon name="close" class="text-sm text-white" />
-          </button>
-
-          <div class="overflow-y-auto hide-scrollbar w-full">
-            <MediaHeader
-              movie={movie()} details={details()} playTrailer={playTrailer()} setPlayTrailer={setPlayTrailer}
-              trailerKey={trailerKey()} isPreview={effectiveIsPreview()} isGuest={props.isGuest}
-              isEdit={isEdit()} setIsEdit={setIsEdit} showToast={props.showToast} onLogin={props.onLogin}
-            />
-
-            <div class="px-6 md:px-8 pb-28 relative z-10">
-              <RatingsPanel omdbData={omdbData()} movie={movie()} />
-
-              <Show when={isEdit()} fallback={
-                <div class="animate-fade-in">
-                  {/* Streaming panel — sirf real Vault items ke liye */}
-                  <Show when={!effectiveIsPreview()}>
-                    <StreamingPanel
-                      availableServers={availableServers()} activeServer={activeServer()} setActiveServer={setActiveServer}
-                      isEditingDirectUrl={isEditingDirectUrl()} setIsEditingDirectUrl={setIsEditingDirectUrl}
-                      directPlayUrl={directPlayUrl()} setDirectPlayUrl={setDirectPlayUrl} showToast={props.showToast}
-                      movie={movie()} inferDurationSeconds={inferDurationSeconds} setContentDuration={setContentDuration}
-                      setWatchProgress={setWatchProgress} setPlayerStartProgress={setPlayerStartProgress}
-                      setReceivedRealProgress={setReceivedRealProgress} setPlayerSessionStart={setPlayerSessionStart}
-                      setShowPlayer={setShowPlayer}
-                      uid={props.uid}
-                      onDirectPlayResolved={setResolvedDirectPlayUrl}
-                    />
-                  </Show>
-
-                  <p class="type-metadata text-gray-400 mb-6 leading-relaxed italic border-l-2 pl-3" style="border-color: color-mix(in srgb, var(--p) 30%, transparent)">
-                    "{details().overview || (typeof movie().overview === 'string' ? movie().overview : 'No overview available.')}"
-                  </p>
-
-                  {/* ✅ FIX: TV tracker — preview mein bhi dikhao (read-only mode), sirf non-preview mein full tracking */}
-                  <Show when={movie().media_type === 'tv'}>
-                    <TvTracker
-                      movie={movie()} tvSeasons={tvSeasons()} selectedSeason={selectedSeason()} setSelectedSeason={setSelectedSeason}
-                      seasonsLoading={seasonsLoading()} selectedSeasonEpisodes={selectedSeasonEpisodes()}
-                      episodeDocId={episodeDocId} watchedEpisodes={watchedEpisodes()} expandedEpisodes={expandedEpisodes()}
-                      setExpandedEpisodes={setExpandedEpisodes} toggleEpisodeWatched={toggleEpisodeWatched}
-                      isCompleted={isCompleted()} currentSeasonNumber={currentSeasonNumber()} currentEpisodeNumber={currentEpisodeNumber()}
-                      progressPct={progressPct()} getCurrentEpisode={getCurrentEpisode}
-                      checkIfWatched={checkIfWatched}
-                      isPreviewMode={effectiveIsPreview()}
-                    />
-                  </Show>
-
-                  <CastCrewList credits={details().credits} setPersonId={setPersonId} />
-
-                  <InfoGrid
-  movie={movie()} isPreview={effectiveIsPreview()}
-  details={details()}
-  genresText={details().genres ? details().genres.map(g => g.name).join(', ') : (getSafeGenres(movie()).join(', ') || 'N/A')}
-  richPlatforms={richPlatforms()} movieFranchises={movieFranchises()} similarItems={similarItems()}
-  onSimilarClick={handleSimilarClick}
-  calculateDays={calculateDays}
-/>
-
-                  {/* Add to Vault button — preview mode mein dikhao */}
-                  <Show when={effectiveIsPreview()}>
-                    <button
-                      onClick={addToVaultFromPreview}
-                      class="w-full mt-6 type-button py-4 px-5 rounded-xl active:scale-95 flex items-center justify-center gap-2 border"
-                      style="background: var(--p); color: #05060a; border-color: var(--p); box-shadow: 0 0 24px var(--p-glow); min-height: 52px;"
-                    >
-                      <Icon name="add_circle" class="text-lg" /> Add to My Universe
-                    </button>
-                  </Show>
-
-                  <Show when={!effectiveIsPreview()}>
-                    <div class="mt-8 flex justify-end">
-                      <button
-                        onClick={async () => {
-                          if (props.isGuest) { if (props.showToast) props.showToast("Sign in to edit vault! 🔒"); if (props.onLogin) props.onLogin(); return; }
-                          if (confirm("Permanently delete?")) {
-                            await deleteDoc(doc(db, 'users', props.uid, 'watchlist', String(movie().id)));
-                            if (props.showToast) props.showToast("Deleted");
-                            props.onClose();
-                          }
-                        }}
-                        class="type-caption text-red-500/50 hover:text-red-500 flex items-center gap-1 mx-auto active:scale-95"
-                      >
-                        <Icon name="delete" class="text-sm" /> Remove from Universe
-                      </button>
-                    </div>
-                  </Show>
-                </div>
-              }>
-                <EditForm
-                  form={form()} setForm={setForm} movie={movie()}
-                  allAvailablePlatforms={allAvailablePlatforms} togglePlatform={togglePlatform} saveChanges={saveChanges}
-                />
-              </Show>
-            </div>
-          </div>
-        </div>
-      </Show>
-
-      {/* Fullscreen Player Modal */}
-      <Show when={showPlayer()}>
-        <div class="fixed inset-0 bg-black z-[10000000] flex flex-col animate-fade-in" onClick={e => e.stopPropagation()}>
-          <div class="p-4 flex justify-between items-center bg-[#0c0e14] border-b border-white/5 shadow-xl">
-            <div class="flex items-center gap-3 overflow-hidden pr-2 flex-1">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  hydrateSessionProgressFromElapsed();
-                  saveProgressToDb();
-                  setPlayerSessionStart(null);
-                  setPlayerStartProgress(0);
-                  setShowPlayer(false);
-                }}
-                class="p-2 bg-white/5 hover:bg-white/10 rounded-full active:scale-95 transition-all shrink-0"
-              >
-                <Icon name="arrow_back" class="text-sm" />
-              </button>
-              <h3 class="font-bold text-sm text-white truncate max-w-[150px]">{movie().title || movie().name}</h3>
-            </div>
-            <div class="flex gap-2 shrink-0">
-              <div class="relative bg-white/5 border border-white/10 rounded-xl px-2 py-1.5 flex items-center gap-1 hover:bg-white/10 transition-colors">
-                <Icon name="router" class="text-gray-400 text-[14px]" />
-                <select
-                  value={activeServer()}
-                  onChange={(e) => { e.stopPropagation(); setActiveServer(e.target.value); }}
-                  class="bg-transparent text-[10px] font-black uppercase tracking-widest text-[var(--primary)] outline-none appearance-none cursor-pointer pr-4 pl-1"
-                >
-                  <For each={availableServers()}>
-                    {(srv) => <option value={srv.id} class="bg-[#0c0e14] text-white">{srv.name}</option>}
-                  </For>
-                  <option value="DIRECT_PLAY" class="bg-[#0c0e14] text-[#3b82f6]">DIRECT PLAY</option>
-                </select>
-                <Icon name="expand_more" class="text-gray-400 text-[14px] absolute right-1 pointer-events-none" />
-              </div>
-            </div>
-          </div>
-
-          <div class="flex-1 bg-black w-full h-full relative">
-            <Show
-              when={activeServer() === 'DIRECT_PLAY'}
-              fallback={<iframe src={getStreamUrl(activeServer())} class="w-full h-full border-none relative z-10" allowfullscreen></iframe>}
-            >
-              <DirectPlayPlayer
-                src={getStreamUrl(activeServer())}
-                title={movie().title || movie().name}
-                poster={`https://image.tmdb.org/t/p/original${movie().backdrop_path}`}
-                startTime={movie().watchProgress?.currentTime || 0}
-                onProgress={(prog) => { setReceivedRealProgress(true); setWatchProgress(prog); }}
-              />
-            </Show>
-          </div>
-        </div>
-      </Show>
-
       <Show when={personId()}>
-        <PersonModal
-          id={personId()}
-          uid={props.uid}
-          watchlist={props.watchlist}
-          showToast={props.showToast}
-          onClose={() => setPersonId(null)}
-          openPreview={(item) => {
-            setPersonId(null);
-            if (props.openPreview) {
-              props.openPreview(item, 'fromPerson');
-            } else {
-              props.onClose();
-              if (props.showToast) props.showToast(`Search for ${item.title || item.name} to view details!`);
-            }
-          }}
-        />
+        <PersonModal id={personId()} onClose={() => setPersonId(null)} />
       </Show>
     </div>
   );

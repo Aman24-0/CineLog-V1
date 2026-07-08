@@ -10,11 +10,11 @@ export function ServerSettingsModal(props) {
   
   // Edit State
   const [editingId, setEditingId] = createSignal(null);
-  const [editData, setEditData] = createSignal({ name: '', type: 'multi', movieUrl: '', tvUrl: '' });
+  const [editData, setEditData] = createSignal({ name: '', type: 'multi', idMode: 'TMDB', movieUrl: '', tvUrl: '' });
   
   // Add Form State
   const [showAddForm, setShowAddForm] = createSignal(false);
-  const [newServer, setNewServer] = createSignal({ name: '', type: 'multi', movieUrl: '', tvUrl: '' });
+  const [newServer, setNewServer] = createSignal({ name: '', type: 'multi', idMode: 'TMDB', movieUrl: '', tvUrl: '' });
 
   onMount(async () => {
     try {
@@ -27,7 +27,8 @@ export function ServerSettingsModal(props) {
           loadedServers.push({
             id: key,
             name: userData.customServers[key].name || 'Unnamed Node',
-            type: userData.customServers[key].type || 'multi', // Default fallback
+            type: userData.customServers[key].type || 'multi',
+            idMode: userData.customServers[key].idMode || 'TMDB',
             movieUrl: userData.customServers[key].movieUrl || '',
             tvUrl: userData.customServers[key].tvUrl || '',
             enabled: userData.customServers[key].enabled !== false,
@@ -52,6 +53,7 @@ export function ServerSettingsModal(props) {
         customServers[s.id] = {
           name: s.name,
           type: s.type,
+          idMode: s.idMode || 'TMDB',
           movieUrl: s.movieUrl,
           tvUrl: s.tvUrl,
           enabled: s.enabled !== false
@@ -90,7 +92,8 @@ export function ServerSettingsModal(props) {
     if (!server) return;
 
     let testUrl = type === 'movie' ? server.movieUrl : server.tvUrl;
-    testUrl = testUrl.replace(/\{id\}|\[TMDB_ID\]/gi, '666243')
+    testUrl = testUrl.replace(/\{id\}|\[TMDB_ID\]|\{tmdb_id\}/gi, '666243')
+                     .replace(/\{imdb_id\}/gi, 'tt28015403')
                      .replace(/\{season\}|\[SEASON\]/gi, '1')
                      .replace(/\{episode\}|\[EPISODE\]/gi, '1');
 
@@ -111,13 +114,14 @@ export function ServerSettingsModal(props) {
       id: newId,
       name: newServer().name,
       type: newServer().type,
+      idMode: newServer().idMode,
       movieUrl: newServer().movieUrl,
       tvUrl: newServer().tvUrl,
       enabled: true,
       icon: 'dns'
     }]);
     
-    setNewServer({ name: '', type: 'multi', movieUrl: '', tvUrl: '' });
+    setNewServer({ name: '', type: 'multi', idMode: 'TMDB', movieUrl: '', tvUrl: '' });
     setShowAddForm(false);
     setExpandedId(newId);
     props.showToast("Server added! Don't forget to save.");
@@ -160,7 +164,6 @@ export function ServerSettingsModal(props) {
           </div>
 
           <div class="flex items-center gap-3 shrink-0" onClick={e => e.stopPropagation()}>
-            {/* 🚀 FIX: Added min-height and min-width to force pill shape despite mobile CSS overrides */}
             <button
               onClick={() => setServers(prev => prev.map(s => s.id === server.id ? { ...s, enabled: !isEnabled() } : s))}
               class="relative shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--p)] focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-full"
@@ -203,7 +206,7 @@ export function ServerSettingsModal(props) {
             
             {/* Quick Actions Toolbar */}
             <div class="flex flex-wrap items-center gap-2 py-3">
-              <button onClick={() => { setEditingId(server.id); setEditData({ name: server.name, type: server.type, movieUrl: server.movieUrl, tvUrl: server.tvUrl }); }} class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest text-black transition-all shrink-0" style="background: var(--p); box-shadow: 0 0 8px var(--p-glow)">
+              <button onClick={() => { setEditingId(server.id); setEditData({ name: server.name, type: server.type, idMode: server.idMode || 'TMDB', movieUrl: server.movieUrl, tvUrl: server.tvUrl }); }} class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest text-black transition-all shrink-0" style="background: var(--p); box-shadow: 0 0 8px var(--p-glow)">
                 <Icon name="edit" class="text-[14px]"/> Edit
               </button>
 
@@ -221,6 +224,9 @@ export function ServerSettingsModal(props) {
             {/* Read Mode */}
             <Show when={editingId() !== server.id}>
               <div class="space-y-2 mt-1">
+                <div class="w-full px-3 py-2.5 rounded-xl border font-mono text-[11px] overflow-x-auto hide-scrollbar whitespace-nowrap text-gray-300" style="background: var(--raised); border-color: var(--border)">
+                  <span class="text-gray-500 mr-2 select-none">ID Mode:</span> {server.idMode || 'TMDB'}
+                </div>
                 <div class="w-full px-3 py-2.5 rounded-xl border font-mono text-[11px] overflow-x-auto hide-scrollbar whitespace-nowrap text-gray-300" style="background: var(--raised); border-color: var(--border)">
                   <span class="text-gray-500 mr-2 select-none">Movie:</span> {server.movieUrl || 'None'}
                 </div>
@@ -245,6 +251,13 @@ export function ServerSettingsModal(props) {
                       <option value="org">Org Audio</option>
                     </select>
                   </div>
+                </div>
+                <div>
+                  <p class="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1 ml-1">ID Mode</p>
+                  <select value={editData().idMode} onChange={e => setEditData(p => ({...p, idMode: e.target.value}))} class="w-full px-3 py-2 rounded-lg text-xs border outline-none text-white focus:border-[var(--p)] transition-colors appearance-none" style="background: var(--deep); border-color: var(--border)">
+                    <option value="TMDB">TMDB</option>
+                    <option value="IMDb">IMDb</option>
+                  </select>
                 </div>
                 <div>
                   <p class="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1 ml-1">Movie Endpoints</p>
@@ -298,69 +311,88 @@ export function ServerSettingsModal(props) {
             </Show>
 
             <Show when={orgServers().length > 0}>
-              <h4 class="text-[10px] font-black uppercase tracking-[0.2em] mb-3 mt-2 text-gray-400">🎭 Org Audio</h4>
+              <h4 class="text-[10px] font-black uppercase tracking-[0.2em] mt-4 mb-3 text-gray-400">🎭 Org Audio</h4>
               <For each={orgServers()}>{ServerItem}</For>
             </Show>
 
-            {/* ADD CUSTOM SERVER SECTION */}
-            <div class="mt-4 shrink-0">
-              <Show when={!showAddForm()} fallback={
-                <div class="rounded-2xl p-4 sm:p-5 border shadow-xl animate-fade-in" style="background: var(--surface); border-color: var(--p)">
-                  <h4 class="font-bold text-base text-white mb-4 flex items-center gap-2">
-                    <Icon name="add_circle" style="color: var(--p)" /> Initialize Custom Node
-                  </h4>
-                  <div class="space-y-4 mb-5">
+            <Show when={servers().length === 0}>
+              <div class="flex-1 flex flex-col items-center justify-center py-12 text-center">
+                <div class="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4">
+                  <Icon name="router" class="text-3xl text-gray-600" />
+                </div>
+                <h3 class="font-bold text-white mb-1">No Nodes Configured</h3>
+                <p class="text-xs text-gray-500 max-w-[200px]">Add your first streaming source to start watching content.</p>
+              </div>
+            </Show>
+
+            {/* Add New Server Form */}
+            <div class="mt-4">
+              <Show when={!showAddForm()}>
+                <button onClick={() => setShowAddForm(true)} class="w-full py-4 rounded-2xl border border-dashed border-white/10 hover:border-[var(--p)] hover:bg-[var(--p)]/5 text-gray-500 hover:text-[var(--p)] transition-all flex items-center justify-center gap-2 font-bold uppercase tracking-widest text-[10px]">
+                  <Icon name="add" /> Add New Streaming Node
+                </button>
+              </Show>
+
+              <Show when={showAddForm()}>
+                <div class="p-4 rounded-2xl border border-[var(--p)] bg-[#141414] animate-pop-in">
+                  <div class="flex justify-between items-center mb-4">
+                    <h4 class="font-bold text-white text-xs uppercase tracking-widest">New Node Configuration</h4>
+                    <button onClick={() => setShowAddForm(false)} class="text-gray-500 hover:text-white"><Icon name="close" /></button>
+                  </div>
+                  
+                  <div class="space-y-4">
                     <div class="grid grid-cols-2 gap-3">
                       <div>
-                        <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 ml-1">Display Name <span class="text-red-400">*</span></p>
-                        <input value={newServer().name} onInput={e => setNewServer(p => ({...p, name: e.target.value}))} class="w-full px-4 py-3 rounded-xl text-sm font-bold border outline-none text-white focus:border-[var(--p)] transition-colors" style="background: var(--deep); border-color: var(--border)" placeholder="e.g. Secret Node" />
+                        <p class="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1 ml-1">Node Name</p>
+                        <input value={newServer().name} onInput={e => setNewServer(p => ({...p, name: e.target.value}))} placeholder="e.g. VidSrc" class="w-full px-3 py-2.5 rounded-xl border outline-none text-white focus:border-[var(--p)] transition-colors text-xs" style="background: var(--deep); border-color: var(--border)" />
                       </div>
                       <div>
-                        <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 ml-1">Node Type</p>
-                        <select value={newServer().type} onChange={e => setNewServer(p => ({...p, type: e.target.value}))} class="w-full px-4 py-3 rounded-xl text-sm font-bold border outline-none text-white focus:border-[var(--p)] transition-colors appearance-none cursor-pointer" style="background: var(--deep); border-color: var(--border)">
-                          <option value="multi">🌍 Multi Audio</option>
-                          <option value="org">🎭 Org Audio</option>
+                        <p class="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1 ml-1">Audio Type</p>
+                        <select value={newServer().type} onChange={e => setNewServer(p => ({...p, type: e.target.value}))} class="w-full px-3 py-2.5 rounded-xl border outline-none text-white focus:border-[var(--p)] transition-colors appearance-none text-xs" style="background: var(--deep); border-color: var(--border)">
+                          <option value="multi">Multi Audio</option>
+                          <option value="org">Org Audio</option>
                         </select>
                       </div>
                     </div>
+
                     <div>
-                      <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 ml-1">Movie URL Template <span class="text-red-400">*</span></p>
-                      <textarea value={newServer().movieUrl} onInput={e => setNewServer(p => ({...p, movieUrl: e.target.value}))} class="w-full px-4 py-3 rounded-xl text-xs font-mono border outline-none text-white focus:border-[var(--p)] transition-colors" rows="2" style="background: var(--deep); border-color: var(--border)" placeholder="https://example.com/movie/{id}" />
+                      <p class="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1 ml-1">ID Mode</p>
+                      <select value={newServer().idMode} onChange={e => setNewServer(p => ({...p, idMode: e.target.value}))} class="w-full px-3 py-2.5 rounded-xl border outline-none text-white focus:border-[var(--p)] transition-colors appearance-none text-xs" style="background: var(--deep); border-color: var(--border)">
+                        <option value="TMDB">TMDB</option>
+                        <option value="IMDb">IMDb</option>
+                      </select>
                     </div>
+
                     <div>
-                      <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 ml-1">TV URL Template</p>
-                      <textarea value={newServer().tvUrl} onInput={e => setNewServer(p => ({...p, tvUrl: e.target.value}))} class="w-full px-4 py-3 rounded-xl text-xs font-mono border outline-none text-white focus:border-[var(--p)] transition-colors" rows="2" style="background: var(--deep); border-color: var(--border)" placeholder="https://example.com/tv/{id}/{season}/{episode}" />
+                      <p class="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1 ml-1">Movie URL Template</p>
+                      <textarea value={newServer().movieUrl} onInput={e => setNewServer(p => ({...p, movieUrl: e.target.value}))} placeholder="https://example.com/movie/{tmdb_id}" class="w-full px-3 py-2.5 rounded-xl border outline-none text-white focus:border-[var(--p)] transition-colors text-[11px] font-mono" rows="2" style="background: var(--deep); border-color: var(--border)" />
                     </div>
-                  </div>
-                  <div class="flex gap-2">
-                    <button onClick={addCustomServer} class="flex-[2] px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-widest text-black active:scale-95 transition-transform" style="background: var(--p); box-shadow: 0 0 16px var(--p-glow)">Deploy Node</button>
-                    <button onClick={() => setShowAddForm(false)} class="flex-1 px-4 py-3 rounded-xl border font-bold text-xs uppercase tracking-widest text-gray-300 hover:bg-white/5 active:scale-95 transition-all" style="background: var(--raised); border-color: var(--border)">Abort</button>
+
+                    <div>
+                      <p class="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1 ml-1">Series URL Template</p>
+                      <textarea value={newServer().tvUrl} onInput={e => setNewServer(p => ({...p, tvUrl: e.target.value}))} placeholder="https://example.com/tv/{tmdb_id}" class="w-full px-3 py-2.5 rounded-xl border outline-none text-white focus:border-[var(--p)] transition-colors text-[11px] font-mono" rows="2" style="background: var(--deep); border-color: var(--border)" />
+                    </div>
+
+                    <button onClick={addCustomServer} class="w-full py-3 rounded-xl font-bold text-xs uppercase text-black active:scale-95 transition-transform" style="background: var(--p); box-shadow: 0 0 15px var(--p-glow)">Add Node to List</button>
                   </div>
                 </div>
-              }>
-                <button onClick={() => setShowAddForm(true)} class="w-full py-4 rounded-2xl border border-dashed font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-white/5 active:scale-95 transition-all" style="border-color: var(--p); color: var(--p); background: var(--p-dim)">
-                  <Icon name="add" class="text-lg" /> Connect New Provider
-                </button>
               </Show>
             </div>
 
           </div>
         }>
-          <div class="text-center py-12 flex flex-col items-center justify-center h-full" style="color: var(--muted)">
-            <Icon name="settings_system_daydream" class="text-6xl mb-4 animate-pulse" style="color: var(--p); filter: drop-shadow(0 0 12px var(--p-glow))" />
-            <p class="text-xs font-bold uppercase tracking-widest text-gray-400">Loading Nodes...</p>
+          <div class="flex-1 flex items-center justify-center">
+            <div class="w-8 h-8 border-2 border-[var(--p)] border-t-transparent rounded-full animate-spin" />
           </div>
         </Show>
 
         {/* Footer Actions */}
-        <div class="border-t pt-4 sm:pt-5 mt-2 flex gap-3 shrink-0" style="border-color: var(--border)">
-          <button onClick={deleteAllServers} class="px-4 font-bold py-3.5 rounded-xl text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center border border-white/10 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 shrink-0" style="background: #141414; color: var(--muted)" title="Delete All Servers">
-            <Icon name="delete_sweep" class="text-lg" />
-          </button>
-          <button onClick={saveServerSettings} class="flex-1 font-bold py-3.5 rounded-xl text-xs uppercase tracking-widest text-black active:scale-95 transition-transform flex items-center justify-center gap-2 shrink-0" style="background: var(--p); box-shadow: 0 0 20px var(--p-glow)">
-            <Icon name="save" class="text-sm hidden sm:block" /> Save Config
-          </button>
+        <div class="pt-6 border-t mt-auto flex gap-3 shrink-0" style="border-color: var(--border)">
+          <button onClick={deleteAllServers} class="px-5 py-3 rounded-xl border border-red-500/30 bg-red-500/5 text-red-500 font-bold text-[10px] uppercase tracking-widest hover:bg-red-500/10 transition-colors">Clear All</button>
+          <div class="flex-1" />
+          <button onClick={saveServerSettings} class="px-8 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest text-black active:scale-95 transition-transform" style="background: var(--p); box-shadow: 0 0 20px var(--p-glow)">Save All Changes</button>
         </div>
+
       </div>
     </div>
   );
