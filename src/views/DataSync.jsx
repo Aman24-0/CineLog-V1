@@ -112,7 +112,7 @@ export function DataSync(props) {
       // Core identity
       out.id = String(raw.id);
       out.media_type = raw.media_type === 'tv' ? 'tv' : 'movie';
-      out.status = ['Planned', 'Watching', 'Completed', 'Plan to Watch'].includes(raw.status)
+      out.status = ['Planned', 'Watching', 'Completed', 'Plan to Watch', 'Dropped'].includes(raw.status)
         ? raw.status
         : 'Planned';
 
@@ -227,17 +227,28 @@ export function DataSync(props) {
     props.showToast('V2 Backup Downloaded! 📥', 'success');
   };
 
-  // ── CSV export (V2-generic format) ────────────────────────────────────
-  // Columns: id,title,media_type,status,rating,watch_date,added_at,notes
+  // ── CSV export (V2-generic format, expanded for round-trip fidelity) ──
+  // Columns:
+  //   id, title, media_type, status, rating,
+  //   added_at, updated_at, watch_date,
+  //   runtime, total_eps, season, episode,
+  //   genres, platforms, cast, director,
+  //   imdb_id, imdb_rating, rt_rating, region, tag,
+  //   poster_path, backdrop_path, release_date, notes
   //
   // This matches the "generic" branch of V2's CSV import (parseWatchlistCsv
-  // in src/features/sync/import/csvImport.ts). V2 auto-detects the format
-  // from the header row — the presence of `media_type` and `status` columns
-  // marks it as "generic".
+  // in src/features/sync/import/csvImport.ts) AND extends it with extra
+  // columns so V2 can preserve in-memory metadata (genres, runtime, cast,
+  // poster paths, etc.) until TMDB enrichment fills them in. Without these
+  // extra columns, importing a V1 CSV into V2 loses all TMDB-fetched
+  // metadata whenever TMDB is unreachable or the tmdb_id mismatches.
   //
   // CSV escaping rules (RFC 4180):
   //   - Wrap field in double quotes if it contains: comma, quote, newline
   //   - Escape embedded double quotes by doubling them: " → ""
+  //   - Arrays (genresList, platformsList, castList) are joined with "|"
+  //     so they round-trip cleanly through V2's CSV import (which uses the
+  //     same delimiter for the `genres` column).
   const csvEscape = (val) => {
     if (val === null || val === undefined) return '';
     const s = String(val);
@@ -281,17 +292,28 @@ export function DataSync(props) {
     return '';
   };
 
+  // Join an array into a single CSV cell using "|" as the delimiter.
+  // Empty arrays become empty strings (so the CSV cell is empty, not "|").
+  const joinList = (arr) => Array.isArray(arr) ? arr.filter(Boolean).join('|') : '';
+
   const exportCsv = () => {
     const list = props.watchlist();
     if (!list.length) {
       props.showToast('Vault is empty — nothing to export.', 'info');
       return;
     }
-    const headers = ['id', 'title', 'media_type', 'status', 'rating', 'watch_date', 'added_at', 'notes'];
+    const headers = [
+      'id', 'title', 'media_type', 'status', 'rating',
+      'added_at', 'updated_at', 'watch_date',
+      'runtime', 'total_eps', 'season', 'episode',
+      'genres', 'platforms', 'cast', 'director',
+      'imdb_id', 'imdb_rating', 'rt_rating', 'region', 'tag',
+      'poster_path', 'backdrop_path', 'release_date', 'notes',
+    ];
     const rows = list.map((raw) => {
       const title = raw.title || raw.name || '';
       const mediaType = raw.media_type === 'tv' ? 'tv' : 'movie';
-      const status = ['Planned', 'Watching', 'Completed', 'Plan to Watch'].includes(raw.status)
+      const status = ['Planned', 'Watching', 'Completed', 'Plan to Watch', 'Dropped'].includes(raw.status)
         ? raw.status
         : 'Planned';
       const rating = (typeof raw.rating === 'number' && raw.rating > 0 && raw.rating <= 10)
@@ -299,6 +321,23 @@ export function DataSync(props) {
         : '';
       const watchDate = deriveWatchDate(raw);
       const addedAt = toISOOrNull(raw.addedAt);
+      const updatedAt = toISOOrNull(raw.updatedAt) || addedAt;
+      const runtime = (typeof raw.runtime === 'number' && raw.runtime > 0) ? String(raw.runtime) : '';
+      const totalEps = (typeof raw.totalEps === 'number' && raw.totalEps > 0) ? String(raw.totalEps) : '';
+      const season = (typeof raw.season === 'number') ? String(raw.season) : '';
+      const episode = (typeof raw.episode === 'number') ? String(raw.episode) : '';
+      const genres = joinList(raw.genresList);
+      const platforms = joinList(raw.platformsList);
+      const cast = joinList(raw.castList);
+      const director = typeof raw.director === 'string' ? raw.director : '';
+      const imdbId = typeof raw.imdbId === 'string' ? raw.imdbId : '';
+      const imdbRating = raw.imdbRating ? String(raw.imdbRating) : '';
+      const rtRating = raw.rtRating ? String(raw.rtRating) : '';
+      const region = typeof raw.region === 'string' ? raw.region : '';
+      const tag = typeof raw.tag === 'string' ? raw.tag : '';
+      const posterPath = typeof raw.poster_path === 'string' ? raw.poster_path : '';
+      const backdropPath = typeof raw.backdrop_path === 'string' ? raw.backdrop_path : '';
+      const releaseDate = toISOOrNull(raw.release_date) || toISOOrNull(raw.first_air_date);
       const notes = typeof raw.notes === 'string' ? raw.notes : '';
       return [
         csvEscape(String(raw.id)),
@@ -306,8 +345,25 @@ export function DataSync(props) {
         csvEscape(mediaType),
         csvEscape(status),
         csvEscape(rating),
-        csvEscape(watchDate),
         csvEscape(addedAt),
+        csvEscape(updatedAt),
+        csvEscape(watchDate),
+        csvEscape(runtime),
+        csvEscape(totalEps),
+        csvEscape(season),
+        csvEscape(episode),
+        csvEscape(genres),
+        csvEscape(platforms),
+        csvEscape(cast),
+        csvEscape(director),
+        csvEscape(imdbId),
+        csvEscape(imdbRating),
+        csvEscape(rtRating),
+        csvEscape(region),
+        csvEscape(tag),
+        csvEscape(posterPath),
+        csvEscape(backdropPath),
+        csvEscape(releaseDate),
         csvEscape(notes),
       ].join(',');
     });
@@ -317,13 +373,18 @@ export function DataSync(props) {
     props.showToast(`CSV Exported — ${list.length} titles! 📄`, 'success');
   };
 
-  // ── CSV import (V2-generic format) ────────────────────────────────────
-  // Parses RFC 4180 CSV. Accepts the same columns V2's CSV import accepts:
-  //   id,title,media_type,status,rating,watch_date,added_at,notes
+  // ── CSV import (V2-generic format, expanded) ─────────────────────────
+  // Parses RFC 4180 CSV. Accepts the same column set V2's CSV import accepts
+  // (the "generic" branch of parseWatchlistCsv), plus the extended columns
+  // that V1's own exportCsv now emits (runtime, total_eps, season, episode,
+  // genres, platforms, cast, director, imdb_id, imdb_rating, rt_rating,
+  // region, tag, poster_path, backdrop_path, release_date, updated_at).
   //
   // Required: id + title (must have a TMDB id — without it we can't safely
   // add to Firestore because Firestore uses String(id) as the doc name).
   // Optional columns are skipped silently if absent.
+  //
+  // List-valued columns (genres, platforms, cast) are split on "|".
   const parseCsvLine = (line) => {
     const fields = [];
     let cur = '';
@@ -347,6 +408,12 @@ export function DataSync(props) {
     return fields;
   };
 
+  // Split a "|" delimited CSV cell into a string array. Empty/missing → [].
+  const splitList = (val) => {
+    if (!val) return [];
+    return String(val).split('|').map(s => s.trim()).filter(Boolean);
+  };
+
   const importCsv = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -366,7 +433,7 @@ export function DataSync(props) {
         }
 
         const headers = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase());
-        // Require at minimum: id, title, media_type, status
+        // Require at minimum: id, title
         const hasId    = headers.includes('id');
         const hasTitle = headers.includes('title') || headers.includes('name');
         if (!hasId || !hasTitle) {
@@ -394,13 +461,16 @@ export function DataSync(props) {
             if (existingIds.has(String(id))) throw new Error('Already exists in Vault');
 
             const mediaType = row.media_type === 'tv' ? 'tv' : 'movie';
-            const status = ['Planned', 'Watching', 'Completed', 'Plan to Watch'].includes(row.status)
+            const status = ['Planned', 'Watching', 'Completed', 'Plan to Watch', 'Dropped'].includes(row.status)
               ? row.status
               : 'Planned';
             const ratingNum = parseFloat(row.rating);
             const rating = (!isNaN(ratingNum) && ratingNum > 0 && ratingNum <= 10) ? ratingNum : 0;
 
-            // Build a minimal V1 watchlist doc — same shape as addPreviewToWatchlist
+            // Build a V1 watchlist doc with ALL parsed fields. Fields not in
+            // the CSV are simply omitted — Firestore will treat them as
+            // missing rather than null, which matches the shape produced by
+            // addPreviewToWatchlist.
             const item = {
               id: String(id),
               title,
@@ -411,6 +481,36 @@ export function DataSync(props) {
             };
             if (rating > 0) item.rating = rating;
             if (row.watch_date) item.watchDate = row.watch_date;
+            if (row.updated_at) item.updatedAt = new Date(row.updated_at);
+
+            // Extended numeric fields
+            const runtimeNum = parseInt(row.runtime, 10);
+            if (!isNaN(runtimeNum) && runtimeNum > 0) item.runtime = runtimeNum;
+            const totalEpsNum = parseInt(row.total_eps, 10);
+            if (!isNaN(totalEpsNum) && totalEpsNum > 0) item.totalEps = totalEpsNum;
+            const seasonNum = parseInt(row.season, 10);
+            if (!isNaN(seasonNum) && seasonNum > 0) item.season = seasonNum;
+            const episodeNum = parseInt(row.episode, 10);
+            if (!isNaN(episodeNum) && episodeNum >= 0) item.episode = episodeNum;
+
+            // List-valued fields (pipe-separated)
+            const genres = splitList(row.genres);
+            if (genres.length) item.genresList = genres;
+            const platforms = splitList(row.platforms);
+            if (platforms.length) item.platformsList = platforms;
+            const cast = splitList(row.cast);
+            if (cast.length) item.castList = cast;
+
+            // Misc string fields
+            if (row.director) item.director = row.director;
+            if (row.imdb_id) item.imdbId = row.imdb_id;
+            if (row.imdb_rating) item.imdbRating = row.imdb_rating;
+            if (row.rt_rating) item.rtRating = row.rt_rating;
+            if (row.region) item.region = row.region;
+            if (row.tag) item.tag = row.tag;
+            if (row.poster_path) item.poster_path = row.poster_path;
+            if (row.backdrop_path) item.backdrop_path = row.backdrop_path;
+            if (row.release_date) item.release_date = row.release_date;
 
             await setDoc(doc(db, 'users', props.uid, 'watchlist', String(id)), item);
             existingIds.add(String(id));
