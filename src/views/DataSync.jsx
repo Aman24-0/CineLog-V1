@@ -71,15 +71,146 @@ export function DataSync(props) {
     props.showToast(`Vault Repaired! ${updatedCount} items synced.`, 'success');
   };
 
+  // ── V2-compatible export ──────────────────────────────────────────────
+  // Converts the raw Firestore watchlist into a clean CineLog-V2 backup
+  // document so it can be imported directly via V2's Settings → Sync →
+  // Restore Backup — no external Python converter needed.
+  //
+  // Transformations applied:
+  //   1. id → String(id)         (V1 mixes int + string IDs)
+  //   2. addedAt / updatedAt     Firestore Timestamp {seconds, nanoseconds}
+  //                             → ISO 8601 string
+  //   3. watchDate               "" → omitted (V2 treats "" as invalid)
+  //   4. rating === 0            → omitted (V2 treats 0 as "no rating")
+  //   5. seasonDates preserved   (V2 stores them in a JSONB column)
+  //   6. TV items with seasonDates but no watchDate → derive watchDate
+  //      from the latest season's end date (so the V2 timeline places
+  //      them correctly)
+  //   7. V1-only fields dropped  (parts, overview, latestTmdbSeason,
+  //      latestEpisodeKnown, lastEpisodeCheckedAt — V2 doesn't use them)
+  //   8. Wrapped in { version:1, createdAt, appVersion, library:{...} }
+  //
+  const toV2Backup = (watchlist) => {
+    const toISO = (v) => {
+      if (!v) return undefined;
+      if (typeof v === 'string') return v;
+      if (typeof v === 'number') {
+        const ms = v > 1e12 ? v : v * 1000;
+        const d = new Date(ms);
+        return isNaN(d.getTime()) ? undefined : d.toISOString();
+      }
+      if (typeof v === 'object' && 'seconds' in v) {
+        const d = new Date(v.seconds * 1000);
+        return isNaN(d.getTime()) ? undefined : d.toISOString();
+      }
+      return undefined;
+    };
+
+    const cleanItem = (raw) => {
+      const out = {};
+      // Core identity
+      out.id = String(raw.id);
+      out.media_type = raw.media_type === 'tv' ? 'tv' : 'movie';
+      out.status = ['Planned', 'Watching', 'Completed', 'Plan to Watch'].includes(raw.status)
+        ? raw.status
+        : 'Planned';
+
+      // Dates
+      const addedAt = toISO(raw.addedAt) || new Date().toISOString();
+      out.addedAt = addedAt;
+      out.updatedAt = toISO(raw.updatedAt) || addedAt;
+
+      // Text
+      if (raw.title) out.title = raw.title;
+      if (raw.name) out.name = raw.name;
+      out.notes = typeof raw.notes === 'string' ? raw.notes : '';
+      if (raw.poster_path) out.poster_path = raw.poster_path;
+      if (raw.backdrop_path) out.backdrop_path = raw.backdrop_path;
+      const releaseDate = toISO(raw.release_date) || toISO(raw.first_air_date);
+      if (releaseDate) out.release_date = releaseDate;
+
+      // Arrays
+      out.genresList = Array.isArray(raw.genresList) ? raw.genresList.filter(s => typeof s === 'string') : [];
+      out.platformsList = Array.isArray(raw.platformsList) ? raw.platformsList.filter(s => typeof s === 'string') : [];
+      if (Array.isArray(raw.castList) && raw.castList.length) out.castList = raw.castList.filter(s => typeof s === 'string');
+
+      // Rating — V1 uses 0-10 scale; 0 means "no rating"
+      if (typeof raw.rating === 'number' && raw.rating > 0 && raw.rating <= 10) {
+        out.rating = raw.rating;
+      }
+
+      // Numbers
+      if (typeof raw.runtime === 'number') out.runtime = raw.runtime;
+      if (typeof raw.totalEps === 'number') out.totalEps = raw.totalEps;
+      if (typeof raw.season === 'number') out.season = raw.season;
+      if (typeof raw.episode === 'number') out.episode = raw.episode;
+
+      // Misc strings
+      if (raw.imdbRating) out.imdbRating = String(raw.imdbRating);
+      if (raw.rtRating) out.rtRating = String(raw.rtRating);
+      if (raw.tmdbRating) out.tmdbRating = String(raw.tmdbRating);
+      if (raw.region) out.region = raw.region;
+      if (raw.tag) out.tag = raw.tag;
+      if (raw.director) out.director = raw.director;
+      if (raw.imdbId) out.imdbId = raw.imdbId;
+      if (raw.directPlayUrl) out.directPlayUrl = raw.directPlayUrl;
+      if (typeof raw.newSeasonAvailable === 'boolean') out.newSeasonAvailable = raw.newSeasonAvailable;
+
+      // Seasons cache (CachedSeasonInfo[])
+      if (Array.isArray(raw.seasons)) {
+        const sc = raw.seasons
+          .filter(s => s && typeof s.number === 'number' && typeof s.count === 'number' && s.number > 0)
+          .map(s => ({ number: s.number, count: s.count }));
+        if (sc.length) out.seasons = sc;
+      }
+
+      // Season dates — preserve verbatim (V2 stores in JSONB column)
+      if (raw.seasonDates && typeof raw.seasonDates === 'object' && !Array.isArray(raw.seasonDates)) {
+        out.seasonDates = raw.seasonDates;
+      }
+
+      // Watch date — for movies, use V1's watchDate if set.
+      // For TV series, derive from seasonDates if watchDate is empty.
+      let watchDate = toISO(raw.watchDate);
+      if (!watchDate && out.media_type === 'tv' && out.seasonDates) {
+        try {
+          const seasons = Object.entries(out.seasonDates)
+            .map(([k, v]) => ({ n: Number(k), start: v?.start, end: v?.end }))
+            .filter(s => !isNaN(s.n))
+            .sort((a, b) => a.n - b.n);
+          for (let i = seasons.length - 1; i >= 0; i--) {
+            if (seasons[i].end) { watchDate = seasons[i].end; break; }
+            if (seasons[i].start) { watchDate = seasons[i].start; break; }
+          }
+          if (!watchDate && seasons[0]?.start) watchDate = seasons[0].start;
+          if (watchDate) watchDate = toISO(watchDate);
+        } catch {}
+      }
+      if (watchDate) out.watchDate = watchDate;
+      return out;
+    };
+
+    return {
+      version: 1,
+      createdAt: new Date().toISOString(),
+      appVersion: '2.0.0',
+      library: {
+        watchlist: watchlist.map(cleanItem),
+        collections: [],
+      },
+    };
+  };
+
   const exportData = () => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(props.watchlist()));
+    const doc = toV2Backup(props.watchlist());
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(doc, null, 2));
     const a = document.createElement('a');
     a.setAttribute('href', dataStr);
-    a.setAttribute('download', `Cinelog_Vault_Backup_${new Date().toLocaleDateString()}.json`);
+    a.setAttribute('download', `Cinelog_V2_Backup_${new Date().toISOString().slice(0,10)}.json`);
     document.body.appendChild(a);
     a.click();
     a.remove();
-    props.showToast('Backup Downloaded! 📥', 'success');
+    props.showToast('V2 Backup Downloaded! 📥', 'success');
   };
 
   const importData = async (e) => {
