@@ -11,6 +11,7 @@ export function DataSync(props) {
   const [importStats, setImportStats] = createSignal({ total: 0, success: 0, skipped: 0 });
   const [errorLog,    setErrorLog]    = createSignal([]);
   let fileInputRef;
+  let csvInputRef;
 
   const runDeepScan = async () => {
     const list  = props.watchlist();
@@ -201,16 +202,238 @@ export function DataSync(props) {
     };
   };
 
-  const exportData = () => {
-    const doc = toV2Backup(props.watchlist());
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(doc, null, 2));
+  // ── File download helper ──────────────────────────────────────────────
+  // Use Blob + URL.createObjectURL so the file is saved with the correct
+  // MIME type (application/json or text/csv). The old `data:text/json`
+  // URI scheme caused Android Chrome to save the file with no extension
+  // or a wrong MIME, which made V2's file picker reject it.
+  const downloadFile = (filename, content, mimeType) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.setAttribute('href', dataStr);
-    a.setAttribute('download', `Cinelog_V2_Backup_${new Date().toISOString().slice(0,10)}.json`);
+    a.href = url;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
-    a.remove();
+    document.body.removeChild(a);
+    // Defer revoke so iOS Safari has time to start the download.
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  };
+
+  const exportData = () => {
+    const doc = toV2Backup(props.watchlist());
+    const filename = `Cinelog_V2_Backup_${new Date().toISOString().slice(0,10)}.json`;
+    downloadFile(filename, JSON.stringify(doc, null, 2), 'application/json');
     props.showToast('V2 Backup Downloaded! 📥', 'success');
+  };
+
+  // ── CSV export (V2-generic format) ────────────────────────────────────
+  // Columns: id,title,media_type,status,rating,watch_date,added_at,notes
+  //
+  // This matches the "generic" branch of V2's CSV import (parseWatchlistCsv
+  // in src/features/sync/import/csvImport.ts). V2 auto-detects the format
+  // from the header row — the presence of `media_type` and `status` columns
+  // marks it as "generic".
+  //
+  // CSV escaping rules (RFC 4180):
+  //   - Wrap field in double quotes if it contains: comma, quote, newline
+  //   - Escape embedded double quotes by doubling them: " → ""
+  const csvEscape = (val) => {
+    if (val === null || val === undefined) return '';
+    const s = String(val);
+    if (/[",\n\r]/.test(s)) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  };
+
+  const toISOOrNull = (v) => {
+    if (!v) return '';
+    if (typeof v === 'string') return v;
+    if (typeof v === 'number') {
+      const ms = v > 1e12 ? v : v * 1000;
+      const d = new Date(ms);
+      return isNaN(d.getTime()) ? '' : d.toISOString();
+    }
+    if (typeof v === 'object' && 'seconds' in v) {
+      const d = new Date(v.seconds * 1000);
+      return isNaN(d.getTime()) ? '' : d.toISOString();
+    }
+    return '';
+  };
+
+  // For TV items, derive watch_date from seasonDates if not set directly.
+  const deriveWatchDate = (raw) => {
+    const direct = toISOOrNull(raw.watchDate);
+    if (direct) return direct;
+    if (raw.media_type !== 'tv' || !raw.seasonDates) return '';
+    try {
+      const seasons = Object.entries(raw.seasonDates)
+        .map(([k, v]) => ({ n: Number(k), start: v?.start, end: v?.end }))
+        .filter(s => !isNaN(s.n))
+        .sort((a, b) => a.n - b.n);
+      for (let i = seasons.length - 1; i >= 0; i--) {
+        if (seasons[i].end) return toISOOrNull(seasons[i].end);
+        if (seasons[i].start) return toISOOrNull(seasons[i].start);
+      }
+      if (seasons[0]?.start) return toISOOrNull(seasons[0].start);
+    } catch {}
+    return '';
+  };
+
+  const exportCsv = () => {
+    const list = props.watchlist();
+    if (!list.length) {
+      props.showToast('Vault is empty — nothing to export.', 'info');
+      return;
+    }
+    const headers = ['id', 'title', 'media_type', 'status', 'rating', 'watch_date', 'added_at', 'notes'];
+    const rows = list.map((raw) => {
+      const title = raw.title || raw.name || '';
+      const mediaType = raw.media_type === 'tv' ? 'tv' : 'movie';
+      const status = ['Planned', 'Watching', 'Completed', 'Plan to Watch'].includes(raw.status)
+        ? raw.status
+        : 'Planned';
+      const rating = (typeof raw.rating === 'number' && raw.rating > 0 && raw.rating <= 10)
+        ? String(raw.rating)
+        : '';
+      const watchDate = deriveWatchDate(raw);
+      const addedAt = toISOOrNull(raw.addedAt);
+      const notes = typeof raw.notes === 'string' ? raw.notes : '';
+      return [
+        csvEscape(String(raw.id)),
+        csvEscape(title),
+        csvEscape(mediaType),
+        csvEscape(status),
+        csvEscape(rating),
+        csvEscape(watchDate),
+        csvEscape(addedAt),
+        csvEscape(notes),
+      ].join(',');
+    });
+    const csv = headers.join(',') + '\n' + rows.join('\n');
+    const filename = `Cinelog_Vault_CSV_${new Date().toISOString().slice(0,10)}.csv`;
+    downloadFile(filename, csv, 'text/csv;charset=utf-8');
+    props.showToast(`CSV Exported — ${list.length} titles! 📄`, 'success');
+  };
+
+  // ── CSV import (V2-generic format) ────────────────────────────────────
+  // Parses RFC 4180 CSV. Accepts the same columns V2's CSV import accepts:
+  //   id,title,media_type,status,rating,watch_date,added_at,notes
+  //
+  // Required: id + title (must have a TMDB id — without it we can't safely
+  // add to Firestore because Firestore uses String(id) as the doc name).
+  // Optional columns are skipped silently if absent.
+  const parseCsvLine = (line) => {
+    const fields = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (line[i + 1] === '"') { cur += '"'; i++; }
+          else { inQuotes = false; }
+        } else {
+          cur += c;
+        }
+      } else {
+        if (c === '"') inQuotes = true;
+        else if (c === ',') { fields.push(cur); cur = ''; }
+        else cur += c;
+      }
+    }
+    fields.push(cur);
+    return fields;
+  };
+
+  const importCsv = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        let text = String(event.target.result || '');
+        // Strip BOM + normalize line endings
+        if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+        text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        const lines = text.split('\n').filter(l => l.trim().length > 0);
+        if (lines.length < 2) {
+          props.showToast('CSV is empty or has no data rows.', 'error');
+          if (csvInputRef) csvInputRef.value = '';
+          return;
+        }
+
+        const headers = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase());
+        // Require at minimum: id, title, media_type, status
+        const hasId    = headers.includes('id');
+        const hasTitle = headers.includes('title') || headers.includes('name');
+        if (!hasId || !hasTitle) {
+          props.showToast('CSV must have at least `id` and `title` columns.', 'error');
+          if (csvInputRef) csvInputRef.value = '';
+          return;
+        }
+
+        setIsImporting(true);
+        setImportStats({ total: lines.length - 1, success: 0, skipped: 0 });
+        setErrorLog([]);
+
+        const existingIds = new Set(props.watchlist().map(m => String(m.id)));
+
+        for (let i = 1; i < lines.length; i++) {
+          const fields = parseCsvLine(lines[i]);
+          const row = {};
+          headers.forEach((h, idx) => { row[h] = (fields[idx] ?? '').trim(); });
+
+          try {
+            const id = row.id;
+            const title = row.title || row.name || '';
+            if (!id) throw new Error('Missing ID');
+            if (!title) throw new Error('Missing title');
+            if (existingIds.has(String(id))) throw new Error('Already exists in Vault');
+
+            const mediaType = row.media_type === 'tv' ? 'tv' : 'movie';
+            const status = ['Planned', 'Watching', 'Completed', 'Plan to Watch'].includes(row.status)
+              ? row.status
+              : 'Planned';
+            const ratingNum = parseFloat(row.rating);
+            const rating = (!isNaN(ratingNum) && ratingNum > 0 && ratingNum <= 10) ? ratingNum : 0;
+
+            // Build a minimal V1 watchlist doc — same shape as addPreviewToWatchlist
+            const item = {
+              id: String(id),
+              title,
+              media_type: mediaType,
+              status,
+              addedAt: row.added_at ? new Date(row.added_at) : new Date(),
+              notes: row.notes || '',
+            };
+            if (rating > 0) item.rating = rating;
+            if (row.watch_date) item.watchDate = row.watch_date;
+
+            await setDoc(doc(db, 'users', props.uid, 'watchlist', String(id)), item);
+            existingIds.add(String(id));
+            setImportStats(p => ({ ...p, success: p.success + 1 }));
+          } catch (err) {
+            setImportStats(p => ({ ...p, skipped: p.skipped + 1 }));
+            setErrorLog(prev => [...prev, {
+              title: row.title || row.name || row.id || 'Unknown',
+              reason: err.message || String(err),
+            }]);
+          }
+        }
+
+        setIsImporting(false);
+        props.showToast('CSV Import Finished! 📂', 'success');
+        if (csvInputRef) csvInputRef.value = '';
+      } catch (err) {
+        setIsImporting(false);
+        props.showToast('Failed to read CSV. Is it valid?', 'error');
+        if (csvInputRef) csvInputRef.value = '';
+      }
+    };
+    reader.readAsText(file);
   };
 
   const importData = async (e) => {
@@ -219,8 +442,18 @@ export function DataSync(props) {
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
-        const importedList = JSON.parse(event.target.result);
-        if (!Array.isArray(importedList)) throw new Error('Invalid format. Expected an array.');
+        const parsed = JSON.parse(event.target.result);
+        // Accept both V2 wrapped ({version, library:{watchlist}}) and V1 flat array
+        let importedList;
+        if (Array.isArray(parsed)) {
+          importedList = parsed;
+        } else if (parsed && parsed.library && Array.isArray(parsed.library.watchlist)) {
+          importedList = parsed.library.watchlist;
+        } else if (parsed && Array.isArray(parsed.watchlist)) {
+          importedList = parsed.watchlist;
+        } else {
+          throw new Error('Invalid format. Expected an array or CineLog backup document.');
+        }
 
         setIsImporting(true);
         setImportStats({ total: importedList.length, success: 0, skipped: 0 });
@@ -365,10 +598,10 @@ export function DataSync(props) {
               style="background: var(--p-dim); color: var(--p); border: 1px solid var(--p); box-shadow: 0 0 12px var(--p-glow)"
               aria-label="Export vault as JSON backup"
             >
-              <Icon name="file_download" class="text-[14px]" aria-hidden="true" /> Export
+              <Icon name="file_download" class="text-[14px]" aria-hidden="true" /> Export JSON
             </button>
 
-            <input type="file" accept=".json" class="hidden" ref={fileInputRef} onChange={importData} aria-hidden="true" />
+            <input type="file" accept="application/json,.json" class="hidden" ref={fileInputRef} onChange={importData} aria-hidden="true" />
 
             <button
               disabled={isImporting()}
@@ -381,8 +614,45 @@ export function DataSync(props) {
               aria-busy={isImporting()}
             >
               <Icon name={isImporting() ? 'hourglass_empty' : 'file_upload'} class="text-[14px]" aria-hidden="true" />
-              {isImporting() ? 'Wait…' : 'Import'}
+              {isImporting() ? 'Wait…' : 'Import JSON'}
             </button>
+          </div>
+
+          {/* ── CSV Import / Export — placed BELOW JSON Import / Export ── */}
+          <div class="mt-4 pt-4 border-t border-white/5">
+            <div class="flex items-center gap-2 mb-3">
+              <Icon name="table_chart" class="text-[14px]" style="color: var(--p2)" aria-hidden="true" />
+              <h4 class="text-xs font-black text-white">CSV (Spreadsheet)</h4>
+            </div>
+            <p class="text-[10px] text-gray-500 leading-relaxed mb-3">
+              Compatible with CineLog-V2 CSV import. Columns: id, title, media_type, status, rating, watch_date, added_at, notes.
+            </p>
+            <div class="grid grid-cols-2 gap-3">
+              <button
+                onClick={exportCsv}
+                class="font-black py-3 rounded-xl type-caption transition-all flex items-center justify-center gap-1.5 active:scale-95"
+                style="background: var(--p-dim); color: var(--p); border: 1px solid var(--p); box-shadow: 0 0 12px var(--p-glow)"
+                aria-label="Export vault as CSV spreadsheet"
+              >
+                <Icon name="table_chart" class="text-[14px]" aria-hidden="true" /> Export CSV
+              </button>
+
+              <input type="file" accept=".csv,text/csv" class="hidden" ref={csvInputRef} onChange={importCsv} aria-hidden="true" />
+
+              <button
+                disabled={isImporting()}
+                onClick={() => csvInputRef.click()}
+                class="font-black py-3 rounded-xl type-caption transition-all flex items-center justify-center gap-1.5 active:scale-95"
+                style={isImporting()
+                  ? 'background: var(--raised); color: var(--dim); cursor: not-allowed; border: 1px solid var(--border)'
+                  : 'background: rgba(255,120,196,0.12); color: var(--p2); border: 1px solid var(--p2)'}
+                aria-label={isImporting() ? 'Import in progress, please wait' : 'Import vault from CSV spreadsheet'}
+                aria-busy={isImporting()}
+              >
+                <Icon name={isImporting() ? 'hourglass_empty' : 'table_chart'} class="text-[14px]" aria-hidden="true" />
+                {isImporting() ? 'Wait…' : 'Import CSV'}
+              </button>
+            </div>
           </div>
 
           <Show when={isImporting() || importStats().total > 0}>
